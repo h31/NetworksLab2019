@@ -11,29 +11,34 @@
 
 #include "pthread.h"
 
-#define THREAD_NUM 4
-#define MAX_MESSAGE_BYTE 18
+#define MAX_CLIENT_NUM 4
+int socket_list[MAX_CLIENT_NUM];
+pthread_t thread_poll[MAX_CLIENT_NUM];
+int client_num = 0;
 
 void *pthr_client_processing(int newsockfd) {
     char buffer[BUFF_SIZE];
 
-    if (newsockfd < 0) {
-        PERROR_AND_EXIT("ERROR on accept");
+    while (1) {
+        if (newsockfd < 0) {
+            PERROR_AND_EXIT("ERROR on accept");
+        }
+
+        /* If connection is established then start communicating */
+        bzero(buffer, BUFF_SIZE);
+
+        if (read(newsockfd, buffer, BUFF_SIZE - 1) < 0) {
+            PERROR_AND_EXIT("ERROR reading from socket");
+        }
+
+        printf("%s\n", buffer);
+
+        for (int i = 0; i < client_num; ++i) {
+            if (write(socket_list[client_num], buffer, strlen(buffer)) < 0) {
+                PERROR_AND_EXIT("ERROR writing to socket");
+            }
+        }
     }
-
-    /* If connection is established then start communicating */
-    bzero(buffer, BUFF_SIZE);
-
-    if (read(newsockfd, buffer, BUFF_SIZE - 1) < 0) {
-        PERROR_AND_EXIT("ERROR reading from socket");
-    }
-
-    printf("%s\n", buffer);
-
-    if (write(newsockfd, buffer, strlen(buffer)) < 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
-    }
-
     return 0;
 }
 
@@ -86,16 +91,17 @@ int main(int argc, char *argv[]) {
     /* Now start listening for the clients, here process will
      * go in sleep mode and will wait for the incoming connection
      */
-    pthread_t thread_poll[THREAD_NUM];
-    int thread_i = 0;
+    listen(sockfd, 5);
+    clilen = sizeof(cli_addr);
+
     while (1) {
-        listen(sockfd, 5);
-        clilen = sizeof(cli_addr);
-
         /* Accept actual connection from the client */
-        newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if (client_num < MAX_CLIENT_NUM) {
+            socket_list[client_num] = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+            pthread_create(&thread_poll[client_num], NULL, pthr_client_processing, socket_list[client_num]);
+            client_num++;
+        }
 
-        pthread_create(&thread_poll[thread_i], NULL, pthr_client_processing, newsockfd);
     }
     return 0;
 }
