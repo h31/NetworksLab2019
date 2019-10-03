@@ -28,9 +28,9 @@ void *pthr_client_processing(int newsockfd) {
         PERROR_AND_EXIT("ERROR reading from socket");
     }
 
-    printf("Here is the message: %s\n", buffer);
+    printf("%s\n", buffer);
 
-    if (write(newsockfd, "I got your message", MAX_MESSAGE_BYTE) < 0) {
+    if (write(newsockfd, buffer, strlen(buffer)) < 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 

@@ -1,13 +1,21 @@
-# /bin/bash
+#! /bin/bash
 die(){
 	printf "$*\n"
 	exit 1
 }
 
 # ---------------------- run client ---------------------
+if [[ $# < 2 ]];then
+  die "user_name isn't passed, exiting..."
+fi
+
+USER_NAME=$1
+IP_SERVER=$2
+
 client/client_linux \
 					-p 5001 \
-					-s $(ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | grep 192)
+					-s $IP_SERVER\
+					-n $USER_NAME
 client_status=$?
 client_pid=$!
 
