@@ -78,16 +78,17 @@ int main(int argc, char *argv[]) {
     }
 
     /* Now connect to the server */
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
+    serv_addr.sin_port = htons(portno);
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
         < 0) {
         PERROR_AND_EXIT("ERROR connecting");
     }
 
     while (1) {
-        bzero((char *) &serv_addr, sizeof(serv_addr));
-        serv_addr.sin_family = AF_INET;
-        bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
-        serv_addr.sin_port = htons(portno);
+
 
 
         /* Now ask for a message from the user, this message
@@ -98,8 +99,8 @@ int main(int argc, char *argv[]) {
         bzero(buffer_message, BUFF_SIZE);
         fgets(buffer_message, BUFF_SIZE - 1, stdin);
 
-        char *buffer_full = string_concat(user_name, &buffer_message);
-        if (write(sockfd, buffer_full, strlen(buffer_full)) < 0) {
+//        char *buffer_full = string_concat(user_name, &buffer_message);
+        if (write(sockfd, buffer_message, strlen(buffer_message)) < 0) {
             PERROR_AND_EXIT("ERROR writing to socket");
         }
 

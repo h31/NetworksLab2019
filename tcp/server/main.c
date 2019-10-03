@@ -97,7 +97,9 @@ int main(int argc, char *argv[]) {
     while (1) {
         /* Accept actual connection from the client */
         if (client_num < MAX_CLIENT_NUM) {
+            printf("awaiting for connection\n", socket_list[client_num]);
             socket_list[client_num] = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+            printf("new client accepted: sockfd = %d\n", socket_list[client_num]);
             pthread_create(&thread_poll[client_num], NULL, pthr_client_processing, socket_list[client_num]);
             client_num++;
         }
