@@ -8,19 +8,19 @@
 #include <string.h>
 
 #include "../../common.h"
+#include "pthread.h"
 
-char *string_concat(char *line1, char *line2) {
-    size_t line_len_1 = strlen(line1);
-    size_t line_len_2 = strlen(line2);
+char *user_name = NULL;
 
-    char *totalLine = malloc(line_len_1 + line_len_2 + 1);
-    if (!totalLine) abort();
+void *client_read(int sockfd) {
+    while (1) {
+        char *buffer_message = calloc(BUFF_SIZE, sizeof(char));
+        if (read(sockfd, buffer_message, BUFF_SIZE - 1) < 0) {
+            PERROR_AND_EXIT("ERROR reading from socket");
+        }
+        printf("\n%s\n%s:", buffer_message, user_name);
 
-    memcpy(totalLine, line1, line_len_1);
-    memcpy(totalLine + line_len_1, line2, line_len_2);
-    totalLine[line_len_1 + line_len_2] = '\0';
-
-    return totalLine;
+    }
 
 }
 
@@ -29,9 +29,6 @@ int main(int argc, char *argv[]) {
     uint16_t portno;
     struct sockaddr_in serv_addr;
     struct hostent *server;
-    char *user_name = NULL;
-
-    char buffer_message[BUFF_SIZE];
     ///////////////////////////////////////////////////////
     ///////////////// parsing arguments ///////////////////
     ///////////////////////////////////////////////////////
@@ -67,7 +64,6 @@ int main(int argc, char *argv[]) {
     if (user_name == NULL) {
         PERROR_AND_EXIT("user_name = NULL\n")
     }
-    user_name = string_concat(user_name, ": ");
     printf("user_name = %s\n", user_name);
 
     /* Create a socket point */
@@ -82,36 +78,28 @@ int main(int argc, char *argv[]) {
     serv_addr.sin_family = AF_INET;
     bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
     serv_addr.sin_port = htons(portno);
+
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
         < 0) {
         PERROR_AND_EXIT("ERROR connecting");
     }
 
+    pthread_t thread_read;
+
+    pthread_create(&thread_read, NULL, (void *(*)(void *)) client_read, sockfd);
+
+    if (write(sockfd, user_name, strlen(user_name)) < 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+
+    printf("\n%s:", user_name);
     while (1) {
-
-
-
-        /* Now ask for a message from the user, this message
-         * will be read by server
-         */
-
-        printf("%s", user_name);
-        bzero(buffer_message, BUFF_SIZE);
+        char *buffer_message = calloc(BUFF_SIZE, sizeof(char));
         fgets(buffer_message, BUFF_SIZE - 1, stdin);
-
-//        char *buffer_full = string_concat(user_name, &buffer_message);
         if (write(sockfd, buffer_message, strlen(buffer_message)) < 0) {
             PERROR_AND_EXIT("ERROR writing to socket");
         }
-
-        /* Now read server response */
-        bzero(buffer_message, BUFF_SIZE);
-
-        if (read(sockfd, buffer_message, BUFF_SIZE - 1) < 0) {
-            PERROR_AND_EXIT("ERROR reading from socket");
-        }
-
-        printf("%s\n", buffer_message);
     }
+
     return 0;
 }

@@ -11,31 +11,42 @@
 
 #include "pthread.h"
 
-#define MAX_CLIENT_NUM 4
+
 int socket_list[MAX_CLIENT_NUM];
+char *client_names[MAX_CLIENT_NUM];
 pthread_t thread_poll[MAX_CLIENT_NUM];
 int client_num = 0;
 
-void *pthr_client_processing(int newsockfd) {
-    char buffer[BUFF_SIZE];
+char *get_name_from_socket(int socket) {
+    for (int i = 0; i < client_num; ++i) {
+        if (socket_list[i] == socket)
+            return client_names[i];
+    }
+    return NULL;
+}
 
+
+void *serv_client_processing(int newsockfd) {
     while (1) {
+        char *buffer = calloc(BUFF_SIZE, sizeof(char));
         if (newsockfd < 0) {
             PERROR_AND_EXIT("ERROR on accept");
         }
 
-        /* If connection is established then start communicating */
-        bzero(buffer, BUFF_SIZE);
-
         if (read(newsockfd, buffer, BUFF_SIZE - 1) < 0) {
             PERROR_AND_EXIT("ERROR reading from socket");
         }
+        buffer = string_concat(string_concat(get_name_from_socket(newsockfd), ":"), buffer);
 
-        printf("%s\n", buffer);
+        printf("\n%s", buffer);
 
         for (int i = 0; i < client_num; ++i) {
-            if (write(socket_list[client_num], buffer, strlen(buffer)) < 0) {
-                PERROR_AND_EXIT("ERROR writing to socket");
+            if (newsockfd != socket_list[i]) {
+                printf("Write to socket = %d\n", socket_list[i]);
+
+                if (write(socket_list[i], buffer, strlen(buffer)) < 0) {
+                    PERROR_AND_EXIT("ERROR writing to socket");
+                }
             }
         }
     }
@@ -43,7 +54,7 @@ void *pthr_client_processing(int newsockfd) {
 }
 
 int main(int argc, char *argv[]) {
-    int sockfd, newsockfd;
+    int sockfd;
     uint16_t portno;
     unsigned int clilen;
 
@@ -94,13 +105,19 @@ int main(int argc, char *argv[]) {
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
+    for (int i = 0; i < MAX_CLIENT_NUM; ++i)
+        client_names[i] = calloc(MAX_CLIENT_NAME_SIZE, sizeof(char));
+
     while (1) {
         /* Accept actual connection from the client */
         if (client_num < MAX_CLIENT_NUM) {
-            printf("awaiting for connection\n", socket_list[client_num]);
             socket_list[client_num] = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-            printf("new client accepted: sockfd = %d\n", socket_list[client_num]);
-            pthread_create(&thread_poll[client_num], NULL, pthr_client_processing, socket_list[client_num]);
+            if (read(socket_list[client_num], client_names[client_num], BUFF_SIZE - 1) < 0) {
+                PERROR_AND_EXIT("ERROR reading from socket");
+            }
+            printf("New client accepted: sockfd = %d,name = %s\n", socket_list[client_num], client_names[client_num]);
+
+            pthread_create(&thread_poll[client_num], NULL, serv_client_processing, socket_list[client_num]);
             client_num++;
         }
 
