@@ -1,0 +1,8 @@
+#ifndef CLIENT_SERVER_PARAMS_H
+#define CLIENT_SERVER_PARAMS_H
+
+#define MSG_LEN 200
+#define NAME_LEN 25
+#define SEND_MSG_LEN 230
+
+#endif //CLIENT_SERVER_PARAMS_H
