@@ -17,6 +17,8 @@ void client_exit(ClientChain *client_data);
 
 void send_msg_to_clients(ClientChain *sender_data, char msg[]);
 
+char *get_time();
+
 ClientChain *root;
 int flag, sockfd;
 
@@ -88,9 +90,9 @@ void communicate_to_client(void *arg) {
     } else {
         make_str(name);
         strncpy(client_data->name, name, NAME_LEN);
-        printf("---%s connected---\n", name);
+        printf("<%s>---%s connected---\n", get_time(), name);
         bzero(msg, SEND_MSG_LEN);
-        sprintf(msg, "---%s connected---\n", name);
+        sprintf(msg, "<%s>---%s connected---\n", get_time(), name);
         send_msg_to_clients(client_data, msg);
     }
 
@@ -103,22 +105,23 @@ void communicate_to_client(void *arg) {
         }
         make_str(buffer);
         if (strcmp(buffer, "/exit") == 0) {
-            printf("---%s exit chat---\n", name);
+            printf("<%s>---%s exit chat---\n",get_time(), name);
             bzero(msg, SEND_MSG_LEN);
-            sprintf(msg, "---%s exit chat---\n", name);
+            sprintf(msg, "<%s>---%s exit chat---\n",get_time(), name);
             client_exit(client_data);
             send_msg_to_clients(client_data, msg);
             break;
         } else {
-            printf("%s: %s\n", name, buffer);
+            printf("<%s>%s: %s\n",get_time(), name, buffer);
             bzero(msg, SEND_MSG_LEN);
-            sprintf(msg, "%s: %s\n", name, buffer);
+            sprintf(msg, "<%s>%s: %s\n",get_time(), name, buffer);
             send_msg_to_clients(client_data, msg);
         }
     }
 }
 
-void send_msg_to_clients(ClientChain *sender_data, char msg[]){
+
+void send_msg_to_clients(ClientChain *sender_data, char msg[]) {
     ClientChain *temp = root->next;
     while (temp != NULL) {
         if (temp != sender_data) {
@@ -144,4 +147,16 @@ void client_exit(ClientChain *client_data) {
     }
 }
 
+char *get_time() {
+    time_t timer = time(NULL);
+    struct tm *t;
+    char tmp[6];
+    char *str;
+    t = localtime(&timer);
+    bzero(tmp, 6);
+    strftime(tmp, 6, "%H:%M", t);
+    str = (char*)malloc(sizeof(tmp));
+    strcpy(str, tmp);
+    return str;
+}
 
