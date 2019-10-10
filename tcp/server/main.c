@@ -107,8 +107,8 @@ void communicate_to_client(void *arg) {
             printf("<%s>---%s exit chat---\n", get_time(), name);
             bzero(msg, SEND_MSG_LEN);
             sprintf(msg, "<%s>---%s exit chat---\n", get_time(), name);
-            client_exit(client_data);
             send_msg_to_clients(client_data, msg);
+            client_exit(client_data);
             break;
         } else {
             printf("<%s>%s: %s\n", get_time(), name, buffer);
