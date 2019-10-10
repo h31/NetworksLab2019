@@ -19,7 +19,7 @@ void send_msg_to_clients(ClientChain *sender_data, char msg[]);
 
 char *get_time();
 
-ClientChain *root;
+ClientChain *root, *last;
 int sockfd;
 
 int main(int argc, char *argv[]) {
@@ -50,13 +50,12 @@ int main(int argc, char *argv[]) {
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
-    ClientChain *temp;
-    root = chain_init(sockfd);
-    temp = root;
 
-    pthread_t tid[2];
-    for (int i = 0; i < 3; i++) {
-        //while (1) {
+    root = chain_init(sockfd);
+    last = root;
+
+    pthread_t tid;
+    while(1) {
         ClientChain *this = chain_init(sockfd);
         this->sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
         if (this->sock < 0) {
@@ -64,12 +63,12 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        this->prev = temp;
-        temp->next = this;
-        temp = this;
+        this->prev = last;
+        last->next = this;
+        last = this;
 
         //pthread_t tid;
-        if (pthread_create(&tid[i], NULL, (void *) communicate_to_client, (void *) this) != 0) {
+        if (pthread_create(&tid, NULL, (void *) communicate_to_client, (void *) this) != 0) {
             printf("thread has not created");
             exit(1);
         }
@@ -109,7 +108,6 @@ void communicate_to_client(void *arg) {
             bzero(msg, SEND_MSG_LEN);
             sprintf(msg, "<%s>---%s exit chat---\n", get_time(), name);
             client_exit(client_data);
-            printf("after client");
             send_msg_to_clients(client_data, msg);
             break;
         } else {
@@ -137,13 +135,12 @@ void send_msg_to_clients(ClientChain *sender_data, char msg[]) {
 
 void client_exit(ClientChain *client_data) {
     close(client_data->sock);
-    printf("in exit fun\n");
     if (client_data->next == NULL && client_data->prev == root) {
-        printf("close %s\n", client_data->name);
         close(sockfd);
         printf("All users exit chat, see u later\n");
         exit(EXIT_SUCCESS);
     } else if (client_data->next == NULL) {
+        last = client_data->prev;
         client_data->prev->next = NULL;
         free(client_data);
         pthread_exit(NULL);
