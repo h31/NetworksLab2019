@@ -9,83 +9,70 @@
 #include <pthread.h>
 #include "../common.h"
 
-#define PERROR_AND_EXIT(message){\
-    perror("ERROR opening socket");\
-    exit(1);}
-
 #define MAX_MESSAGE_SIZE 256
 #define HEADER_SIZE 4
 
-void client_send_name(int sockfd, char *name) {
-    int message_size = strlen(name);
+char *user_name;
 
-    if (write(sockfd, &message_size, sizeof(int)) <= 0) {
+/*------------------- CLIENT SEND MESSAGE ---------------------------------*/
+void client_send_message(int sockfd, Message message) {
+    if (write(sockfd, &message.size, sizeof(int)) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 
-    if (write(sockfd, name, message_size) <= 0) {
+    if (write(sockfd, message.buffer, message.size) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
-
-    printf("Name = %s sended to server (size = %d)\n", name, message_size);
 
 
 }
 
 
-void client_send_message(int sockfd) {
+void client_send_message_from_cmd(int sockfd) {
     Message message;
     message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
-    for (;;) {
-        bzero(message.buffer, MAX_MESSAGE_SIZE);
-        fgets(message.buffer, MAX_MESSAGE_SIZE, stdin);
-        message.size = (int) strlen(message.buffer);
+    bzero(message.buffer, MAX_MESSAGE_SIZE);
+    printf("%s:", user_name);
+    fgets(message.buffer, MAX_MESSAGE_SIZE, stdin);
+    message.size = (int) strlen(message.buffer);
 
-        if (write(sockfd, &message.size, sizeof(int)) <= 0) {
-            PERROR_AND_EXIT("ERROR writing to socket");
-        }
+    client_send_message(sockfd, message);
 
-        if (write(sockfd, message.buffer, message.size) <= 0) {
-            PERROR_AND_EXIT("ERROR writing to socket");
-        }
-
-        printf("\nClient Sending\n");
-        printf("Message.size   = %d\n", message.size);
-        printf("Message.buffer = %s\n", message.buffer);
-    }
 
 }
 
+void client_send_message_loop(int sockfd) {
+    for (;;) {
+        client_send_message_from_cmd(sockfd);
+    }
+}
+
+/*------------------- CLIENT GET RESPONSE ---------------------------------*/
 void client_get_response(int sockfd) {
+    Message message;
+    if (read(sockfd, &message.size, HEADER_SIZE) <= 0) {
+        PERROR_AND_EXIT("ERROR reading message size");
+    }
+
+    message.buffer = calloc(message.size, sizeof(char));
+
+    if (read(sockfd, message.buffer, message.size) <= 0) {
+        PERROR_AND_EXIT("ERROR reading message")
+    }
+
+}
+
+void client_get_response_loop(int sockfd) {
     for (;;) {
-        Message message;
-        if (read(sockfd, &message.size, HEADER_SIZE) <= 0) {
-            PERROR_AND_EXIT("ERROR reading message size");
-        }
-
-        message.buffer = calloc(message.size, sizeof(char));
-
-        if (read(sockfd, message.buffer, message.size) <= 0) {
-            PERROR_AND_EXIT("ERROR reading message")
-        }
-
-        printf("\nClient Reading\n");
-        printf("Message.size   = %d\n", message.size);
-        printf("Message.buffer = %s\n", message.buffer);
+        client_get_response(sockfd);
     }
 }
 
-
+/*------------------- MAIN -------------------------------------------------*/
 int main(int argc, char *argv[]) {
     uint16_t portno;
     struct sockaddr_in serv_addr;
-    struct hostent *server;
-    char *user_name;
-
-    if (argc < 4) {
-        fprintf(stderr, "usage %s hostname port\n", argv[0]);
-        exit(0);
-    }
+    struct hostent *server = NULL;
 
     int opt;
     while ((opt = getopt(argc, argv, "i:p:n:")) != -1) {
@@ -129,12 +116,14 @@ int main(int argc, char *argv[]) {
     }
     printf("Conneced to server \n");
 
-    client_send_name(sockfd, user_name);
+
+    client_send_message(sockfd, *NewMessage(user_name));
+
 
     pthread_t read_thread;
-    pthread_create(&read_thread, NULL, client_get_response, sockfd);
+    pthread_create(&read_thread, NULL, client_get_response_loop, sockfd);
 
-    client_send_message(sockfd);
+    client_send_message_loop(sockfd);
 
 
     return 0;

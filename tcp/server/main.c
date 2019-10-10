@@ -8,9 +8,6 @@
 #include <string.h>
 #include "../common.h"
 
-#define PERROR_AND_EXIT(message){\
-    perror("ERROR opening socket");\
-    exit(1);}
 #define MAX_CLIENT_NUM      4
 #define HEADER_SIZE         4
 #define MAX_MESSAGE_SIZE    256
@@ -24,7 +21,7 @@
 
 Client clients[MAX_CLIENT_NUM];
 
-
+/*------------------- GETTERS --------------------------------------------*/
 int get_free_index() {
     for (int i = 1; i < MAX_CLIENT_NUM; ++i) {
         clients[i].status = CL_STATUS_DISC;
@@ -33,7 +30,7 @@ int get_free_index() {
     return NO_PLACES_INDEX;
 }
 
-
+/*------------------- SERVER GET MESSAGE ---------------------------------*/
 Message serv_get_message(int sockfd) {
     Message message;
 
@@ -50,6 +47,7 @@ Message serv_get_message(int sockfd) {
     return message;
 }
 
+/*------------------- SERVER SEND MESSAGE ---------------------------------*/
 void serv_send_response(int sockfd, Message message) {
 
     if (write(sockfd, &message.size, HEADER_SIZE) <= 0) {
@@ -59,17 +57,6 @@ void serv_send_response(int sockfd, Message message) {
     if (write(sockfd, message.buffer, message.size) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
-}
-
-
-void serv_process_client(int sockfd) {
-    for (;;) {
-        Message message = serv_get_message(sockfd);
-        printf("Message.size   = %d\n", message.size);
-        printf("Message.buffer = %s\n", message.buffer);
-        serv_send_response(sockfd, message);
-    }
-
 }
 
 void serv_send_no_cap_message(int sockfd) {
@@ -83,6 +70,19 @@ void serv_send_no_cap_message(int sockfd) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 }
+
+/*------------------- SERVER SEND MESSAGE ---------------------------------*/
+void serv_process_client(int i) {
+    for (;;) {
+        Message message = serv_get_message(clients[i].sockfd);
+        printf("RECEIVED:%s:message = %s(size = %d)\n", clients[i].name, message.buffer, message.size);
+        serv_send_response(clients[i].sockfd, message);
+        printf("SENDED:%s:message = %s(size = %d)\n", clients[i].name, message.buffer, message.size);
+
+    }
+
+}
+
 
 int main(int argc, char *argv[]) {
     int sockfd;
@@ -151,8 +151,9 @@ int main(int argc, char *argv[]) {
         if (i == NO_PLACES_INDEX) {
             serv_send_no_cap_message(clients[i].sockfd);
         } else {
+            clients[i].status = CL_STATUS_CONN;
             printf("New client accepted: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
-            pthread_create(&clients[i].thread, NULL, serv_process_client, clients[i].sockfd);
+            pthread_create(&clients[i].thread, NULL, serv_process_client, i);
         }
     }
 
