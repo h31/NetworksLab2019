@@ -22,38 +22,41 @@ struct Client {
 
 Client clients[MAX_CLIENT_NUM];
 
-void serv_get_message(int sockfd, char *buffer) {
-    char buffer_header[HEADER_SIZE];
+void serv_send_response(int sockfd, char *buffer, size_t message_size) {
 
-    if (read(sockfd, buffer_header, HEADER_SIZE) <= 0) {
+    if (write(sockfd, &message_size, HEADER_SIZE) <= 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+
+    if (write(sockfd, buffer, message_size) <= 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+
+
+}
+
+void serv_get_message(int sockfd) {
+
+    size_t message_size = 0;
+
+    if (read(sockfd, &message_size, HEADER_SIZE) <= 0) {
         PERROR_AND_EXIT("ERROR reading message size");
     }
 
-    int message_size = atoi(buffer_header);
-    printf("message_size = %d", message_size);
+    char *buffer = calloc(message_size, sizeof(char));
 
-    buffer = calloc(message_size, sizeof(char));
 
     if (read(sockfd, buffer, message_size) <= 0) {
         PERROR_AND_EXIT("ERROR reading message")
     }
 
-    printf("message = %s", buffer);
+    printf("message_size = %d\n", message_size);
+    printf("buffer = %s\n", buffer);
+
+    serv_send_response(sockfd, buffer, message_size);
 
 }
 
-void serv_send_response(int sockfd, char *buffer) {
-    
-    if (write(sockfd, (int) strlen(buffer), sizeof(int)) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
-    }
-
-    if (write(sockfd, buffer, strlen(buffer)) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
-    }
-
-
-}
 
 int main(int argc, char *argv[]) {
     int sockfd;
@@ -81,6 +84,14 @@ int main(int argc, char *argv[]) {
         PERROR_AND_EXIT("ERROR opening socket");
     }
 
+    printf("Portno = %d\n", portno);
+    printf("Sockfd = %d\n", sockfd);
+    printf("IP ADDRESS:\n");
+    system(" ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\\.){3}[0-9]*).*/\\2/p'");
+
+
+
+
     /* Initialize socket structure */
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -103,18 +114,14 @@ int main(int argc, char *argv[]) {
     Client client;
     /* Accept actual connection from the client */
     client.sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-
-    if (client.sockfd < 0) {
+    if (client.sockfd <= 0) {
         PERROR_AND_EXIT("ERROR on accept");
     }
 
+    printf("new client accepted\n");
 
-    while (1) {
-        char *buffer;
-        serv_get_message(client.sockfd, buffer);
 
-        serv_send_response(client.sockfd, buffer);
-    }
+    serv_get_message(client.sockfd);
 
     return 0;
 }

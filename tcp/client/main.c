@@ -19,12 +19,13 @@ void client_send_message(int sockfd) {
     printf("Please enter the message: ");
     fgets(buffer, MAX_MESSAGE_SIZE, stdin);
 
+    size_t message_size = (int) strlen(buffer);
 
-    if (write(sockfd, (int) strlen(buffer), sizeof(int)) <= 0) {
+    if (write(sockfd, &message_size, sizeof(int)) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 
-    if (write(sockfd, buffer, strlen(buffer)) <= 0) {
+    if (write(sockfd, buffer, message_size) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 
@@ -32,14 +33,12 @@ void client_send_message(int sockfd) {
 }
 
 void client_get_response(int sockfd) {
-    char buffer_header[HEADER_SIZE];
-
-    if (read(sockfd, buffer_header, HEADER_SIZE) <= 0) {
+    int message_size = 0;
+    if (read(sockfd, &message_size, HEADER_SIZE) <= 0) {
         PERROR_AND_EXIT("ERROR reading message size");
     }
 
-    int message_size = atoi(buffer_header);
-    printf("message_size = %d", message_size);
+    printf("message_size = %d\n", message_size);
 
     char *buffer = calloc(message_size, sizeof(char));
 
@@ -47,7 +46,7 @@ void client_get_response(int sockfd) {
         PERROR_AND_EXIT("ERROR reading message")
     }
 
-    printf("message = %s", buffer);
+    printf("message = %s\n", buffer);
 
 }
 
@@ -93,12 +92,6 @@ int main(int argc, char *argv[]) {
         PERROR_AND_EXIT("ERROR opening socket");
     }
 
-    server = gethostbyname(argv[1]);
-
-    if (server == NULL) {
-        fprintf(stderr, "ERROR, no such host\n");
-        exit(0);
-    }
 
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -109,15 +102,16 @@ int main(int argc, char *argv[]) {
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         PERROR_AND_EXIT("ERROR connecting");
     }
+    printf("Conneced to server \n");
 
     /* Now ask for a message from the user, this message
        * will be read by server
     */
 
-    while (1) {
-        client_send_message(sockfd);
+    client_send_message(sockfd);
 
-        client_get_response(sockfd);
-    }
+    client_get_response(sockfd);
+
+
     return 0;
 }
