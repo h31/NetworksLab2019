@@ -138,16 +138,20 @@ int main(int argc, char *argv[]) {
 
     for (;;) {
         /* Accept actual connection from the client */
+
         int i = get_free_index();
         clients[i].sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
         if (clients[i].sockfd <= 0) {
             PERROR_AND_EXIT("ERROR on accept");
         }
 
+        Message name_mess = serv_get_message(clients[i].sockfd);
+        clients[i].name = name_mess.buffer;
+
         if (i == NO_PLACES_INDEX) {
             serv_send_no_cap_message(clients[i].sockfd);
         } else {
-            printf("New client accepted: i = %d, sockfd = %d\n", i, clients[i].sockfd);
+            printf("New client accepted: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
             pthread_create(&clients[i].thread, NULL, serv_process_client, clients[i].sockfd);
         }
     }

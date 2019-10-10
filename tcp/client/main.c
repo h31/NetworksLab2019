@@ -16,6 +16,23 @@
 #define MAX_MESSAGE_SIZE 256
 #define HEADER_SIZE 4
 
+void client_send_name(int sockfd, char *name) {
+    int message_size = strlen(name);
+
+    if (write(sockfd, &message_size, sizeof(int)) <= 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+
+    if (write(sockfd, name, message_size) <= 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+
+    printf("Name = %s sended to server (size = %d)\n", name, message_size);
+
+
+}
+
+
 void client_send_message(int sockfd) {
     Message message;
     message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
@@ -112,6 +129,7 @@ int main(int argc, char *argv[]) {
     }
     printf("Conneced to server \n");
 
+    client_send_name(sockfd, user_name);
 
     pthread_t read_thread;
     pthread_create(&read_thread, NULL, client_get_response, sockfd);
