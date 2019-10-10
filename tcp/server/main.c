@@ -6,57 +6,83 @@
 #include <unistd.h>
 
 #include <string.h>
+#include "../common.h"
 
 #define PERROR_AND_EXIT(message){\
     perror("ERROR opening socket");\
     exit(1);}
-#define MAX_CLIENT_NUM 4
-#define HEADER_SIZE 4
-#define MAX_MESSAGE_SIZE 256
+#define MAX_CLIENT_NUM      4
+#define HEADER_SIZE         4
+#define MAX_MESSAGE_SIZE    256
+#define CL_STATUS_DISC      0
+#define CL_STATUS_CONN      1
+#define NO_PLACES_INDEX     0
+#define NO_PLACES_STRING    "Sorry, no places"
 
-struct Client {
-    int sockfd;
-    char *name;
+#include "pthread.h"
 
-} typedef Client;
 
 Client clients[MAX_CLIENT_NUM];
 
-void serv_send_response(int sockfd, char *buffer, size_t message_size) {
+
+int get_free_index() {
+    for (int i = 1; i < MAX_CLIENT_NUM; ++i) {
+        clients[i].status = CL_STATUS_DISC;
+        return i;
+    }
+    return NO_PLACES_INDEX;
+}
+
+
+Message serv_get_message(int sockfd) {
+    Message message;
+
+    message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
+    bzero(message.buffer, MAX_MESSAGE_SIZE);
+    message.size = 0;
+
+    if (read(sockfd, &message.size, sizeof(int)) <= 0) {
+        PERROR_AND_EXIT("ERROR reading message size");
+    }
+    if (read(sockfd, message.buffer, message.size) <= 0) {
+        PERROR_AND_EXIT("ERROR reading message")
+    }
+    return message;
+}
+
+void serv_send_response(int sockfd, Message message) {
+
+    if (write(sockfd, &message.size, HEADER_SIZE) <= 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+
+    if (write(sockfd, message.buffer, message.size) <= 0) {
+        PERROR_AND_EXIT("ERROR writing to socket");
+    }
+}
+
+
+void serv_process_client(int sockfd) {
+    for (;;) {
+        Message message = serv_get_message(sockfd);
+        printf("Message.size   = %d\n", message.size);
+        printf("Message.buffer = %s\n", message.buffer);
+        serv_send_response(sockfd, message);
+    }
+
+}
+
+void serv_send_no_cap_message(int sockfd) {
+    size_t message_size = (size_t) strdup(NO_PLACES_STRING);
 
     if (write(sockfd, &message_size, HEADER_SIZE) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 
-    if (write(sockfd, buffer, message_size) <= 0) {
+    if (write(sockfd, NO_PLACES_STRING, message_size) <= 0) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
-
-
 }
-
-void serv_get_message(int sockfd) {
-
-    size_t message_size = 0;
-
-    if (read(sockfd, &message_size, HEADER_SIZE) <= 0) {
-        PERROR_AND_EXIT("ERROR reading message size");
-    }
-
-    char *buffer = calloc(message_size, sizeof(char));
-
-
-    if (read(sockfd, buffer, message_size) <= 0) {
-        PERROR_AND_EXIT("ERROR reading message")
-    }
-
-    printf("message_size = %d\n", message_size);
-    printf("buffer = %s\n", buffer);
-
-    serv_send_response(sockfd, buffer, message_size);
-
-}
-
 
 int main(int argc, char *argv[]) {
     int sockfd;
@@ -110,18 +136,21 @@ int main(int argc, char *argv[]) {
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
+    for (;;) {
+        /* Accept actual connection from the client */
+        int i = get_free_index();
+        clients[i].sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if (clients[i].sockfd <= 0) {
+            PERROR_AND_EXIT("ERROR on accept");
+        }
 
-    Client client;
-    /* Accept actual connection from the client */
-    client.sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-    if (client.sockfd <= 0) {
-        PERROR_AND_EXIT("ERROR on accept");
+        if (i == NO_PLACES_INDEX) {
+            serv_send_no_cap_message(clients[i].sockfd);
+        } else {
+            printf("New client accepted: i = %d, sockfd = %d\n", i, clients[i].sockfd);
+            pthread_create(&clients[i].thread, NULL, serv_process_client, clients[i].sockfd);
+        }
     }
-
-    printf("new client accepted\n");
-
-
-    serv_get_message(client.sockfd);
 
     return 0;
 }

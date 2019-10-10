@@ -6,6 +6,8 @@
 #include <unistd.h>
 
 #include <string.h>
+#include <pthread.h>
+#include "../common.h"
 
 #define PERROR_AND_EXIT(message){\
     perror("ERROR opening socket");\
@@ -15,39 +17,45 @@
 #define HEADER_SIZE 4
 
 void client_send_message(int sockfd) {
-    char *buffer = calloc(MAX_MESSAGE_SIZE, sizeof(char));
-    printf("Please enter the message: ");
-    fgets(buffer, MAX_MESSAGE_SIZE, stdin);
+    Message message;
+    message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
+    for (;;) {
+        bzero(message.buffer, MAX_MESSAGE_SIZE);
+        fgets(message.buffer, MAX_MESSAGE_SIZE, stdin);
+        message.size = (int) strlen(message.buffer);
 
-    size_t message_size = (int) strlen(buffer);
+        if (write(sockfd, &message.size, sizeof(int)) <= 0) {
+            PERROR_AND_EXIT("ERROR writing to socket");
+        }
 
-    if (write(sockfd, &message_size, sizeof(int)) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
+        if (write(sockfd, message.buffer, message.size) <= 0) {
+            PERROR_AND_EXIT("ERROR writing to socket");
+        }
+
+        printf("\nClient Sending\n");
+        printf("Message.size   = %d\n", message.size);
+        printf("Message.buffer = %s\n", message.buffer);
     }
-
-    if (write(sockfd, buffer, message_size) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
-    }
-
 
 }
 
 void client_get_response(int sockfd) {
-    int message_size = 0;
-    if (read(sockfd, &message_size, HEADER_SIZE) <= 0) {
-        PERROR_AND_EXIT("ERROR reading message size");
+    for (;;) {
+        Message message;
+        if (read(sockfd, &message.size, HEADER_SIZE) <= 0) {
+            PERROR_AND_EXIT("ERROR reading message size");
+        }
+
+        message.buffer = calloc(message.size, sizeof(char));
+
+        if (read(sockfd, message.buffer, message.size) <= 0) {
+            PERROR_AND_EXIT("ERROR reading message")
+        }
+
+        printf("\nClient Reading\n");
+        printf("Message.size   = %d\n", message.size);
+        printf("Message.buffer = %s\n", message.buffer);
     }
-
-    printf("message_size = %d\n", message_size);
-
-    char *buffer = calloc(message_size, sizeof(char));
-
-    if (read(sockfd, buffer, message_size) <= 0) {
-        PERROR_AND_EXIT("ERROR reading message")
-    }
-
-    printf("message = %s\n", buffer);
-
 }
 
 
@@ -104,13 +112,11 @@ int main(int argc, char *argv[]) {
     }
     printf("Conneced to server \n");
 
-    /* Now ask for a message from the user, this message
-       * will be read by server
-    */
+
+    pthread_t read_thread;
+    pthread_create(&read_thread, NULL, client_get_response, sockfd);
 
     client_send_message(sockfd);
-
-    client_get_response(sockfd);
 
 
     return 0;
