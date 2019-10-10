@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 #include "thread.h"
 #include "../../message_buffer/message_buffer.h"
 #include "../../user_info_list/user_info_list.h"
@@ -72,8 +73,10 @@ void *listening_thread(void *arg) {
 
 
         if (number_read == 0) {
-            fprintf(stdout, "client disconnected: %d\n", ((Listening_thread_input*) arg) -> sockfd);
             user_info_remove_by_socket( ((Listening_thread_input*) arg) -> sockfd );
+            shutdown( ((Listening_thread_input*) arg) -> sockfd, SHUT_RDWR);
+            close( ((Listening_thread_input*) arg) -> sockfd );
+            fprintf(stdout, "client disconnected: %d\n", ((Listening_thread_input*) arg) -> sockfd);
             pthread_exit(0);
         }
 

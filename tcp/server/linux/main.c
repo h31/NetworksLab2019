@@ -39,6 +39,11 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
+    // make socket address reusable
+    if (setsockopt(initial_socket, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int)) < 0) {
+        fprintf(stderr, "ERROR: setsockopt(SO_REUSEADDR) failed");
+    }
+
     /* Initialize initial_socket structure */
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;

@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include "thread.h"
 #include <stdlib.h>
+#include <sys/socket.h>
 #include "../../main_window/main_window.h"
 
 #include "../../constants.h"
@@ -50,6 +51,8 @@ void* listening_thread(void* arg) {
 
         if (number_read == 0) {
             main_window_exit();
+            shutdown( ((Listening_thread_input*) arg) -> sockfd, SHUT_RDWR);
+            close( ((Listening_thread_input*) arg) -> sockfd );
             fprintf(stderr,"ERROR: Server disconnected.\n");
             pthread_exit((void*) EXIT_FAILURE);
         }
