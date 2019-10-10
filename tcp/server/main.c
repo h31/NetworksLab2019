@@ -20,7 +20,7 @@ void send_msg_to_clients(ClientChain *sender_data, char msg[]);
 char *get_time();
 
 ClientChain *root;
-int flag, sockfd;
+int sockfd;
 
 int main(int argc, char *argv[]) {
     uint16_t portno;
@@ -54,8 +54,9 @@ int main(int argc, char *argv[]) {
     root = chain_init(sockfd);
     temp = root;
 
-    flag = 1;
-    while (flag) {
+    pthread_t tid[2];
+    for (int i = 0; i < 3; i++) {
+        //while (1) {
         ClientChain *this = chain_init(sockfd);
         this->sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
         if (this->sock < 0) {
@@ -67,13 +68,12 @@ int main(int argc, char *argv[]) {
         temp->next = this;
         temp = this;
 
-        pthread_t tid;
-        if (pthread_create(&tid, NULL, (void *) communicate_to_client, (void *) this) != 0) {
+        //pthread_t tid;
+        if (pthread_create(&tid[i], NULL, (void *) communicate_to_client, (void *) this) != 0) {
             printf("thread has not created");
             exit(1);
         }
     }
-
     return 0;
 }
 
@@ -105,16 +105,17 @@ void communicate_to_client(void *arg) {
         }
         make_str(buffer);
         if (strcmp(buffer, "/exit") == 0) {
-            printf("<%s>---%s exit chat---\n",get_time(), name);
+            printf("<%s>---%s exit chat---\n", get_time(), name);
             bzero(msg, SEND_MSG_LEN);
-            sprintf(msg, "<%s>---%s exit chat---\n",get_time(), name);
+            sprintf(msg, "<%s>---%s exit chat---\n", get_time(), name);
             client_exit(client_data);
+            printf("after client");
             send_msg_to_clients(client_data, msg);
             break;
         } else {
-            printf("<%s>%s: %s\n",get_time(), name, buffer);
+            printf("<%s>%s: %s\n", get_time(), name, buffer);
             bzero(msg, SEND_MSG_LEN);
-            sprintf(msg, "<%s>%s: %s\n",get_time(), name, buffer);
+            sprintf(msg, "<%s>%s: %s\n", get_time(), name, buffer);
             send_msg_to_clients(client_data, msg);
         }
     }
@@ -136,14 +137,21 @@ void send_msg_to_clients(ClientChain *sender_data, char msg[]) {
 
 void client_exit(ClientChain *client_data) {
     close(client_data->sock);
+    printf("in exit fun\n");
     if (client_data->next == NULL && client_data->prev == root) {
+        printf("close %s\n", client_data->name);
         close(sockfd);
         printf("All users exit chat, see u later\n");
         exit(EXIT_SUCCESS);
+    } else if (client_data->next == NULL) {
+        client_data->prev->next = NULL;
+        free(client_data);
+        pthread_exit(NULL);
     } else {
         client_data->prev->next = client_data->next;
         client_data->next->prev = client_data->prev;
         free(client_data);
+        pthread_exit(NULL);
     }
 }
 
@@ -155,7 +163,7 @@ char *get_time() {
     t = localtime(&timer);
     bzero(tmp, 6);
     strftime(tmp, 6, "%H:%M", t);
-    str = (char*)malloc(sizeof(tmp));
+    str = (char *) malloc(sizeof(tmp));
     strcpy(str, tmp);
     return str;
 }
