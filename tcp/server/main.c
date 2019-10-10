@@ -6,7 +6,9 @@
 #include <unistd.h>
 
 #include <string.h>
+#include <signal.h>
 #include "../common.h"
+#include "pthread.h"
 
 #define MAX_CLIENT_NUM      4
 #define HEADER_SIZE         4
@@ -16,16 +18,15 @@
 #define NO_PLACES_INDEX     0
 #define NO_PLACES_STRING    "Sorry, no places"
 
-#include "pthread.h"
-
 
 Client clients[MAX_CLIENT_NUM];
+int global_sockfd;
 
 /*------------------- GETTERS --------------------------------------------*/
 int get_free_index() {
     for (int i = 1; i < MAX_CLIENT_NUM; ++i) {
-        clients[i].status = CL_STATUS_DISC;
-        return i;
+        if (clients[i].status == CL_STATUS_DISC)
+            return i;
     }
     return NO_PLACES_INDEX;
 }
@@ -40,6 +41,7 @@ int get_i_from_sockfd(int sockfd) {
 
 /*------------------- SERVER SEND MESSAGE ---------------------------------*/
 void server_delete_client(i) {
+    printf("Delete client: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
     close(clients[i].sockfd);
     free(clients[i].name);
     clients->status = CL_STATUS_DISC;
@@ -49,8 +51,13 @@ void server_delete_client(i) {
 
 /*------------------- SIGINT HANDLER --------------------------------------------*/
 void server_sigint_handler(int signo) {
-
-
+    printf("Closing server...\n");
+    for (int i = 0; i < MAX_CLIENT_NUM; ++i) {
+        server_delete_client(i);
+    }
+    close(global_sockfd);
+    printf("Server closed...\n");
+    exit(0);
 }
 
 
@@ -126,9 +133,12 @@ int main(int argc, char *argv[]) {
                 break;
         }
     }
+    if (signal(SIGINT, server_sigint_handler) == SIG_ERR) {
+        PERROR_AND_EXIT("client_sigint_handler initialized failed");
+    }
 
     /* First call to socket() function */
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    global_sockfd = sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0) {
         PERROR_AND_EXIT("ERROR opening socket");

@@ -7,12 +7,14 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <signal.h>
 #include "../common.h"
 
 #define MAX_MESSAGE_SIZE 256
 #define HEADER_SIZE 4
 
 char *user_name;
+int global_sockfd;
 
 /*------------------- CLIENT SEND MESSAGE ---------------------------------*/
 void client_send_message(int sockfd, Message message) {
@@ -70,8 +72,10 @@ void client_get_response_loop(int sockfd) {
 
 /*------------------- SIGINT HANDLER --------------------------------------------*/
 void client_sigint_handler(int signo) {
-
-
+    printf("Closing client...\n");
+    close(global_sockfd);
+    printf("Client close...\n");
+    exit(0);
 }
 
 /*------------------- MAIN -----------------------------------------------------*/
@@ -79,6 +83,7 @@ int main(int argc, char *argv[]) {
     uint16_t portno;
     struct sockaddr_in serv_addr;
     struct hostent *server = NULL;
+    int sockfd;
 
     int opt;
     while ((opt = getopt(argc, argv, "i:p:n:")) != -1) {
@@ -102,9 +107,12 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
     }
+    if (signal(SIGINT, client_sigint_handler) == SIG_ERR) {
+        PERROR_AND_EXIT("client_sigint_handler initialized failed");
+    }
 
     /* Create a socket point */
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    global_sockfd = sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0) {
         PERROR_AND_EXIT("ERROR opening socket");
