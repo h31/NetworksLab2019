@@ -30,6 +30,30 @@ int get_free_index() {
     return NO_PLACES_INDEX;
 }
 
+int get_i_from_sockfd(int sockfd) {
+    for (int i = 1; i < MAX_CLIENT_NUM; ++i) {
+        if (clients[i].sockfd == sockfd)
+            return i;
+    }
+    return -1;
+}
+
+/*------------------- SERVER SEND MESSAGE ---------------------------------*/
+void server_delete_client(i) {
+    close(clients[i].sockfd);
+    free(clients[i].name);
+    clients->status = CL_STATUS_DISC;
+    pthread_exit(&clients[i].thread);
+
+}
+
+/*------------------- SIGINT HANDLER --------------------------------------------*/
+void server_sigint_handler(int signo) {
+
+
+}
+
+
 /*------------------- SERVER GET MESSAGE ---------------------------------*/
 Message serv_get_message(int sockfd) {
     Message message;
@@ -39,10 +63,10 @@ Message serv_get_message(int sockfd) {
     message.size = 0;
 
     if (read(sockfd, &message.size, sizeof(int)) <= 0) {
-        PERROR_AND_EXIT("ERROR reading message size");
+        server_delete_client(get_i_from_sockfd(sockfd));
     }
     if (read(sockfd, message.buffer, message.size) <= 0) {
-        PERROR_AND_EXIT("ERROR reading message")
+        server_delete_client(get_i_from_sockfd(sockfd));
     }
     return message;
 }
@@ -51,11 +75,11 @@ Message serv_get_message(int sockfd) {
 void serv_send_response(int sockfd, Message message) {
 
     if (write(sockfd, &message.size, HEADER_SIZE) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
+        server_delete_client(get_i_from_sockfd(sockfd));
     }
 
     if (write(sockfd, message.buffer, message.size) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
+        server_delete_client(get_i_from_sockfd(sockfd));
     }
 }
 
@@ -63,11 +87,11 @@ void serv_send_no_cap_message(int sockfd) {
     size_t message_size = (size_t) strdup(NO_PLACES_STRING);
 
     if (write(sockfd, &message_size, HEADER_SIZE) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
+        server_delete_client(get_i_from_sockfd(sockfd));
     }
 
     if (write(sockfd, NO_PLACES_STRING, message_size) <= 0) {
-        PERROR_AND_EXIT("ERROR writing to socket");
+        server_delete_client(get_i_from_sockfd(sockfd));
     }
 }
 

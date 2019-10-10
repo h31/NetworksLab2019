@@ -68,7 +68,13 @@ void client_get_response_loop(int sockfd) {
     }
 }
 
-/*------------------- MAIN -------------------------------------------------*/
+/*------------------- SIGINT HANDLER --------------------------------------------*/
+void client_sigint_handler(int signo) {
+
+
+}
+
+/*------------------- MAIN -----------------------------------------------------*/
 int main(int argc, char *argv[]) {
     uint16_t portno;
     struct sockaddr_in serv_addr;
