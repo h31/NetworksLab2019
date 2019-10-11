@@ -16,7 +16,7 @@
 #define CL_STATUS_DISC      0
 #define CL_STATUS_CONN      1
 #define NO_PLACES_INDEX     0
-#define NO_PLACES_STRING    "Sorry, no places"
+#define NO_PLACES_STRING    "Sorry, no places\n"
 
 
 Client clients[MAX_CLIENT_NUM];
@@ -44,8 +44,8 @@ void server_delete_client(i) {
     printf("Delete client: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
     close(clients[i].sockfd);
     free(clients[i].name);
-    clients->status = CL_STATUS_DISC;
-    pthread_exit(&clients[i].thread);
+    clients[i].status = CL_STATUS_DISC;
+    pthread_cancel(clients[i].thread);
 
 }
 
@@ -53,8 +53,11 @@ void server_delete_client(i) {
 void server_sigint_handler(int signo) {
     printf("Closing server...\n");
     for (int i = 0; i < MAX_CLIENT_NUM; ++i) {
-        server_delete_client(i);
+        if (clients[i].status == CL_STATUS_CONN) {
+            server_delete_client(i);
+        }
     }
+    printf("Close socket = %d\n", global_sockfd);
     close(global_sockfd);
     printf("Server closed...\n");
     exit(0);
@@ -90,25 +93,24 @@ void serv_send_response(int sockfd, Message message) {
     }
 }
 
-void serv_send_no_cap_message(int sockfd) {
-    size_t message_size = (size_t) strdup(NO_PLACES_STRING);
-
-    if (write(sockfd, &message_size, HEADER_SIZE) <= 0) {
-        server_delete_client(get_i_from_sockfd(sockfd));
-    }
-
-    if (write(sockfd, NO_PLACES_STRING, message_size) <= 0) {
-        server_delete_client(get_i_from_sockfd(sockfd));
-    }
-}
-
 /*------------------- SERVER SEND MESSAGE ---------------------------------*/
-void serv_process_client(int i) {
+void serv_process_client(int curr_i) {
     for (;;) {
-        Message message = serv_get_message(clients[i].sockfd);
-        printf("RECEIVED:%s:message = %s(size = %d)\n", clients[i].name, message.buffer, message.size);
-        serv_send_response(clients[i].sockfd, message);
-        printf("SENDED:%s:message = %s(size = %d)\n", clients[i].name, message.buffer, message.size);
+        Message message = serv_get_message(clients[curr_i].sockfd);
+        printf("RECEIVED:%s:message = %s(size = %d)\n", clients[curr_i].name, message.buffer, message.size);
+        message.buffer = str_concat(str_concat(clients[curr_i].name, ":"), message.buffer);
+        message = *NewMessage(message.buffer);
+
+        for (int j = 0; j < MAX_CLIENT_NUM; ++j) {
+            if (clients[j].status == CL_STATUS_CONN && j != curr_i) {
+                serv_send_response(clients[j].sockfd, message);
+                printf("SENDED:message = %s(size = %d) to %s\n",
+                       message.buffer,
+                       message.size,
+                       clients[j].name);
+
+            }
+        }
 
     }
 
