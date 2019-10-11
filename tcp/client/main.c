@@ -73,7 +73,7 @@ void client_get_response_loop(int sockfd) {
     }
 }
 
-/*------------------- SIGINT HANDLER --------------------------------------------*/
+/*------------------- CLIENT SIGINT HANDLER --------------------------------------------*/
 void client_sigint_handler(int signo) {
     printf("Closing client...\n");
     close(global_sockfd);

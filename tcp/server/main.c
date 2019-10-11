@@ -39,7 +39,7 @@ int get_i_from_sockfd(int sockfd) {
     return -1;
 }
 
-/*------------------- SERVER SEND MESSAGE ---------------------------------*/
+/*------------------- SERVER DELETE CLIENT ---------------------------------*/
 void server_delete_client(int i) {
     printf("Delete client: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
     close(clients[i].sockfd);
@@ -48,21 +48,6 @@ void server_delete_client(int i) {
     pthread_cancel(clients[i].thread);
 
 }
-
-/*------------------- SIGINT HANDLER --------------------------------------------*/
-void server_sigint_handler(int signo) {
-    printf("Closing server...\n");
-    for (int i = 0; i < MAX_CLIENT_NUM; ++i) {
-        if (clients[i].status == CL_STATUS_CONN) {
-            server_delete_client(i);
-        }
-    }
-    printf("Close socket = %d\n", global_sockfd);
-    close(global_sockfd);
-    printf("Server closed...\n");
-    exit(0);
-}
-
 
 /*------------------- SERVER GET MESSAGE ---------------------------------*/
 Message serv_get_message(int sockfd) {
@@ -93,7 +78,7 @@ void serv_send_response(int sockfd, Message message) {
     }
 }
 
-/*------------------- SERVER SEND MESSAGE ---------------------------------*/
+/*------------------- SERVER PROCESS CLIENT -------------------------------------*/
 void serv_process_client(int curr_i) {
     for (;;) {
         Message message = serv_get_message(clients[curr_i].sockfd);
@@ -116,7 +101,22 @@ void serv_process_client(int curr_i) {
 
 }
 
+/*------------------- SERVER SIGINT HANDLER --------------------------------------------*/
+void server_sigint_handler(int signo) {
+    printf("Closing server...\n");
+    for (int i = 0; i < MAX_CLIENT_NUM; ++i) {
+        if (clients[i].status == CL_STATUS_CONN) {
+            server_delete_client(i);
+        }
+    }
+    printf("Close socket = %d\n", global_sockfd);
+    close(global_sockfd);
+    printf("Server closed...\n");
+    exit(0);
+}
 
+
+/*------------------- MAIN -----------------------------------------------------*/
 int main(int argc, char *argv[]) {
     int sockfd;
     uint16_t portno;
