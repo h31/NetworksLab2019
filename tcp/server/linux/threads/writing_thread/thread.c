@@ -7,14 +7,24 @@
 #include "../../message_buffer/message_buffer.h"
 
 
+void send_message_to_client(int sockfd, char * message, size_t size) {
+    // sending message size
+    int message_size = (int) strlen(message);
+    if (write(sockfd, &message_size, sizeof(message_size)) < 0) {
+        fprintf(stderr, "ERROR writing to socket\n");
+    }
+    // sending message
+    if (write(sockfd, message, size) < 0) {
+        fprintf(stderr, "ERROR writing to socket\n");
+    }
+}
+
+
 // write messages to users
 void *writing_thread(void *arg) {
-
-    int number_written;
     char* message;
 
     while (1) {
-
         message = message_buffer_poll();
 
         if (message != NULL) {
@@ -24,13 +34,8 @@ void *writing_thread(void *arg) {
                 // узнаём сокет
                 int sockfd = user_info_get_socket_number(cur);
                 //пишем в сокет
-                number_written = write(sockfd, message, strlen(message) + 1);
+                send_message_to_client(sockfd, message, strlen(message));
 
-                if (number_written < 0) {
-                    fprintf(stderr, "ERROR write message to client thread\n");
-                } else {
-                    printf("write to socket: %d\n", sockfd);
-                }
                 //переходим к следующему элементу
                 cur = user_info_get_next(cur);
             }

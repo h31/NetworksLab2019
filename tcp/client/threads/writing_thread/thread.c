@@ -37,8 +37,14 @@ void delete_last_char(char* string) {
 }
 
 
-void send_message_to_server(int sockfd, char* string) {
-    if (write(sockfd, string, strlen(string)) < 0) {
+void send_message_to_server(int sockfd, void* message, size_t size) {
+    //sending message size
+    int message_size = (int) strlen(message);
+    if (write(sockfd, &message_size, sizeof(message_size)) < 0) {
+        fprintf(stderr, "ERROR writing in socket\n");
+    }
+    // sending message
+    if (write(sockfd, message, size) < 0) {
         fprintf(stderr, "ERROR writing in socket\n");
     }
 }
@@ -68,7 +74,8 @@ void send_nickname_to_server(int sockfd) {
         free(tmp);
     }
 
-    send_message_to_server(sockfd, nickname);
+
+    send_message_to_server(sockfd, nickname, strlen(nickname));
     main_window_clear_input_window();
 }
 
@@ -91,7 +98,7 @@ void* writing_thread(void* arg) {
                 break;
             }
             case '\n': {
-                send_message_to_server(((Writing_thread_input *) arg)->sockfd, user_message);
+                send_message_to_server(((Writing_thread_input *) arg)->sockfd, user_message, strlen(user_message));
                 bzero(user_message, ((Writing_thread_input*) arg) -> input_line_size + 1);
                 break;
             }

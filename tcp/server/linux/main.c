@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
     unsigned int clilen;
     struct sockaddr_in serv_addr, cli_addr;
 
+
     // opening init socket
     initial_socket = socket(AF_INET, SOCK_STREAM, 0);
 

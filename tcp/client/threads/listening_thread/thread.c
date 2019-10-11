@@ -9,6 +9,29 @@
 
 #include "../../constants.h"
 
+
+int readn(int sockfd, void* dst, size_t len) {
+    int total_number_read = 0;
+    int local_number_read = 0;
+
+    while (len > 0) {
+        local_number_read = read(sockfd, dst, len);
+
+        if (local_number_read > 0) {
+            total_number_read += local_number_read;
+            len -= local_number_read;
+        } else if (local_number_read == 0) {
+            return total_number_read;
+        } else {
+            return -1;
+        }
+
+    }
+
+    return total_number_read;
+}
+
+
 // сдвиг элементов массива влево
 void arrayRotateLeft(char* array[], int size) {
     free(array[0]);
@@ -42,8 +65,11 @@ void* listening_thread(void* arg) {
 
     while (1) {
         bzero(message, MESSAGE_SIZE);
-
-        number_read = read(((Listening_thread_input *) arg)-> sockfd, message,  MESSAGE_SIZE-1);
+        int message_size;
+        //reading message size
+        readn(((Listening_thread_input *) arg)-> sockfd, &message_size, sizeof(int));
+        // reading message
+        number_read = readn(((Listening_thread_input *) arg)-> sockfd, message,  message_size);
 
         if (number_read < 0) {
             fprintf(stderr, "ERROR reading in listening thread\n");

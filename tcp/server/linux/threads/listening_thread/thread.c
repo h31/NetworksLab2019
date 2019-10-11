@@ -13,6 +13,28 @@
 #define NICKNAME_SIZE 10
 
 
+int readn(int sockfd, void* dst, size_t len) {
+    int total_number_read = 0;
+    int local_number_read = 0;
+
+    while (len > 0) {
+        local_number_read = read(sockfd, dst, len);
+
+        if (local_number_read > 0) {
+            total_number_read += local_number_read;
+            len -= local_number_read;
+        } else if (local_number_read == 0) {
+            return total_number_read;
+        } else {
+            return -1;
+        }
+
+    }
+
+    return total_number_read;
+}
+
+
 void add_date_to_message(char* dst) {
     time_t rawtime;
     struct tm * timeinfo;
@@ -38,8 +60,11 @@ char* read_user_nickname(int sockfd) {
     char buffer[L_THREAD_MESSAGE_TEXT];
 
     bzero(buffer, L_THREAD_MESSAGE_TEXT);
-
-    if (read(sockfd, buffer, L_THREAD_MESSAGE_TEXT - 1) < 0) {
+    int tmp ;
+    // read message size
+    readn(sockfd, (char*) &tmp, sizeof(int));
+    // read message
+    if (readn(sockfd, buffer, tmp) < 0) {
         fprintf(stderr, "ERROR reading from socket (%d)\n", sockfd);
     }
     fprintf(stdout, "client connected. Username: %s, socket: %d\n", buffer, sockfd);
@@ -65,7 +90,9 @@ void *listening_thread(void *arg) {
         bzero(message_text, L_THREAD_MESSAGE_TEXT);
         bzero(full_message, TIME_SIZE + NICKNAME_SIZE + L_THREAD_MESSAGE_TEXT);
 
-        number_read = read(((Listening_thread_input*) arg) -> sockfd, message_text, L_THREAD_MESSAGE_TEXT - 1);
+        int tmp;
+        readn(((Listening_thread_input*) arg) -> sockfd, &tmp, sizeof(int));
+        number_read = readn(((Listening_thread_input*) arg) -> sockfd, message_text, tmp);
 
         if (number_read < 0) {
             fprintf(stderr, "ERROR reading from socket (%d)\n", ((Listening_thread_input*) arg) -> sockfd);
@@ -81,7 +108,6 @@ void *listening_thread(void *arg) {
         }
 
         if (number_read > 0) {
-            //message_buffer_put(buffer);
             add_date_to_message(full_message);
             add_nickname_to_message(full_message, ((Listening_thread_input*) arg) -> sockfd);
             strcat(full_message, message_text);
