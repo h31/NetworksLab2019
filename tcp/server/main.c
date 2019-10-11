@@ -40,7 +40,7 @@ int get_i_from_sockfd(int sockfd) {
 }
 
 /*------------------- SERVER SEND MESSAGE ---------------------------------*/
-void server_delete_client(i) {
+void server_delete_client(int i) {
     printf("Delete client: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
     close(clients[i].sockfd);
     free(clients[i].name);
@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 
             clients[i].status = CL_STATUS_CONN;
             printf("New client accepted: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
-            pthread_create(&clients[i].thread, NULL, serv_process_client, i);
+            pthread_create(&clients[i].thread, NULL, (void *) serv_process_client, (void *) i);
         }
     }
 

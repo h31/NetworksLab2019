@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 
 
     pthread_t read_thread;
-    pthread_create(&read_thread, NULL, client_get_response_loop, sockfd);
+    pthread_create(&read_thread, NULL, (void *) client_get_response_loop, (void *) sockfd);
 
     client_send_message_loop(sockfd);
 
