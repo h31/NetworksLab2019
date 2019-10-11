@@ -180,13 +180,14 @@ int main(int argc, char *argv[]) {
         if (clients[i].sockfd <= 0) {
             PERROR_AND_EXIT("ERROR on accept");
         }
-
-        Message name_mess = serv_get_message(clients[i].sockfd);
-        clients[i].name = name_mess.buffer;
-
         if (i == NO_PLACES_INDEX) {
-            serv_send_no_cap_message(clients[i].sockfd);
+            printf("Sending no cap message to i = %d, sockfd = %d\n", i, clients[i].sockfd);
+            serv_send_response(clients[i].sockfd, *NewMessage(NO_PLACES_STRING));
+            server_delete_client(i);
         } else {
+            Message name_mess = serv_get_message(clients[i].sockfd);
+            clients[i].name = name_mess.buffer;
+
             clients[i].status = CL_STATUS_CONN;
             printf("New client accepted: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
             pthread_create(&clients[i].thread, NULL, serv_process_client, i);
