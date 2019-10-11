@@ -62,6 +62,9 @@ void client_get_response(int sockfd) {
         PERROR_AND_EXIT("ERROR reading message")
     }
 
+    /*TODO excuse me what the \r*/
+    printf("\r%s", message.buffer);
+
 }
 
 void client_get_response_loop(int sockfd) {
@@ -74,6 +77,7 @@ void client_get_response_loop(int sockfd) {
 void client_sigint_handler(int signo) {
     printf("Closing client...\n");
     close(global_sockfd);
+    free(user_name);
     printf("Client close...\n");
     exit(0);
 }
