@@ -11,7 +11,7 @@
 // checking number of arguments
 void checkArguments(int argc, char* argv[]) {
     if (argc != 2) {
-        fprintf(stderr, "usage %s port pipe_path\n", argv[0]);
+        fprintf(stderr, "usage %s port \n", argv[0]);
         exit(0);
     };
 }
