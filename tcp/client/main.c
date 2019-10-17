@@ -14,8 +14,6 @@ void send_msg(void *arg);
 
 void get_msg(void *arg);
 
-int flag;
-
 int main(int argc, char *argv[]) {
     int sockfd;
     uint16_t portno;
@@ -74,8 +72,6 @@ int main(int argc, char *argv[]) {
         printf("thread has not created\n");
     }
 
-    flag = 0;
-
     pthread_join(tid_send, NULL);
     pthread_join(tid_get, NULL);
     return 0;
@@ -83,13 +79,23 @@ int main(int argc, char *argv[]) {
 
 void send_msg(void *arg) {
     int sock = *(int *) arg;
-    char buffer[MSG_LEN];
+    char *buffer;
+    int buff_size;
+    size_t n;
 
     while (1) {
-        bzero(buffer, MSG_LEN);
-        fgets(buffer, MSG_LEN, stdin);
+        buffer = NULL;
+        n = 0;
+        buff_size = getline(&buffer, &n, stdin);
 
-        if (write(sock, buffer, MSG_LEN) < 0) {
+        //send message size
+        if (write(sock, &buff_size, sizeof(int)) < 0) {
+            perror("ERROR writing to socket");
+            exit(1);
+        }
+
+        //send message
+        if (write(sock, buffer, buff_size) < 0) {
             perror("ERROR writing to socket");
             exit(1);
         }
@@ -105,11 +111,20 @@ void send_msg(void *arg) {
 
 void get_msg(void *arg) {
     int sock = *(int *) arg;
-    char buffer[SEND_MSG_LEN];
+    char *buffer;
+    int buff_size;
     while (1) {
-        bzero(buffer, SEND_MSG_LEN);
 
-        if (read(sock, buffer, SEND_MSG_LEN) < 0) {
+        //get size of message
+        buff_size = 0;
+        if (read(sock, &buff_size, sizeof(int)) < 0) {
+            perror("ERROR reading from socket");
+            exit(1);
+        }
+
+        //get message
+        buffer = (char *) malloc(buff_size);
+        if (readn(sock, buffer, buff_size) < 0) {
             perror("ERROR reading from socket");
             exit(1);
         }

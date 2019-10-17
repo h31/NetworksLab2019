@@ -9,3 +9,4 @@ add_executable(server server/main.c header.h)
 
 
 target_link_libraries(server ${PTHREAD_LIBRARY})
+target_link_libraries(client ${PTHREAD_LIBRARY})

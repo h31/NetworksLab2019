@@ -26,4 +26,19 @@ void make_str(char *str) {
     }
 }
 
+int readn(int fd, char *buffer, int len) {
+    int read_size = 0;
+    int res;
+    while (read_size < len) {
+        res = read(fd, buffer + read_size, len);
+        if (res < 0){
+            perror("ERROR reading from socket");
+            exit(1);
+        }
+        read_size += res;
+    }
+    return read_size;
+}
+
+
 #endif //SERVER_H

@@ -15,7 +15,7 @@ void communicate_to_client(void *arg);
 
 void client_exit(ClientChain *client_data);
 
-void send_msg_to_clients(ClientChain *sender_data, char msg[]);
+void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size);
 
 char *get_time();
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
     last = root;
 
     pthread_t tid;
-    while(1) {
+    while (1) {
         ClientChain *this = chain_init(sockfd);
         this->sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
         if (this->sock < 0) {
@@ -67,7 +67,6 @@ int main(int argc, char *argv[]) {
         last->next = this;
         last = this;
 
-        //pthread_t tid;
         if (pthread_create(&tid, NULL, (void *) communicate_to_client, (void *) this) != 0) {
             printf("thread has not created");
             exit(1);
@@ -78,53 +77,72 @@ int main(int argc, char *argv[]) {
 
 void communicate_to_client(void *arg) {
     ClientChain *client_data = (ClientChain *) arg;
-    char buffer[MSG_LEN];
+    char *buffer;
+    char *msg;
+    int buff_size;
     char name[NAME_LEN];
-    char msg[SEND_MSG_LEN];
 
+    //get client name
     bzero(name, NAME_LEN);
-    if (read(client_data->sock, name, NAME_LEN) < 0) {
+    if (readn(client_data->sock, name, NAME_LEN) < 0) {
         perror("ERROR reading from socket");
         exit(1);
     } else {
         make_str(name);
         strncpy(client_data->name, name, NAME_LEN);
         printf("<%s>---%s connected---\n", get_time(), name);
-        bzero(msg, SEND_MSG_LEN);
+        msg = (char *) malloc(25);
         sprintf(msg, "<%s>---%s connected---\n", get_time(), name);
-        send_msg_to_clients(client_data, msg);
+        send_msg_to_clients(client_data, msg, 25);
     }
 
+    //main cycle to get message from client and send it to other clients
     while (1) {
-        bzero(buffer, MSG_LEN);
+        //get message size
+        buff_size = 0;
+        if (read(client_data->sock, &buff_size, sizeof(int)) < 0) {
+            perror("ERROR reading from socket");
+            exit(1);
+        }
 
-        if (read(client_data->sock, buffer, MSG_LEN) < 0) {
+        //get message
+        buffer = (char *) malloc(buff_size);
+        if (readn(client_data->sock, buffer, buff_size) < 0) {
             perror("ERROR reading from socket");
             exit(1);
         }
         make_str(buffer);
+
+        //check if clint exit
         if (strcmp(buffer, "/exit") == 0) {
             printf("<%s>---%s exit chat---\n", get_time(), name);
-            bzero(msg, SEND_MSG_LEN);
+            msg = (char *) malloc(50);
             sprintf(msg, "<%s>---%s exit chat---\n", get_time(), name);
-            send_msg_to_clients(client_data, msg);
+            send_msg_to_clients(client_data, msg, 50);
             client_exit(client_data);
             break;
         } else {
+            int msg_size = buff_size + 50;
             printf("<%s>%s: %s\n", get_time(), name, buffer);
-            bzero(msg, SEND_MSG_LEN);
+            msg = (char *) malloc(msg_size);
             sprintf(msg, "<%s>%s: %s\n", get_time(), name, buffer);
-            send_msg_to_clients(client_data, msg);
+            send_msg_to_clients(client_data, msg, msg_size);
         }
     }
 }
 
 
-void send_msg_to_clients(ClientChain *sender_data, char msg[]) {
+void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size) {
     ClientChain *temp = root->next;
     while (temp != NULL) {
         if (temp != sender_data) {
-            if (write(temp->sock, msg, SEND_MSG_LEN) < 0) {
+            //send message size
+            if (write(temp->sock, &buff_size, sizeof(int)) < 0) {
+                perror("ERROR writing to socket");
+                exit(1);
+            }
+            //send message
+            if (write(temp->sock, msg, buff_size) < 0) {
                 perror("ERROR writing to socket");
                 exit(1);
             }
