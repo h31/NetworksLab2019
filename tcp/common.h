@@ -5,9 +5,9 @@
 struct Client {
     int sockfd;
     char *name;
-    int status;
     pthread_t thread;
-
+    struct Client *next_client;
+    struct Client *prev_client;
 } typedef Client;
 
 struct Message {
@@ -20,6 +20,13 @@ Message *NewMessage(char *buffer) {
     message->size = strlen(buffer);
     message->buffer = buffer;
     return message;
+}
+
+Client *NewClientEmpty() {
+    Client *new_client = calloc(1, sizeof(Client));
+    new_client->next_client = NULL;
+
+    return new_client;
 }
 
 #define PERROR_AND_EXIT(message){\

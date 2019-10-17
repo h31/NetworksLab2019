@@ -10,91 +10,75 @@
 #include "../common.h"
 #include "pthread.h"
 
-#define MAX_CLIENT_NUM      4
 #define HEADER_SIZE         4
 #define MAX_MESSAGE_SIZE    256
-#define CL_STATUS_DISC      0
-#define CL_STATUS_CONN      1
-#define NO_PLACES_INDEX     0
-#define NO_PLACES_STRING    "Sorry, no places\n"
 
-
-Client clients[MAX_CLIENT_NUM];
+Client *first_client;
 int global_sockfd;
 
-/*------------------- GETTERS --------------------------------------------*/
-int get_free_index() {
-    for (int i = 1; i < MAX_CLIENT_NUM; ++i) {
-        if (clients[i].status == CL_STATUS_DISC)
-            return i;
-    }
-    return NO_PLACES_INDEX;
-}
-
-int get_i_from_sockfd(int sockfd) {
-    for (int i = 1; i < MAX_CLIENT_NUM; ++i) {
-        if (clients[i].sockfd == sockfd)
-            return i;
-    }
-    return -1;
-}
 
 /*------------------- SERVER DELETE CLIENT ---------------------------------*/
-void server_delete_client(int i) {
-    printf("Delete client: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
-    close(clients[i].sockfd);
-    free(clients[i].name);
-    clients[i].status = CL_STATUS_DISC;
-    pthread_cancel(clients[i].thread);
+void server_delete_client(Client *client) {
+    printf("Delete client: name = %s, sockfd = %d\n", client->name, client->sockfd);
+    close(client->sockfd);
+    if (client->prev_client != NULL && client->next_client != NULL) {
+        client->prev_client->next_client = client->next_client;
+        client->next_client->prev_client = client->prev_client;
+    }
+    free(client);
+    pthread_cancel(client->thread);
 
 }
 
 /*------------------- SERVER GET MESSAGE ---------------------------------*/
-Message serv_get_message(int sockfd) {
+Message serv_get_message(Client *client) {
     Message message;
 
     message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
     bzero(message.buffer, MAX_MESSAGE_SIZE);
     message.size = 0;
 
-    if (read(sockfd, &message.size, sizeof(int)) <= 0) {
-        server_delete_client(get_i_from_sockfd(sockfd));
+    if (read(client->sockfd, &message.size, sizeof(int)) <= 0) {
+        server_delete_client(client);
     }
-    if (read(sockfd, message.buffer, message.size) <= 0) {
-        server_delete_client(get_i_from_sockfd(sockfd));
+    if (read(client->sockfd, message.buffer, message.size) <= 0) {
+        server_delete_client(client);
     }
     return message;
 }
 
 /*------------------- SERVER SEND MESSAGE ---------------------------------*/
-void serv_send_response(int sockfd, Message message) {
+void serv_send_response(Client *client, Message message) {
 
-    if (write(sockfd, &message.size, HEADER_SIZE) <= 0) {
-        server_delete_client(get_i_from_sockfd(sockfd));
+    if (write(client->sockfd, &message.size, HEADER_SIZE) <= 0) {
+        server_delete_client(client);
     }
 
-    if (write(sockfd, message.buffer, message.size) <= 0) {
-        server_delete_client(get_i_from_sockfd(sockfd));
+    if (write(client->sockfd, message.buffer, message.size) <= 0) {
+        server_delete_client(client);
     }
 }
 
 /*------------------- SERVER PROCESS CLIENT -------------------------------------*/
-void serv_process_client(int curr_i) {
+void serv_process_client(Client *client) {
     for (;;) {
-        Message message = serv_get_message(clients[curr_i].sockfd);
-        printf("RECEIVED:%s:message = %s(size = %d)\n", clients[curr_i].name, message.buffer, message.size);
-        message.buffer = str_concat(str_concat(clients[curr_i].name, ":"), message.buffer);
+
+        Message message = serv_get_message(client);
+        printf("\nRECEIVED:%s:message = %s(size = %d)\n", client->name, message.buffer, message.size);
+        message.buffer = str_concat(str_concat(client->name, ":"), message.buffer);
         message = *NewMessage(message.buffer);
 
-        for (int j = 0; j < MAX_CLIENT_NUM; ++j) {
-            if (clients[j].status == CL_STATUS_CONN && j != curr_i) {
-                serv_send_response(clients[j].sockfd, message);
+        Client *another_client = first_client->next_client;
+        while (another_client->next_client != NULL) {
+            if (another_client != client) {
+                serv_send_response(another_client, message);
                 printf("SENDED:message = %s(size = %d) to %s\n",
                        message.buffer,
                        message.size,
-                       clients[j].name);
-
+                       another_client->name);
             }
+
+            another_client = another_client->next_client;
         }
 
     }
@@ -104,10 +88,10 @@ void serv_process_client(int curr_i) {
 /*------------------- SERVER SIGINT HANDLER --------------------------------------------*/
 void server_sigint_handler(int signo) {
     printf("Closing server...\n");
-    for (int i = 0; i < MAX_CLIENT_NUM; ++i) {
-        if (clients[i].status == CL_STATUS_CONN) {
-            server_delete_client(i);
-        }
+    Client *another_client = first_client->next_client;
+    while (another_client != NULL) {
+        server_delete_client(another_client);
+        another_client = another_client->next_client;
     }
     printf("Close socket = %d\n", global_sockfd);
     close(global_sockfd);
@@ -165,33 +149,45 @@ int main(int argc, char *argv[]) {
         PERROR_AND_EXIT("ERROR on binding");
     }
 
-    /* Now start listening for the clients, here process will
+    /* Now start listening for the first_client, here process will
        * go in sleep mode and will wait for the incoming connection
     */
 
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
+    first_client = NewClientEmpty();
+    first_client->name = "first client";
     for (;;) {
         /* Accept actual connection from the client */
+        Client *free_client = first_client;
+        printf("\n-------------------------------\n");
+        printf("Clients in list:\n");
+        int i = 1;
+        while (free_client->next_client != NULL) {
+            printf("%d:%s(%d)\n", i, free_client->next_client->name, free_client->next_client->sockfd);
+            free_client = free_client->next_client;
+            i++;
+        }
+        free_client->next_client = NewClientEmpty();
 
-        int i = get_free_index();
-        clients[i].sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-        if (clients[i].sockfd <= 0) {
+        Client *prev_client = free_client;
+        free_client = free_client->next_client;
+        free_client->prev_client = prev_client;
+
+        free_client->sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+
+        if (free_client->sockfd <= 0) {
             PERROR_AND_EXIT("ERROR on accept");
         }
-        if (i == NO_PLACES_INDEX) {
-            printf("Sending no cap message to i = %d, sockfd = %d\n", i, clients[i].sockfd);
-            serv_send_response(clients[i].sockfd, *NewMessage(NO_PLACES_STRING));
-            server_delete_client(i);
-        } else {
-            Message name_mess = serv_get_message(clients[i].sockfd);
-            clients[i].name = name_mess.buffer;
 
-            clients[i].status = CL_STATUS_CONN;
-            printf("New client accepted: name = %s, i = %d, sockfd = %d\n", clients[i].name, i, clients[i].sockfd);
-            pthread_create(&clients[i].thread, NULL, (void *) serv_process_client, (void *) i);
-        }
+        Message name_mess = serv_get_message(free_client);
+        free_client->name = name_mess.buffer;
+
+        printf("New client accepted: name = %s, sockfd = %d\n", free_client->name,
+               free_client->sockfd);
+        pthread_create(&free_client->thread, NULL, (void *) serv_process_client, free_client);
+
     }
 
     return 0;
