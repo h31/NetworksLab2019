@@ -34,7 +34,7 @@ void client_send_message_from_cmd(int sockfd) {
     Message message;
     message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
     bzero(message.buffer, MAX_MESSAGE_SIZE);
-    printf("%s:", user_name);
+    printf("\n%s:", user_name);
     fgets(message.buffer, MAX_MESSAGE_SIZE, stdin);
     message.size = (int) strlen(message.buffer);
 
@@ -63,8 +63,8 @@ void client_get_response(int sockfd) {
     }
 
     /*TODO excuse me what the \r*/
-    printf("\r%s", message.buffer);
-
+    printf("\r%s\n%s:", message.buffer, user_name);
+    fflush(stdout);
 }
 
 void client_get_response_loop(int sockfd) {
