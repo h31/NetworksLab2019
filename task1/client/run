@@ -1,3 +1,0 @@
-#!/bin/bash
-cc client.c -o client
-./client localhost 5000

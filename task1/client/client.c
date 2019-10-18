@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     }
 
     pthread_t thread_id;
-    pthread_create(&thread_id, NULL, terminal_reader, sockfd);
+    pthread_create(&thread_id, NULL, terminal_reader, &sockfd);
 
     while (1) {
         /* Now read server response */
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 
 void *terminal_reader(void *args) {
     ssize_t n;
-    int sockfd = (int) args;
+    int sockfd = *(int *) args;
     while (1) {
         bzero(terminal_buff, MSG_BUFF_SIZE);
         fgets(terminal_buff, MSG_BUFF_SIZE, stdin);

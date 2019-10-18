@@ -63,10 +63,15 @@ void read_message(Client *client);
 pthread_mutex_t lock; // ключ на работу с списком клиентов, при отключении, клиент будет удален.
 Client *current_client = NULL;
 
-int main() {
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "usage %s port\n", argv[0]);
+        exit(0);
+    }
+    uint16_t portno = (uint16_t) atoi(argv[1]);
     // Initialize server
-    int sock_fd = create_server(5000);
-    printf("%s\n", "Server started");
+    int sock_fd = create_server(portno);
+    printf("Server started at port: %i\n", portno);
     //Init mutex
     if (pthread_mutex_init(&lock, NULL) != 0) {
         perror("ERROR creating mutex for clients list");
