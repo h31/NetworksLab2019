@@ -8,8 +8,10 @@
 #include <netdb.h>
 #include <string.h>
 #include <stdbool.h>
-
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 
 #define USER_NAME_SIZE 32
 #define BACKLOG 10
@@ -44,7 +46,7 @@ void send_message_to_all_clients(Message *message);
 
 int create_server(uint16_t port);
 
-void *clients_reader(void *args);
+void clients_reader(void *args);
 
 void listen_client(int sock_fd);
 
@@ -64,15 +66,14 @@ Client *current_client = NULL;
 int main() {
     // Initialize server
     int sock_fd = create_server(5000);
-
+    printf("%s\n", "Server started");
     //Init mutex
     if (pthread_mutex_init(&lock, NULL) != 0) {
         perror("ERROR creating mutex for clients list");
         exit(1);
     }
 
-    int backlog = BACKLOG; // Сколько клиентов может быть в очереди функции accept
-    listen(sock_fd, backlog);
+    listen(sock_fd, BACKLOG);
     //Clients acceptor
     while (true) {
         listen_client(sock_fd);
@@ -88,6 +89,8 @@ int create_server(uint16_t port) {
         perror("ERROR opening socket");
         exit(1);
     }
+    int val; // Unnecessary variable, using because of function semantic requires it
+    setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
     /* Initialize socket structure */
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
@@ -117,11 +120,11 @@ void listen_client(int sock_fd) {
     *new_client = (struct Client) {new_sock_fd, &cli_addr, true, NULL, NULL, NULL};
     accept_client_to_list(new_client); // Включаем нового клиента в текущий список клиентов
     // Выделение потока для работы с клиентом
-    pthread_create(&thread_id, NULL, clients_reader, new_client);
+    pthread_create(&thread_id, NULL, (void *) &clients_reader, new_client);
 }
 
 // Обработчик клиента в отдельном потоке (Чтение сообщений от клиента)
-void *clients_reader(void *args) {
+void clients_reader(void *args) {
     Client *client = (Client *) args;
     ssize_t n; //read value
     // firstly read user name
@@ -167,6 +170,7 @@ void remove_client(Client *dead_client) {
     dead_client->is_alive = false;
     free(dead_client); // Очищаем память
     num_of_clients--;
+    close(dead_client->fd);
     pthread_mutex_unlock(&lock);
 }
 

@@ -116,5 +116,6 @@ void read_message(int fd) {
         //Читаем то кол-во сиволов, которое указано в заголовке сообщения
         read(fd, msg, msg_size);
         printf("\r%s", msg);
+        free(msg);
     }
 }
