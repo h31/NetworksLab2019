@@ -9,8 +9,8 @@
 #include <string.h>
 #include <pthread.h>
 
-#define USER_NAME_SIZE 32
-#define MSG_SIZE_VAL 4
+#include "../common/common.h"
+
 #define MSG_BUFF_SIZE 512
 
 void *terminal_reader(void *args);
@@ -63,9 +63,9 @@ int main(int argc, char *argv[]) {
     char user_name[USER_NAME_SIZE];
     bzero(user_name, USER_NAME_SIZE);
     fgets(user_name, USER_NAME_SIZE, stdin);
+    replace(user_name, USER_NAME_SIZE, '\n', '\0');
     /* Send message to the server */
-    // Минуc 1 потому что последний символ это перенос строки
-    n = write(sockfd, user_name, strlen(user_name) - 1);
+    n = write(sockfd, user_name, USER_NAME_SIZE);
     if (n <= 0) {
         perror("ERROR writing to socket");
         exit(1);
@@ -87,8 +87,9 @@ void *terminal_reader(void *args) {
     while (1) {
         bzero(terminal_buff, MSG_BUFF_SIZE);
         fgets(terminal_buff, MSG_BUFF_SIZE, stdin);
+        replace(terminal_buff, MSG_BUFF_SIZE, '\n', '\0');
         /* Send message to the server */
-        size_t len = strlen(terminal_buff);
+        size_t len = strlen(terminal_buff) + 1;
         n = write(sockfd, &len, MSG_SIZE_VAL); // Передаем размер сообщения
         if (n <= 0) {
             perror("ERROR writing to socket");
@@ -106,7 +107,7 @@ void read_message(int fd) {
     ssize_t n;
     size_t msg_size = 0;
     // Читаем размер сообщения
-    n = read(fd, &msg_size, MSG_SIZE_VAL);
+    n = readn(fd, (char *) &msg_size, MSG_SIZE_VAL);
     if (n <= 0) { // Клиент умер/отключился
         perror("ERROR reading from socket");
         exit(1);
@@ -114,8 +115,8 @@ void read_message(int fd) {
         // Читаем само сообщение
         char *msg = malloc(sizeof(char) * msg_size);
         //Читаем то кол-во сиволов, которое указано в заголовке сообщения
-        read(fd, msg, msg_size);
-        printf("\r%s", msg);
+        readn(fd, msg, msg_size);
+        printf("\r%s\n", msg);
         free(msg);
     }
 }

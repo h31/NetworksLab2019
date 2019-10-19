@@ -9,14 +9,10 @@
 #include <string.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 
+#include "../common/common.h"
 
-#define USER_NAME_SIZE 32
 #define BACKLOG 10
-// Message size in bytes (Размер числа для обозначения размера сообщения 4 байта - int)
-#define MSG_SIZE_VAL 4
 
 /**
  * Протокол
@@ -41,6 +37,7 @@ typedef struct Message {
 } Message;
 
 int num_of_clients = 0;
+char *divider = " : ";
 
 void send_message_to_all_clients(Message *message);
 
@@ -94,7 +91,7 @@ int create_server(uint16_t port) {
         perror("ERROR opening socket");
         exit(1);
     }
-    int val; // Unnecessary variable, using because of function semantic requires it
+    int val = true; // Unnecessary variable, using because of function semantic requires it
     setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
     /* Initialize socket structure */
     bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -134,7 +131,7 @@ void clients_reader(void *args) {
     ssize_t n; //read value
     // firstly read user name
     char client_name[USER_NAME_SIZE]; // локальная переменная, можно не очищать для нее память, пока кдиент есть, есть и его имя
-    n = read(client->fd, &client_name, USER_NAME_SIZE);
+    n = readn(client->fd, &client_name[0], USER_NAME_SIZE);
     client->name = &client_name[0];
     if (n > 0) {
         client_connected(client);
@@ -142,6 +139,10 @@ void clients_reader(void *args) {
         while (client->is_alive) {
             read_message(client);
         }
+        free(client); // Очищаем память
+    } else {
+        remove_client(client);
+        free(client);
     }
 }
 
@@ -173,9 +174,8 @@ void remove_client(Client *dead_client) {
     }
     pthread_mutex_lock(&lock);
     dead_client->is_alive = false;
-    free(dead_client); // Очищаем память
-    num_of_clients--;
     close(dead_client->fd);
+    num_of_clients--;
     pthread_mutex_unlock(&lock);
 }
 
@@ -200,20 +200,21 @@ void client_connected(Client *client) {
 void read_message(Client *client) {
     ssize_t n;
     size_t msg_size = 0;
-    n = read(client->fd, &msg_size, MSG_SIZE_VAL);
+    size_t divider_len = strlen(divider);
+    n = readn(client->fd, (char *) &msg_size, MSG_SIZE_VAL);
     if (n <= 0) { // Клиент умер/отключился
         client_disconnected(client);
     } else {
-        char *msg = malloc(sizeof(char) * (msg_size + strlen(client->name) + 1));
+        char *msg = malloc(sizeof(char) * (msg_size + strlen(client->name) + divider_len));
         // В сообщение закладываем имя клиента и двоеточие
         strcpy(msg, client->name);
-        strcat(msg, ":");
+        strcat(msg, divider);
         Message *message = (struct Message *) malloc(sizeof(struct Message)); // Выделяем память для хранения сообщения
-        *message = (struct Message) {client->name, &msg[0], (uint32_t) (msg_size + strlen(client->name) + 1)};
+        *message = (struct Message) {client->name, &msg[0], (uint32_t) (msg_size + strlen(client->name) + divider_len)};
         //Читаем то кол-во сиволов, которое указано в заголовке сообщения
         // Записываем после символа :
-        read(client->fd, &msg[strlen(client->name) + 1], msg_size);
-        printf("Got msg %s", msg);
+        readn(client->fd, &msg[strlen(client->name) + divider_len], msg_size);
+        printf("Got msg from %s\n", msg);
         send_message_to_all_clients(message);
     }
 }

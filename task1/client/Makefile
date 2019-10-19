@@ -1,2 +1,2 @@
 all:
-	cc -Wall -Wextra client.c -lpthread -o client
+	cc -Wall -Wextra client.c ../common/common.c -lpthread -o client
