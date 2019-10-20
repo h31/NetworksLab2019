@@ -55,14 +55,14 @@ void send_nickname_to_server(int sockfd) {
     int input_char = 0;
     char* asking_message = "Enter nickname: ";
     char request_and_nickname[strlen(asking_message) + MAX_NICKNAME_SIZE + 1];
-    strcat(request_and_nickname, asking_message);
+    strncat(request_and_nickname, asking_message, strlen(asking_message));
     char nickname[MAX_NICKNAME_SIZE + 1];
 
     // reading nickname
     while (input_char != '\n') {
         char *tmp = strdup(request_and_nickname);
 
-        main_window_write_to_input_window(strcat(tmp, nickname));
+        main_window_write_to_input_window(strncat(tmp, nickname, MAX_NICKNAME_SIZE + 1));
         input_char = main_window_get_char();
 
         if (input_char == KEY_BACKSPACE) {

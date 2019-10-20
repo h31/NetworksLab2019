@@ -17,15 +17,16 @@ int readn(int sockfd, void* dst, size_t len) {
     while (len > 0) {
         local_number_read = read(sockfd, dst, len);
 
-        if (local_number_read > 0) {
-            total_number_read += local_number_read;
-            len -= local_number_read;
-        } else if (local_number_read == 0) {
+        if (local_number_read == 0) {
             return total_number_read;
-        } else {
+        }
+
+        if (local_number_read < 0) {
             return -1;
         }
 
+        total_number_read += local_number_read;
+        len -= local_number_read;
     }
 
     return total_number_read;

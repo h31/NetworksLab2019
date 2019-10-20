@@ -20,15 +20,16 @@ int readn(int sockfd, void* dst, size_t len) {
     while (len > 0) {
         local_number_read = read(sockfd, dst, len);
 
-        if (local_number_read > 0) {
-            total_number_read += local_number_read;
-            len -= local_number_read;
-        } else if (local_number_read == 0) {
+        if (local_number_read == 0) {
             return total_number_read;
-        } else {
+        }
+
+        if (local_number_read < 0) {
             return -1;
         }
 
+        total_number_read += local_number_read;
+        len -= local_number_read;
     }
 
     return total_number_read;
@@ -45,14 +46,14 @@ void add_date_to_message(char* dst) {
     char time[TIME_SIZE + 1];
     strftime (time, TIME_SIZE + 1, "<%H:%M:%S>", timeinfo);
 
-    strcat(dst, time);
+    strncat(dst, time, TIME_SIZE);
 }
 
 
 void add_nickname_to_message(char* dst, int sockfd) {
-    strcat(dst, user_info_get_nickname_by_socket(sockfd));
+    strncat(dst, user_info_get_nickname_by_socket(sockfd), NICKNAME_SIZE);
     char* r = ": ";
-    strcat(dst, r);
+    strncat(dst, r, strlen(r));
 }
 
 
@@ -110,7 +111,7 @@ void *listening_thread(void *arg) {
         if (number_read > 0) {
             add_date_to_message(full_message);
             add_nickname_to_message(full_message, ((Listening_thread_input*) arg) -> sockfd);
-            strcat(full_message, message_text);
+            strncat(full_message, message_text, L_THREAD_MESSAGE_TEXT);
 
             while (!message_buffer_put(full_message)) {
             }
