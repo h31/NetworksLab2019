@@ -67,7 +67,7 @@ void serv_process_client(Client *client) {
         Message message = serv_get_message(client);
         printf("\nRECEIVED:%s:message = %s(size = %d)\n", client->name, message.buffer, message.size);
         message.buffer = str_concat(str_concat(client->name, ":"), message.buffer);
-        message = *NewMessage(message.buffer);
+        message = *get_new_message(message.buffer);
 
         Client *another_client = first_client->next_client;
         while (another_client->next_client != NULL) {

@@ -15,14 +15,14 @@ struct Message {
     int size;
 } typedef Message;
 
-Message *NewMessage(char *buffer) {
+Message *get_new_message(char *buffer) {
     Message *message = calloc(1, sizeof(Message));
     message->size = strlen(buffer);
     message->buffer = buffer;
     return message;
 }
 
-Client *NewClientEmpty() {
+Client *get_new_client_empty() {
     Client *new_client = calloc(1, sizeof(Client));
     new_client->next_client = NULL;
 

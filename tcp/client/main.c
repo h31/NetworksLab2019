@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
     printf("Conneced to server \n");
 
 
-    client_send_message(sockfd, *NewMessage(user_name));
+    client_send_message(sockfd, *get_new_message(user_name));
 
 
     pthread_t read_thread;
