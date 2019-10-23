@@ -19,39 +19,46 @@ struct Client
 
 int nClients = 0;
 
-int receive_int (int *num, int fd);
+int receiveInt (int *num, int fd);
 void* handleClient(void* args);
 int readMessage(int fromSock, char* buffer);
 int readN(int socket, char* buf, int length);
 int sendAll(int id, char* name, char* buffer);
 int sendContent(int destination, char* content);
+int printErrorAndExit(char* errorText);
+char *get_time();
 
 int main(int argc, char *argv[]) {
+    //Сокет, на котором мы встречаем клиентов
     int sockfd;
-    uint16_t portno;
+    //Порт
+    uint16_t portNumber;
+    //???
     unsigned int clilen;
-    struct sockaddr_in serv_addr, cli_addr;
+    //Адреса сервера и клиента
+    struct sockaddr_in serverAddress, clientAddress;
+    //???
     ssize_t n;
-    int word_length_buffer;
+    //???
+    int wordLengthBuffer;
 
-    /* First call to socket() function */
+    /* Открытие сокета */
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0) {
-        perror("ERROR opening socket");
-        exit(1);
+        printErrorAndExit("Ошибка при открытии сокета");
     }
 
     /* Initialize socket structure */
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = 5001;
+    bzero((char *) &serverAddress, sizeof(serverAddress));
+    portNumber = 5001;
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(portno);
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    serverAddress.sin_port = htons(portNumber);
 
     /* Now bind the host address using bind() call.*/
-    if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+    if (bind(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
         perror("ERROR on binding");
         exit(1);
     }
@@ -61,14 +68,14 @@ int main(int argc, char *argv[]) {
     */
 
     listen(sockfd, 5);
-    clilen = sizeof(cli_addr);
+    clilen = sizeof(clientAddress);
 
     int newsockfd;
     int client_id;
 
     for (;;){
         /* Accept actual connection from the client */
-        newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        newsockfd = accept(sockfd, (struct sockaddr *) &clientAddress, &clilen);
 
         if (newsockfd < 0) {
             perror("ERROR on accept");
@@ -98,6 +105,11 @@ int main(int argc, char *argv[]) {
     //     exit(1);
     // }
 
+//    int true = 1;
+//    setsockopt(sockfd,SOL_SOCKET,SO_REUSEADDR,&true,sizeof(int));
+    shutdown(sockfd, SHUT_RDWR);
+    close(sockfd);
+
     return 0;
 }
 
@@ -114,6 +126,11 @@ int readN(int socket, char* buf, int length){
         sizeMsg -= readedBytes;
     }
     return result;
+}
+
+int printErrorAndExit(char* errorText){
+    perror(errorText);
+    exit(1);
 }
 
 int readMessage(int fromSock, char* buffer){
@@ -168,7 +185,6 @@ int sendContent(int destination, char* content){
 }
 
 void* handleClient(void* args){
-    
     int id = *((int*) args);
     int destSock = clients[id].sock;
 
@@ -189,4 +205,17 @@ void* handleClient(void* args){
         printf("<%s> %s\n", name, buffer);
         fflush(stdout);
     }
+}
+
+char *get_time() {
+    time_t timer = time(NULL);
+    struct tm *t;
+    char tmp[6];
+    char *str;
+    t = localtime(&timer);
+    bzero(tmp, 6);
+    strftime(tmp, 6, "%H:%M", t);
+    str = (char *) malloc(sizeof(tmp));
+    strcpy(str, tmp);
+    return str;
 }

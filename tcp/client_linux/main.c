@@ -5,42 +5,48 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include <string.h>
 
-int sendContent(int destination, char* content);
-void* handleMessages(void* args);
-int readMessage(int fromSock, char* buffer);
-int readN(int socket, char* buf, int length);
+int sendContent(int destination, char *content);
 
-int sockfd;
+void *readingMessages(void *args);
 
+void *sendingMessages(void *arg);
+
+char *readMessage(int fromSock);
+
+int readN(int socket, char *buf, int length);
+
+void removeNewLines(char *str);
+
+/*
+ * Основная функция для старта сервера
+ * */
 int main(int argc, char *argv[]) {
 
     printf("Client started with PID = %d\n", getpid());
 
-    //Переменная под сокет
-    int n;
+    //Сокет для соединения с сервером
+    int sockfd;
     //Номер порта
-    uint16_t portno;
+    uint16_t portNumber;
     //Адрес сервера
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serverAddress;
     //Информация о сервере
     struct hostent *server;
     //Имя пользователя
-    char* nickname;
-
-    //Буфер под сообщения
-    char buffer[256];
+    char *nickname;
 
     //Проверка на количество аргументов
-    if (argc < 4) {
+    if (argc != 4) {
         fprintf(stderr, "usage %s hostname port nickname\n", argv[0]);
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 
     //Преобразуем порт из строки в int
-    portno = (uint16_t) atoi(argv[2]);
+    portNumber = (uint16_t) atoi(argv[2]);
 
     //Открываем сокет
     printf("Открываю сокет\n");
@@ -49,7 +55,7 @@ int main(int argc, char *argv[]) {
     //Проверяем корректно ли открылся сокет
     if (sockfd < 0) {
         perror("ERROR opening socket");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     //Получаем информацию о хосте с помощью адреса
@@ -59,7 +65,7 @@ int main(int argc, char *argv[]) {
     //Проверяем удалось ли получить информацию о хосте
     if (server == NULL) {
         fprintf(stderr, "ERROR, no such host\n");
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 
     //Читаем имя пользователя из аргумента
@@ -67,73 +73,117 @@ int main(int argc, char *argv[]) {
     nickname = argv[3];
 
     //Проверяем не пустое ли имя пользователя
-    if (strcmp(nickname, "") == 0)
-    {
+    if (strcmp(nickname, "") == 0) {
         fprintf(stderr, "ERROR, nickname is empty\n");
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 
     //На всякий случай обнуляем адрес сервера
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+    bzero((char *) &serverAddress, sizeof(serverAddress));
     //Задаём семейство адресов сервера
-    serv_addr.sin_family = AF_INET;
+    serverAddress.sin_family = AF_INET;
     //Копируем адрес в переменную сокета
     printf("Копирую адрес\n");
-    bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
+    bcopy(server->h_addr, (char *) &serverAddress.sin_addr.s_addr, (size_t) server->h_length);
     //Определяем сетевой порядок байт для порта
-    serv_addr.sin_port = htons(portno);
+    serverAddress.sin_port = htons(portNumber);
 
     printf("Подключаюсь к серверу\n");
     //Подключаемся к серверу
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+    if (connect(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
         perror("ERROR connecting");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
+    //Первым делом посылаем имя пользователя
     sendContent(sockfd, nickname);
 
-    /* Now ask for a message from the user, this message
-       * will be read by server
-    */
 
-    pthread_t tid;
-    if (pthread_create(&tid, NULL, handleMessages, NULL) != 0) {
-        printf("thread has not created");
-        exit(1);
+    //Создаём поток на чтение сообщений
+    pthread_t tid_read;
+    if (pthread_create(&tid_read, NULL, (void *) readingMessages, &sockfd) != 0) {
+        printf("Read thread has not created");
+        exit(EXIT_FAILURE);
     }
 
-    for (;;)
-    {
-        printf("Введите сообщение: ");
-        bzero(buffer, sizeof(buffer));
-        fgets(buffer, sizeof(buffer) - 1, stdin);
-        sendContent(sockfd, buffer);
+    //создаём поток на отправку сообщений
+    pthread_t tid_send;
+    if (pthread_create(&tid_send, NULL, (void *) sendingMessages, &sockfd)) {
+        printf("Send thread has not created");
+        exit(EXIT_FAILURE);
     }
-    
-    return 0;
 
+    //джойним потоки и заканчиваем работу
+    pthread_join(tid_read, NULL);
+    pthread_join(tid_send, NULL);
+    return EXIT_SUCCESS;
 }
 
-void* handleMessages(void* args){
-
-    char* readBuffer[300];
-
-    for (;;){
-        if (readMessage(sockfd, readBuffer) <= 0){
+//Удаляет переносы строк из строки - это фиксит некоторые проблемы, возникшие в ходе работы
+void removeNewLines(char *str) {
+    for (int i = 0; i < (int) strlen(str); i++) {
+        if (str[i] == '\n') {
+            str[i] = '\0';
             break;
         }
-        printf(readBuffer);
-        fflush(stdout);
     }
 }
 
-int readN(int socket, char* buf, int length){
+//Функция для запуска в отдельном потоке, берёт пользовательский ввод и отправляет сообщения на сервер
+void *sendingMessages(void *arg) {
+    //Достаём сокет из аргументов
+    int writeSocket = *(int *) arg;
+    //Создаём буфер под наши сообщения
+    char *writeBuffer;
+    //Заводим переменную под длину буфера
+    size_t bufferLength;
+
+    while (1) {
+        //Сначала буфер пустой
+        writeBuffer = NULL;
+        bufferLength = 0;
+        //Читаем из консоли ввод пользователя, длина может быть любой
+        getline(&writeBuffer, &bufferLength, stdin);
+        //Отправляем контент на сервер
+        sendContent(writeSocket, writeBuffer);
+        //Удаляем из введённой строки лишние переносы
+        removeNewLines(writeBuffer);
+        //Сравниваем с командой выхода. Если совпадает - собственно вырубаем клиент
+        if (strcmp(writeBuffer, "/exit") == 0) {
+            printf("Goodbye\n");
+            close(writeSocket);
+            exit(EXIT_SUCCESS);
+        }
+    }
+}
+
+//Функция для запуска в потоке на чтение сообщений с сервера.
+void *readingMessages(void *arg) {
+    //Достаём наш сокет из аргументов
+    int readSocket = *(int *) arg;
+
+    //Цикл в котором мы читаем входящие сообщения
+    for (;;) {
+        //Достаём буфер прочтённого сообщения
+        char *readBuffer = readMessage(readSocket);
+        //Подпираем это всё костылём
+        removeNewLines(readBuffer);
+        //Выводим полученное сообщение
+        printf("\n%s\n", readBuffer);
+        fflush(stdout);
+        //Отпускаем память нашего буфера, так как больше этот текст нам не нужен
+        free(readBuffer);
+    }
+}
+
+//Читаем читаем читаем... пока не прочитаем нужное кол-во данных
+int readN(int socket, char *buf, int length) {
     int result = 0;
     int readedBytes = 0;
     int sizeMsg = length;
-    while(sizeMsg > 0){
+    while (sizeMsg > 0) {
         readedBytes = read(socket, buf + result, sizeMsg);
-        if (readedBytes <= 0){
+        if (readedBytes <= 0) {
             return -1;
         }
         result += readedBytes;
@@ -142,40 +192,62 @@ int readN(int socket, char* buf, int length){
     return result;
 }
 
-int readMessage(int fromSock, char* buffer){
-    bzero(buffer, sizeof(buffer));
-    int tmp;
+//Метод прочтения одного сообщения
+char *readMessage(int fromSock) {
+    //Код операции (Если меньше 0 то всё плохо)
+    int operationCode;
+    //Размер сообщения
     int size;
-    tmp = readN(fromSock, &size, sizeof(int));
 
-    if (tmp < 0) {
+    //Читаем сначала длину сообщения в переменную size
+    operationCode = readN(fromSock, &size, sizeof(int));
+
+    //Проверяем всё ли в порядке с прочтением длины
+    if (operationCode < 0) {
         perror("ERROR reading from socket");
-        return tmp;
+        exit(EXIT_FAILURE);
     }
 
-    tmp = readN(fromSock, buffer, size);
-
-    if (tmp < 0) {
-        perror("ERROR reading from socket");
-        return tmp;
+    //Вдруг нам пришлют MAX_INT, чё мы потом будем делать когда выделим столько памяти
+    if (size > 10000) {
+        size = 10000;
     }
 
-    return tmp;
+    //Выделяем память под полученную длину
+    char *buffer = (char *) malloc(size);
+    //Читаем в этот буфер заранее известное кол-во данных
+    operationCode = readN(fromSock, buffer, size);
+
+    //Проверяем всё ли в порядке с чтением сообщения
+    if (operationCode < 0) {
+        perror("ERROR reading from socket");
+        exit(EXIT_FAILURE);
+    }
+
+    //Возвращаем наш великолепный буффер
+    return buffer;
 }
 
-int sendContent(int destination, char* content){
-    int check;
+//Аналогично readMessage, только операция отправки текста
+int sendContent(int destination, char *content) {
+    //Код операций
+    int operationCode;
     printf("Отправляю длину сообщения\n");
+    //Записываем в size длинну сообщения, которую хотим отправить
     int size = strlen(content);
-    check = write(destination, &size, sizeof(int));
-    if (check <= 0)
-    {
+    //Отправляем и сохраняем код операции в operationCode
+    operationCode = write(destination, &size, sizeof(int));
+    //Проверяем всё ли в порядке с нашей записью
+    if (operationCode <= 0) {
         printf("Ошибка передачи\n");
     }
     printf("Отправляю сообщение\n");
-    check = write(destination, content, size);
-    if (check <= 0)
-    {
+    //Теперь вслед передаём само сообщение
+    operationCode = write(destination, content, size);
+    //Проверяем всё ли нормально прошло
+    if (operationCode <= 0) {
         printf("Ошибка передачи\n");
     }
+    //Возвращаем код операции
+    return operationCode;
 }
