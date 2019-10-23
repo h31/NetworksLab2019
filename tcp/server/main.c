@@ -34,13 +34,14 @@ void server_delete_client(Client *client) {
 Message serv_get_message(Client *client) {
     Message message;
 
-    message.buffer = malloc(MAX_MESSAGE_SIZE * sizeof(char));
-    bzero(message.buffer, MAX_MESSAGE_SIZE);
     message.size = 0;
 
-    if (read(client->sockfd, &message.size, sizeof(int)) <= 0) {
+    if (read(client->sockfd, &message.size, HEADER_SIZE) <= 0) {
         server_delete_client(client);
     }
+
+    message.buffer = calloc(message.size, sizeof(char));
+
     if (read(client->sockfd, message.buffer, message.size) <= 0) {
         server_delete_client(client);
     }
