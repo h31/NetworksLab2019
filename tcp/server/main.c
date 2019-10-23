@@ -16,7 +16,6 @@
 Client *first_client;
 int global_sockfd;
 
-
 /*------------------- SERVER DELETE CLIENT ---------------------------------*/
 void server_delete_client(Client *client) {
     printf("Delete client: name = %s, sockfd = %d\n", client->name, client->sockfd);
@@ -117,7 +116,6 @@ Client *get_last_not_null_client() {
 
 }
 
-
 /*------------------- MAIN -----------------------------------------------------*/
 int main(int argc, char *argv[]) {
     int sockfd;
@@ -152,9 +150,6 @@ int main(int argc, char *argv[]) {
     printf("Sockfd = %d\n", sockfd);
     printf("IP ADDRESS:\n");
     system(" ifconfig | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\\.){3}[0-9]*).*/\\2/p'");
-
-
-
 
     /* Initialize socket structure */
     bzero((char *) &serv_addr, sizeof(serv_addr));

@@ -26,9 +26,7 @@ void client_send_message(int sockfd, Message message) {
         PERROR_AND_EXIT("ERROR writing to socket");
     }
 
-
 }
-
 
 void client_send_message_from_cmd(int sockfd) {
     Message message;
@@ -39,7 +37,6 @@ void client_send_message_from_cmd(int sockfd) {
     message.size = (int) strlen(message.buffer);
 
     client_send_message(sockfd, message);
-
 
 }
 
@@ -62,7 +59,6 @@ void client_get_response(int sockfd) {
         PERROR_AND_EXIT("ERROR reading message")
     }
 
-    /*TODO excuse me what the \r*/
     printf("\r%s\n%s:", message.buffer, user_name);
     fflush(stdout);
 }
@@ -122,7 +118,6 @@ int main(int argc, char *argv[]) {
         PERROR_AND_EXIT("ERROR opening socket");
     }
 
-
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
@@ -134,15 +129,12 @@ int main(int argc, char *argv[]) {
     }
     printf("Conneced to server \n");
 
-
     client_send_message(sockfd, *get_new_message(user_name));
-
 
     pthread_t read_thread;
     pthread_create(&read_thread, NULL, (void *) client_get_response_loop, (void *) sockfd);
 
     client_send_message_loop(sockfd);
-
 
     return 0;
 }
