@@ -100,6 +100,23 @@ void server_sigint_handler(int signo) {
     exit(0);
 }
 
+/*------------------- GET LAST NOT NULL CLIENT ----------------------------------------------*/
+Client *get_last_not_null_client() {
+    Client *free_client = first_client;
+    printf("\n-------------------------------\n");
+    printf("Clients in list:\n");
+    int i = 1;
+    while (free_client->next_client != NULL) {
+        printf("%d:%s(%d)\n", i, free_client->next_client->name, free_client->next_client->sockfd);
+        free_client = free_client->next_client;
+        i++;
+    }
+    free_client->next_client = get_new_client_empty();
+
+    return free_client;
+
+}
+
 
 /*------------------- MAIN -----------------------------------------------------*/
 int main(int argc, char *argv[]) {
@@ -157,21 +174,11 @@ int main(int argc, char *argv[]) {
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
-    first_client = NewClientEmpty();
+    first_client = get_new_client_empty();
     first_client->name = "first client";
     for (;;) {
         /* Accept actual connection from the client */
-        Client *free_client = first_client;
-        printf("\n-------------------------------\n");
-        printf("Clients in list:\n");
-        int i = 1;
-        while (free_client->next_client != NULL) {
-            printf("%d:%s(%d)\n", i, free_client->next_client->name, free_client->next_client->sockfd);
-            free_client = free_client->next_client;
-            i++;
-        }
-        free_client->next_client = NewClientEmpty();
-
+        Client *free_client = get_last_not_null_client();
         Client *prev_client = free_client;
         free_client = free_client->next_client;
         free_client->prev_client = prev_client;
