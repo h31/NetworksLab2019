@@ -46,7 +46,9 @@ char *str_concat(char *line1, char *line2) {
     size_t line_len_2 = strlen(line2);
 
     char *totalLine = calloc(line_len_1 + line_len_2 + 1, sizeof(char));
-    if (!totalLine) abort();
+    if (!totalLine) {
+        abort();
+    }
 
     memcpy(totalLine, line1, line_len_1);
     memcpy(totalLine + line_len_1, line2, line_len_2);
