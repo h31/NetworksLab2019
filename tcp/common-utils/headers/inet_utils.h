@@ -8,4 +8,6 @@ typedef struct sockaddr_in socket_descriptor;
 
 void set_sockdescriptor(socket_descriptor *serv_addr, uint16_t port);
 
+int create_tcpsocket();
+
 #endif

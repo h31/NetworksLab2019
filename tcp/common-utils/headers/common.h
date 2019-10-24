@@ -3,6 +3,6 @@
 
 #include <stdlib.h>
 
-int exclude_port(int argc, char *argv[]);
+uint16_t exclude_port(int argc, char *argv[]);
 
 #endif //SERVER_COMMON_H
