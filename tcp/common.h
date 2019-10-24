@@ -5,6 +5,7 @@
 struct Client {
     int sockfd;
     char *name;
+    struct sockaddr_in *sockaddr;
     pthread_t thread;
     struct Client *next_client;
     struct Client *prev_client;

@@ -106,11 +106,14 @@ Client *get_last_not_null_client() {
     printf("Clients in list:\n");
     int i = 1;
     while (free_client->next_client != NULL) {
-        printf("%d:%s(%d)\n", i, free_client->next_client->name, free_client->next_client->sockfd);
+        __uint32_t cli_addr = free_client->next_client->sockaddr->sin_addr.s_addr;
+        printf("%d:(%d.%d.%d.%d)\t:%s\t:%d\n", i,
+               (u_char) cli_addr, (u_char) (cli_addr >> 8), (u_char) (cli_addr >> 16), (u_char) (cli_addr >> 24),
+               free_client->next_client->name,
+               free_client->next_client->sockfd);
         free_client = free_client->next_client;
         i++;
     }
-    free_client->next_client = get_new_client_empty();
 
     return free_client;
 
