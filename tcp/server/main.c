@@ -158,6 +158,10 @@ int main(int argc, char *argv[]) {
         PERROR_AND_EXIT("ERROR opening socket");
     }
 
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int) {1}, sizeof(int)) < 0) {
+        PERROR_AND_EXIT("setsockopt(SO_REUSEADDR) failed");
+    }
+
     printf("Portno = %d\n", portno);
     printf("Sockfd = %d\n", sockfd);
     printf("IP ADDRESS:\n");
