@@ -20,10 +20,15 @@ int global_sockfd;
 void server_delete_client(Client *client) {
     printf("Delete client: name = %s, sockfd = %d\n", client->name, client->sockfd);
     close(client->sockfd);
-    if (client->prev_client != NULL && client->next_client != NULL) {
+    if (client->prev_client != NULL) {
+        printf("prev = %s, ", client->prev_client->name);
         client->prev_client->next_client = client->next_client;
+    }
+    if (client->next_client != NULL) {
+        printf("next = %s", client->next_client->name);
         client->next_client->prev_client = client->prev_client;
     }
+    printf("\n");
     free(client);
     pthread_cancel(client->thread);
 
