@@ -201,7 +201,8 @@ int main(int argc, char *argv[]) {
         new_client->sockaddr = &cli_addr;
         printf("New client accepted: name = %s, sockfd = %d\n", new_client->name,
                new_client->sockfd);
-        pthread_create(&new_client->thread, NULL, (void *) serv_process_client, new_client);
+        pthread_create(&new_client->thread, NULL, (void *) serv_process_client,
+                       new_client);//TODO incorrect, but not critical passing
 
     }
 
