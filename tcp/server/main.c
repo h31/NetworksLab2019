@@ -88,11 +88,15 @@ void serv_process_client(Client *client) {
 /*------------------- SERVER SIGINT HANDLER --------------------------------------------*/
 void server_sigint_handler(int signo) {
     printf("Closing server...\n");
-    Client *another_client = first_client->next_client;
-    while (another_client != NULL) {
-        server_delete_client(another_client);
-        another_client = another_client->next_client;
+    Client *deleted_client = first_client;
+    if (deleted_client != NULL) {
+        while (deleted_client->next_client != NULL) {
+            deleted_client = deleted_client->next_client;
+            server_delete_client(deleted_client->prev_client);
+        }
     }
+    server_delete_client(deleted_client);
+
     printf("Close socket = %d\n", global_sockfd);
     close(global_sockfd);
     printf("Server closed...\n");
@@ -177,22 +181,22 @@ int main(int argc, char *argv[]) {
     for (;;) {
         /* Accept actual connection from the client */
         Client *free_client = get_last_not_null_client();
-        Client *prev_client = free_client;
-        free_client = free_client->next_client;
-        free_client->prev_client = prev_client;
+        Client *new_client = get_new_client_empty();
+        free_client->next_client = new_client;
+        new_client->prev_client = free_client;
 
-        free_client->sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        new_client->sockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 
-        if (free_client->sockfd <= 0) {
+        if (new_client->sockfd <= 0) {
             PERROR_AND_EXIT("ERROR on accept");
         }
 
-        Message name_mess = serv_get_message(free_client);
-        free_client->name = name_mess.buffer;
-
-        printf("New client accepted: name = %s, sockfd = %d\n", free_client->name,
-               free_client->sockfd);
-        pthread_create(&free_client->thread, NULL, (void *) serv_process_client, free_client);
+        Message name_mess = serv_get_message(new_client);
+        new_client->name = name_mess.buffer;
+        new_client->sockaddr = &cli_addr;
+        printf("New client accepted: name = %s, sockfd = %d\n", new_client->name,
+               new_client->sockfd);
+        pthread_create(&new_client->thread, NULL, (void *) serv_process_client, new_client);
 
     }
 
