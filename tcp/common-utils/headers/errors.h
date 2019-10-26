@@ -11,6 +11,7 @@
 #define SOCKET_STATE_ERROR "can't put socket to listeningg state"
 #define SOCKET_READ_ERROR "can't read from socket"
 #define SOCKET_WRITE_ERROR "can't write to socket"
+#define NO_SUCH_ELEMENT "no such element in a List"
 
 void raise_error(char *error);
 

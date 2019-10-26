@@ -3,43 +3,32 @@
 #include "../common-utils/headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
 
-void start_server(const uint16_t *port) {
+#define MAX_QUEUED_CLIENTS 7
 
-    // first call to socket function
+void listen_cli(int sockfd);
+
+void start_server(const uint16_t *port) {
     int sockfd = create_tcpsocket();
 
-    // initialize socket structure
-    struct sockaddr_in serv_addr;
+    socket_descriptor serv_addr;
     set_sockdescriptor(&serv_addr, *port);
 
-    /* Now bind the host address using bind() call.*/
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         raise_error(BINDING_ERROR);
     }
 
-    if (listen(sockfd, 7) < 0) {
+    if (listen(sockfd, MAX_QUEUED_CLIENTS) < 0) {
         raise_error(SOCKET_STATE_ERROR);
     }
 
-    struct sockaddr_in client_addr;
-    /* Accept actual connection from the client */
+    for (;;) {
+        listen_cli(sockfd);
+    }
+}
 
-    socklen_t clilen = sizeof(client_addr);
-    int newsockfd = accept(sockfd, (struct sockaddr *) &client_addr, &clilen);
+void listen_cli(int sockfd) {
+    socket_descriptor cliaddr;
+    socklen_t clilen = sizeof(cliaddr);
 
-    char buffer[256];
-
-    /* If connection is established then start communicating */
-    bzero(buffer, 256);
-    ssize_t n = read(newsockfd, buffer, 255); // recv on Windows
-
-    if (n < 0) raise_error(SOCKET_READ_ERROR);
-
-
-    printf("Here is the message: %s\n", buffer);
-
-    /* Write a response to the client */
-    n = write(newsockfd, "I got your message", 18); // send on Windows
-
-    if (n < 0) raise_error(SOCKET_WRITE_ERROR);
+    int newsockfd = accept(sockfd, (struct sockaddr *) &cliaddr, &clilen);
 }

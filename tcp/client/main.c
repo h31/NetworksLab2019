@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    portno = (uint16_t) atoi(argv[2]);
+    portno = exclude_cliport(argc, argv);
 
     /* Create a socket point */
     sockfd = create_tcpsocket();
