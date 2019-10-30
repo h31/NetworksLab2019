@@ -200,14 +200,17 @@ int main(int argc, char** argv)
 
 int strCmp(char* static_str, char* final_str) {
 	int count = 0;
+	char noblank_str[total_length];
+	strcpy(noblank_str, static_str);
+
 	for (int i = 0; static_str[i]; i++)
 		if (static_str[i] != ' ')
-			static_str[count++] = static_str[i];
+			noblank_str[count++] = noblank_str[i];
 	
-	static_str[count] = '\0';
+	noblank_str[count] = '\0';
 	
-	if (!strncasecmp(static_str, final_str, strlen(final_str)) 
-		&& strlen(static_str) == strlen(final_str)) return 0;
+	if (!strncasecmp(noblank_str, final_str, strlen(final_str)) 
+		&& strlen(noblank_str) == strlen(final_str)) return 0;
 	else return 1;
 }
 
