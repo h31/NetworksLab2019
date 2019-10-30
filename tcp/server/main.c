@@ -9,7 +9,6 @@
 #include <pthread.h>
 
 #include "../header.h"
-#include "../params.h"
 
 void communicate_to_client(void *arg);
 
@@ -17,10 +16,9 @@ void client_exit(ClientChain *client_data);
 
 void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size);
 
-char *get_time();
-
 ClientChain *root, *last;
 int sockfd;
+pthread_mutex_t mtx;
 
 int main(int argc, char *argv[]) {
     uint16_t portno;
@@ -55,6 +53,12 @@ int main(int argc, char *argv[]) {
     last = root;
 
     pthread_t tid;
+
+    if (pthread_mutex_init(&mtx, NULL) != 0) {
+        perror("ERROR creating mutex");
+        exit(1);
+    }
+
     while (1) {
         ClientChain *this = chain_init(sockfd);
         this->sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
@@ -63,7 +67,6 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        this->prev = last;
         last->next = this;
         last = this;
 
@@ -79,54 +82,76 @@ void communicate_to_client(void *arg) {
     ClientChain *client_data = (ClientChain *) arg;
     char *buffer;
     char *msg;
-    int buff_size;
-    char name[NAME_LEN];
-
-    //get client name
-    bzero(name, NAME_LEN);
-    if (readn(client_data->sock, name, NAME_LEN) < 0) {
+    uint32_t buff_size, msg_size, name_size;
+    
+    //get name size
+    name_size = 0;
+    int res;
+    if ((res = read(client_data->sock, &name_size, sizeof(int))) < 0) {
         perror("ERROR reading from socket");
         exit(1);
+    } else if (res == 0) {
+        client_exit(client_data);
+    }
+
+    //get name
+    client_data->name = (char *) malloc(name_size);
+    buffer = (char *) malloc(name_size);
+    if ((res = readn(client_data->sock, buffer, name_size)) < 0) {
+        perror("ERROR reading from socket");
+        exit(1);
+    } else if(res == 0) {
+        client_exit(client_data);
     } else {
-        make_str(name);
-        strncpy(client_data->name, name, NAME_LEN);
-        printf("<%s>---%s connected---\n", get_time(), name);
-        msg = (char *) malloc(25);
-        sprintf(msg, "<%s>---%s connected---\n", get_time(), name);
-        send_msg_to_clients(client_data, msg, 25);
+        msg_size = name_size + 30;
+        make_str_without_line_break(buffer);
+        strncpy(client_data->name, buffer, name_size);
+        printf("<%s>---%s connected---\n", get_time(), buffer);
+        msg = (char *) malloc(msg_size);
+        sprintf(msg, "<%s>---%s connected---\n", get_time(), buffer);
+        send_msg_to_clients(client_data, msg, msg_size);
+        free(msg);
     }
 
     //main cycle to get message from client and send it to other clients
     while (1) {
         //get message size
         buff_size = 0;
-        if (read(client_data->sock, &buff_size, sizeof(int)) < 0) {
+        int res;
+        if ((res = read(client_data->sock, &buff_size, sizeof(int))) < 0) {
             perror("ERROR reading from socket");
             exit(1);
+        } else if (res == 0) {
+            client_exit(client_data);
         }
 
         //get message
         buffer = (char *) malloc(buff_size);
-        if (readn(client_data->sock, buffer, buff_size) < 0) {
+        if ((res = readn(client_data->sock, buffer, buff_size)) < 0) {
             perror("ERROR reading from socket");
             exit(1);
+        } else if(res == 0) {
+            client_exit(client_data);
         }
-        make_str(buffer);
+        make_str_without_line_break(buffer);
 
         //check if clint exit
         if (strcmp(buffer, "/exit") == 0) {
-            printf("<%s>---%s exit chat---\n", get_time(), name);
-            msg = (char *) malloc(50);
-            sprintf(msg, "<%s>---%s exit chat---\n", get_time(), name);
-            send_msg_to_clients(client_data, msg, 50);
+            msg_size = sizeof(client_data->name) + 50;
+            printf("<%s>---%s exit chat---\n", get_time(), client_data->name);
+            msg = (char *) malloc(msg_size);
+            sprintf(msg, "<%s>---%s exit chat---\n", get_time(), client_data->name);
+            send_msg_to_clients(client_data, msg, msg_size);
+            free(msg);
             client_exit(client_data);
             break;
         } else {
-            int msg_size = buff_size + 50;
-            printf("<%s>%s: %s\n", get_time(), name, buffer);
+            msg_size = buff_size + 50;
+            printf("<%s>%s: %s\n", get_time(), client_data->name, buffer);
             msg = (char *) malloc(msg_size);
-            sprintf(msg, "<%s>%s: %s\n", get_time(), name, buffer);
+            sprintf(msg, "<%s>%s: %s\n", get_time(), client_data->name, buffer);
             send_msg_to_clients(client_data, msg, msg_size);
+            free(msg);
         }
     }
 }
@@ -134,6 +159,7 @@ void communicate_to_client(void *arg) {
 
 void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size) {
     ClientChain *temp = root->next;
+    pthread_mutex_lock(&mtx);
     while (temp != NULL) {
         if (temp != sender_data) {
             //send message size
@@ -149,37 +175,30 @@ void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size) {
         }
         temp = temp->next;
     }
+    pthread_mutex_unlock(&mtx);
 }
 
 void client_exit(ClientChain *client_data) {
     close(client_data->sock);
-    if (client_data->next == NULL && client_data->prev == root) {
+    ClientChain *temp = root;
+    while (temp->next != client_data) {
+        temp = temp->next;
+    }
+    if (client_data->next == NULL && root->next == client_data) {
         close(sockfd);
         printf("All users exit chat, see u later\n");
         exit(EXIT_SUCCESS);
     } else if (client_data->next == NULL) {
-        last = client_data->prev;
-        client_data->prev->next = NULL;
+        last = temp;
+        temp->next = NULL;
         free(client_data);
         pthread_exit(NULL);
     } else {
-        client_data->prev->next = client_data->next;
-        client_data->next->prev = client_data->prev;
+        temp->next = client_data->next;
         free(client_data);
         pthread_exit(NULL);
     }
 }
 
-char *get_time() {
-    time_t timer = time(NULL);
-    struct tm *t;
-    char tmp[6];
-    char *str;
-    t = localtime(&timer);
-    bzero(tmp, 6);
-    strftime(tmp, 6, "%H:%M", t);
-    str = (char *) malloc(sizeof(tmp));
-    strcpy(str, tmp);
-    return str;
-}
+
 

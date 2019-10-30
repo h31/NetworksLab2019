@@ -8,7 +8,6 @@
 #include <string.h>
 #include <pthread.h>
 #include "../header.h"
-#include "../params.h"
 
 void send_msg(void *arg);
 
@@ -19,7 +18,9 @@ int main(int argc, char *argv[]) {
     uint16_t portno;
     struct sockaddr_in serv_addr;
     struct hostent *server;
-    char name[NAME_LEN];
+    char *name;
+    size_t n;
+    uint32_t buff_size;
 
     if (argc < 3) {
         fprintf(stderr, "usage %s hostname port\n", argv[0]);
@@ -52,14 +53,27 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    printf("Enter your name:");
-    bzero(name, NAME_LEN);
-    fgets(name, NAME_LEN, stdin);
-    if (write(sockfd, name, NAME_LEN) < 0) {
+    while (1){
+        name = NULL;
+        n = 0;
+        printf("Enter your name (max 20 symbols):");
+        buff_size = getline(&name, &n, stdin);
+        if(buff_size <= 21) break;
+        else printf("Invalid name, too much symbols\n");
+    }
+
+    //send name size
+    if (write(sockfd, &buff_size, sizeof(int)) < 0) {
         perror("ERROR writing to socket");
         exit(1);
     }
-    printf("Write /exit to exit chat\n");
+
+    //send name
+    if (write(sockfd, name, buff_size) < 0) {
+        perror("ERROR writing to socket");
+        exit(1);
+    }
+    printf("Write /exit to exit chat\n\n");
 
     pthread_t tid_send;
     if (pthread_create(&tid_send, NULL, (void *) send_msg, &sockfd) != 0) {
@@ -80,12 +94,14 @@ int main(int argc, char *argv[]) {
 void send_msg(void *arg) {
     int sock = *(int *) arg;
     char *buffer;
-    int buff_size;
+    uint32_t buff_size;
     size_t n;
 
     while (1) {
         buffer = NULL;
         n = 0;
+        printf(">");
+        //fflush(stdout);
         buff_size = getline(&buffer, &n, stdin);
 
         //send message size
@@ -100,7 +116,7 @@ void send_msg(void *arg) {
             exit(1);
         }
 
-        make_str(buffer);
+        make_str_without_line_break(buffer);
         if (strcmp(buffer, "/exit") == 0) {
             printf("Goodbye\n");
             close(sock);
@@ -112,7 +128,7 @@ void send_msg(void *arg) {
 void get_msg(void *arg) {
     int sock = *(int *) arg;
     char *buffer;
-    int buff_size;
+    uint32_t buff_size;
     while (1) {
 
         //get size of message
@@ -129,6 +145,10 @@ void get_msg(void *arg) {
             exit(1);
         }
 
-        printf("%s\n", buffer);
+        printf("\r%s", buffer);
+
+        printf(">");
+        fflush(stdout);
+        free(buffer);
     }
 }
