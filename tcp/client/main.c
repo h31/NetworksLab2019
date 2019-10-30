@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
     int sockfd;
     ssize_t n;
     uint16_t portno;
-    struct sockaddr_in serv_addr;
+    socket_descriptor serv_addr;
     struct hostent *server;
 
     char buffer[256];
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
     serv_addr.sin_port = htons(portno);
 
     /* Now connect to the server */
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+    if (connect(sockfd, (address *) &serv_addr, sizeof(serv_addr)) < 0) {
         perror("ERROR connecting");
         exit(1);
     }

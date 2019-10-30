@@ -2,7 +2,6 @@
 #include "stdio.h"
 
 #include "../common-utils/headers/common.h"
-
 #include "../common-utils/headers/list.h"
 
 /*
