@@ -15,6 +15,7 @@
 
 Client *first_client;
 int global_sockfd;
+pthread_mutex_t mutex;
 
 /*------------------- SERVER DELETE CLIENT ---------------------------------*/
 void server_delete_client(Client *client) {
@@ -29,8 +30,9 @@ void server_delete_client(Client *client) {
         client->next_client->prev_client = client->prev_client;
     }
     printf("\n");
+    pthread_t client_thread = client->thread;
     free(client);
-    pthread_cancel(client->thread);
+    pthread_cancel(client_thread);
 
 }
 
@@ -66,25 +68,35 @@ void serv_send_response(Client *client, Message message) {
 
 /*------------------- SERVER PROCESS CLIENT -------------------------------------*/
 void serv_process_client(Client *client) {
-    for (;;) {
 
+    client->status = CL_STAT_ON;
+
+    for (;;) {
         Message message = serv_get_message(client);
         printf("\nRECEIVED:%s:message = %s(size = %d)\n", client->name, message.buffer, message.size);
         message.buffer = str_concat(str_concat(client->name, ":"), message.buffer);
         message = *get_new_message(message.buffer);
 
+        VERBOSE_MUTEX_LOCK(&mutex, "sending messages to all clients");
+
         Client *another_client = first_client->next_client;
         while (another_client->next_client != NULL) {
-            if (another_client != client) {
+
+            if (another_client != client &&
+                another_client->status == CL_STAT_ON) {
+
                 serv_send_response(another_client, message);
                 printf("SENDED:message = %s(size = %d) to %s\n",
                        message.buffer,
                        message.size,
                        another_client->name);
+
             }
 
             another_client = another_client->next_client;
         }
+
+        VERBOSE_MUTEX_UNLOCK(&mutex, "sending messages to all clients");
 
     }
 
@@ -104,6 +116,8 @@ void server_sigint_handler(int signo) {
 
     printf("Close socket = %d\n", global_sockfd);
     close(global_sockfd);
+    printf("Destroy mutex\n");
+    pthread_mutex_destroy(&mutex);
     printf("Server closed...\n");
     exit(0);
 }
@@ -184,6 +198,10 @@ int main(int argc, char *argv[]) {
 
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
+
+    if (pthread_mutex_init(&mutex, NULL) != 0) {
+        PERROR_AND_EXIT("ERROR creating socket")
+    }
 
     first_client = get_new_client_empty();
     first_client->name = "first client";
