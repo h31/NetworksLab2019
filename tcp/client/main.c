@@ -55,7 +55,7 @@ void client_get_response(int sockfd) {
 
     message.buffer = calloc(message.size, sizeof(char));
 
-    if (read(sockfd, message.buffer, message.size) <= 0) {
+    if (readN(sockfd, message.buffer, message.size) <= 0) {
         PERROR_AND_EXIT("ERROR reading message")
     }
 

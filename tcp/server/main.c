@@ -46,7 +46,7 @@ Message serv_get_message(Client *client) {
 
     message.buffer = calloc(message.size, sizeof(char));
 
-    if (read(client->sockfd, message.buffer, message.size) <= 0) {
+    if (readN(client->sockfd, message.buffer, message.size) <= 0) {
         server_delete_client(client);
     }
     return message;
