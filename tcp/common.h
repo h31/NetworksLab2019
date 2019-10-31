@@ -4,6 +4,18 @@
 #define CL_STAT_ON  0
 #define CL_STAT_OFF 1
 
+#define VERBOSE_MUTEX_LOCK(mutex_ptr, place)  \
+        pthread_mutex_lock(mutex_ptr);\
+        printf("\n------------------------\nMutex locked before ");\
+        printf(place);\
+        printf("\n------------------------\n");
+
+#define VERBOSE_MUTEX_UNLOCK(mutex_ptr, place)\
+        pthread_mutex_unlock(mutex_ptr);\
+        printf("\n------------------------\nMutex unlocked after ");\
+        printf(place);\
+        printf("\n------------------------\n");
+
 struct Client {
     int sockfd;
     char *name;
