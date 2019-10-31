@@ -1,10 +1,13 @@
 //
 // Created by danila on 10/10/2019.
 //
+#define CL_STAT_ON  0
+#define CL_STAT_OFF 1
 
 struct Client {
     int sockfd;
     char *name;
+    int status;
     struct sockaddr_in *sockaddr;
     pthread_t thread;
     struct Client *next_client;
@@ -26,6 +29,7 @@ Message *get_new_message(char *buffer) {
 Client *get_new_client_empty() {
     Client *new_client = calloc(1, sizeof(Client));
     new_client->next_client = NULL;
+    new_client->status = CL_STAT_OFF;
 
     return new_client;
 }
