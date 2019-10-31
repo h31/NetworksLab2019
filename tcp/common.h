@@ -58,3 +58,24 @@ char *str_concat(char *line1, char *line2) {
     return totalLine;
 
 }
+
+int readN(int fd, char *buffer, int msg_size) {
+    int curr_buff_offset = 0;
+    int curr_readed_bytes = 0;
+    while (curr_buff_offset < msg_size) {
+        curr_readed_bytes = read(
+                fd,
+                buffer + curr_buff_offset,
+                msg_size - curr_buff_offset
+        );
+        if (curr_readed_bytes == 0) {
+            curr_buff_offset = curr_readed_bytes;
+            break;
+        } else if (curr_readed_bytes < 0) {
+            PERROR_AND_EXIT("ERROR reading from socket")
+        } else {
+            curr_buff_offset += curr_readed_bytes;
+        }
+    }
+    return curr_buff_offset;
+}
