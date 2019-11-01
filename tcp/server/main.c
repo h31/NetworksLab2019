@@ -1,40 +1,167 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
 #include <string.h>
-#include <pthread.h>
+#include <fcntl.h>
+#include <bits/fcntl-linux.h>
+#include <poll.h>
+#include <errno.h>
+#include <signal.h>
 
 #include "../header.h"
 
-void communicate_to_client(void *arg);
+#define PORT 5001;
+
+void write_msg_to_client(int fd, char *buffer, uint32_t buff_size);
+
+uint32_t get_size_of_msg(int fd);
+
+char *read_msg(int fd, char *msg, char *buffer, uint32_t buff_size);
 
 void client_exit(ClientChain *client_data);
 
-void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size);
+void init_socket();
+
+void init_server_pollfd();
+
+void bind_listen();
+
+void delete_pollfd(int fd);
+
+void exit_server();
+
+void increase_fds();
+
+void decrease_fds();
 
 ClientChain *root, *last;
-int sockfd;
-pthread_mutex_t mtx;
+int sockfd, poll_size;
+struct pollfd *fds;
 
 int main(int argc, char *argv[]) {
-    uint16_t portno;
     unsigned int clilen;
-    struct sockaddr_in serv_addr, cli_addr;
-    ssize_t n;
+    struct sockaddr_in cli_addr;
+
+    int temp_size;
+    int check;
+    char *buffer, *msg;
+    uint32_t buff_size;
+    poll_size = 1;
+
+    if (signal(SIGINT, exit_server) == SIG_ERR) {
+        perror("ERROR on sigint_handler");
+        exit(1);
+    }
+
+    init_socket();
+
+    bind_listen();
+
+    clilen = sizeof(cli_addr);
+    root = client_init(sockfd);
+    last = root;
+
+    fds = (struct pollfd *) malloc(sizeof(struct pollfd));
+
+    init_server_pollfd();
+
+    while (1) {
+        check = poll(fds, poll_size, -1);
+        if (check < 0) {
+            perror("ERROR on poll");
+            break;
+        }
+
+        temp_size = poll_size;
+        for (int i = 0; i < temp_size; i++) {
+
+            if (fds[i].revents == 0) {
+                continue;
+            }
+
+            if (fds[i].revents != POLLIN) {
+                printf("ERROR wrong revents = %d\n", fds[i].revents);
+                exit_server();
+            }
+
+            if (fds[i].fd == sockfd) {
+                //accept client
+                while (1) {
+                    check = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+                    if (check < 0) {
+                        break;
+                    }
+
+                    increase_fds();
+                    fds[poll_size - 1].fd = check;
+                    fds[poll_size - 1].events = POLLIN;
+
+                    ClientChain *client = client_init(check);
+                    last->next = client;
+                    last = client;
+
+                }
+            } else {
+                //read message
+                buff_size = get_size_of_msg(fds[i].fd);
+                buffer = (char *) malloc(buff_size);
+                msg = (char *) malloc(buff_size + 25);
+
+                int temp_fd = fds[i].fd;
+
+                strcpy(msg, read_msg(fds[i].fd, msg, buffer, buff_size));
+
+                for (int j = 0; j < poll_size; j++) {
+                    if (fds[j].fd != sockfd && fds[j].fd != temp_fd) {
+                        write_msg_to_client(fds[j].fd, msg, buff_size + 25);
+                    }
+                }
+                free(buffer);
+                free(msg);
+            }
+        }
+    }
+    exit_server();
+    return 0;
+}
+
+void init_socket() {
+    int on = 1;
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     if (sockfd < 0) {
         perror("ERROR opening socket");
-        exit(1);
+        exit_server();
     }
 
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on)) < 0) {
+        perror("ERROR on setsockopt");
+        exit_server();
+    }
+
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
+        perror("ERROR making socket nonblock");
+        exit_server();
+    }
+}
+
+void init_server_pollfd() {
+    bzero(fds, sizeof(fds));
+    fds[0].fd = sockfd;
+    fds[0].events = POLLIN;
+}
+
+void bind_listen() {
+    uint16_t portno;
+    struct sockaddr_in serv_addr;
+
+    portno = PORT
+
     bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = 5001;
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
@@ -42,163 +169,123 @@ int main(int argc, char *argv[]) {
 
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         perror("ERROR on binding");
-        exit(1);
+        exit_server();
     }
 
-    listen(sockfd, 5);
-    clilen = sizeof(cli_addr);
-
-
-    root = chain_init(sockfd);
-    last = root;
-
-    pthread_t tid;
-
-    if (pthread_mutex_init(&mtx, NULL) != 0) {
-        perror("ERROR creating mutex");
-        exit(1);
+    if (listen(sockfd, 5) < 0) {
+        perror("ERROR on listen");
+        exit_server();
     }
-
-    while (1) {
-        ClientChain *this = chain_init(sockfd);
-        this->sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-        if (this->sock < 0) {
-            perror("ERROR on accept");
-            exit(1);
-        }
-
-        last->next = this;
-        last = this;
-
-        if (pthread_create(&tid, NULL, (void *) communicate_to_client, (void *) this) != 0) {
-            printf("thread has not created");
-            exit(1);
-        }
-    }
-    return 0;
 }
 
-void communicate_to_client(void *arg) {
-    ClientChain *client_data = (ClientChain *) arg;
-    char *buffer;
-    char *msg;
-    uint32_t buff_size, msg_size, name_size;
-    
-    //get name size
-    name_size = 0;
-    int res;
-    if ((res = read(client_data->sock, &name_size, sizeof(int))) < 0) {
-        perror("ERROR reading from socket");
-        exit(1);
-    } else if (res == 0) {
-        client_exit(client_data);
+void write_msg_to_client(int fd, char *buffer, uint32_t buff_size) {
+    if (write(fd, &buff_size, sizeof(int)) < 0) {
+        perror("ERROR writing from socket");
+        exit_server();
+    }
+    if (write(fd, buffer, buff_size) < 0) {
+        perror("ERROR writing from socket");
+        exit_server();
+    }
+}
+
+uint32_t get_size_of_msg(int fd) {
+    uint32_t buff_size;
+    if (read(fd, &buff_size, sizeof(int)) < 0) {
+        if (errno != EWOULDBLOCK) {
+            perror("ERROR reading from socket");
+            exit_server();
+        }
+    }
+    return buff_size;
+}
+
+char *read_msg(int fd, char *msg, char *buffer, uint32_t buff_size) {
+    int check;
+    check = readn(fd, buffer, buff_size);
+    if (check < 0) {
+        if (errno != EWOULDBLOCK) {
+            perror("ERROR reading from socket");
+            exit_server();
+        }
     }
 
-    //get name
-    client_data->name = (char *) malloc(name_size);
-    buffer = (char *) malloc(name_size);
-    if ((res = readn(client_data->sock, buffer, name_size)) < 0) {
-        perror("ERROR reading from socket");
-        exit(1);
-    } else if(res == 0) {
-        client_exit(client_data);
+    ClientChain *client = get_client(fd, root);
+
+    if (check == 0 || !strcmp(buffer, "/exit")) {
+        printf("Client \"%s\" disconnected\n", client->name);
+        sprintf(msg, "Client \"%s\" disconnected\n", client->name);
+        delete_pollfd(client->fd);
+        client_exit(get_client(fd, root));
+    } else if (!client->flag) {
+        client->name = (char *) malloc(buff_size);
+        strcpy(client->name, buffer);
+        printf("Client \"%s\" connected\n", buffer);
+        sprintf(msg, "Client \"%s\" connected\n", buffer);
+        client->flag = 1;
     } else {
-        msg_size = name_size + 30;
-        make_str_without_line_break(buffer);
-        strncpy(client_data->name, buffer, name_size);
-        printf("<%s>---%s connected---\n", get_time(), buffer);
-        msg = (char *) malloc(msg_size);
-        sprintf(msg, "<%s>---%s connected---\n", get_time(), buffer);
-        send_msg_to_clients(client_data, msg, msg_size);
-        free(msg);
+        printf("message from %s: %s\n", client->name, buffer);
+        sprintf(msg, "<%s> %s: %s\n", get_time(), client->name, buffer);
     }
 
-    //main cycle to get message from client and send it to other clients
-    while (1) {
-        //get message size
-        buff_size = 0;
-        int res;
-        if ((res = read(client_data->sock, &buff_size, sizeof(int))) < 0) {
-            perror("ERROR reading from socket");
-            exit(1);
-        } else if (res == 0) {
-            client_exit(client_data);
-        }
-
-        //get message
-        buffer = (char *) malloc(buff_size);
-        if ((res = readn(client_data->sock, buffer, buff_size)) < 0) {
-            perror("ERROR reading from socket");
-            exit(1);
-        } else if(res == 0) {
-            client_exit(client_data);
-        }
-        make_str_without_line_break(buffer);
-
-        //check if clint exit
-        if (strcmp(buffer, "/exit") == 0) {
-            msg_size = sizeof(client_data->name) + 50;
-            printf("<%s>---%s exit chat---\n", get_time(), client_data->name);
-            msg = (char *) malloc(msg_size);
-            sprintf(msg, "<%s>---%s exit chat---\n", get_time(), client_data->name);
-            send_msg_to_clients(client_data, msg, msg_size);
-            free(msg);
-            client_exit(client_data);
-            break;
-        } else {
-            msg_size = buff_size + 50;
-            printf("<%s>%s: %s\n", get_time(), client_data->name, buffer);
-            msg = (char *) malloc(msg_size);
-            sprintf(msg, "<%s>%s: %s\n", get_time(), client_data->name, buffer);
-            send_msg_to_clients(client_data, msg, msg_size);
-            free(msg);
-        }
-    }
-}
-
-
-void send_msg_to_clients(ClientChain *sender_data, char msg[], int buff_size) {
-    ClientChain *temp = root->next;
-    pthread_mutex_lock(&mtx);
-    while (temp != NULL) {
-        if (temp != sender_data) {
-            //send message size
-            if (write(temp->sock, &buff_size, sizeof(int)) < 0) {
-                perror("ERROR writing to socket");
-                exit(1);
-            }
-            //send message
-            if (write(temp->sock, msg, buff_size) < 0) {
-                perror("ERROR writing to socket");
-                exit(1);
-            }
-        }
-        temp = temp->next;
-    }
-    pthread_mutex_unlock(&mtx);
+    return msg;
 }
 
 void client_exit(ClientChain *client_data) {
-    close(client_data->sock);
+    close(client_data->fd);
     ClientChain *temp = root;
     while (temp->next != client_data) {
         temp = temp->next;
     }
     if (client_data->next == NULL && root->next == client_data) {
         close(sockfd);
-        printf("All users exit chat, see u later\n");
-        exit(EXIT_SUCCESS);
+        printf("All users exit chat.\n");
+        root->next = NULL;
+        last = root;
+        free(client_data);
+        init_socket();
+        bind_listen();
+        init_server_pollfd();
     } else if (client_data->next == NULL) {
         last = temp;
         temp->next = NULL;
         free(client_data);
-        pthread_exit(NULL);
     } else {
         temp->next = client_data->next;
         free(client_data);
-        pthread_exit(NULL);
     }
 }
 
+void delete_pollfd(int fd) {
+    for (int i = 0; i < poll_size; i++) {
+        if (fds[i].fd == fd) {
+            for (int j = i; j < poll_size; j++) {
+                if (j != poll_size - 1) {
+                    fds[j] = fds[j + 1];
+                }
+            }
+            decrease_fds();
+            break;
+        }
+    }
+}
+
+void increase_fds() {
+    poll_size++;
+    fds = (struct pollfd *) realloc(fds, poll_size * sizeof(struct pollfd));
+}
+
+void decrease_fds() {
+    poll_size--;
+    fds = (struct pollfd *) realloc(fds, poll_size * sizeof(struct pollfd));
+}
+
+void exit_server() {
+    while (root->next != NULL) {
+        client_exit(root->next);
+    }
+    close(sockfd);
+    exit(EXIT_SUCCESS);
+}
 
 

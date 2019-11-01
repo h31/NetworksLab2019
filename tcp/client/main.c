@@ -7,61 +7,64 @@
 
 #include <string.h>
 #include <pthread.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <errno.h>
+#include <signal.h>
 #include "../header.h"
 
 void send_msg(void *arg);
 
 void get_msg(void *arg);
 
+void init_socket();
+
+void init_connection(uint16_t portno, struct hostent *server);
+
+void exit_client();
+
+int sockfd;
+
 int main(int argc, char *argv[]) {
-    int sockfd;
     uint16_t portno;
-    struct sockaddr_in serv_addr;
     struct hostent *server;
     char *name;
     size_t n;
     uint32_t buff_size;
+    struct pollfd fdreed;
 
     if (argc < 3) {
         fprintf(stderr, "usage %s hostname port\n", argv[0]);
         exit(0);
     }
 
-    portno = (uint16_t) atoi(argv[2]);
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-
-    if (sockfd < 0) {
-        perror("ERROR opening socket");
-        exit(1);
-    }
-
     server = gethostbyname(argv[1]);
-
     if (server == NULL) {
         fprintf(stderr, "ERROR, no such host\n");
         exit(0);
     }
 
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
-    serv_addr.sin_port = htons(portno);
-
-    if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        perror("ERROR connecting");
+    if (signal(SIGINT, exit_client) == SIG_ERR) {
+        perror("ERROR on sigint_handler");
         exit(1);
     }
 
-    while (1){
+    portno = (uint16_t) atoi(argv[2]);
+
+    init_socket();
+
+    init_connection(portno, server);
+
+    while (1) {
         name = NULL;
         n = 0;
         printf("Enter your name (max 20 symbols):");
         buff_size = getline(&name, &n, stdin);
-        if(buff_size <= 21) break;
+        if (buff_size <= 21) break;
         else printf("Invalid name, too much symbols\n");
     }
-
+    make_str_without_line_break(name);
+    printf("name: %s\n", name);
     //send name size
     if (write(sockfd, &buff_size, sizeof(int)) < 0) {
         perror("ERROR writing to socket");
@@ -75,6 +78,9 @@ int main(int argc, char *argv[]) {
     }
     printf("Write /exit to exit chat\n\n");
 
+    fdreed.fd = sockfd;
+    fdreed.events = POLLIN;
+
     pthread_t tid_send;
     if (pthread_create(&tid_send, NULL, (void *) send_msg, &sockfd) != 0) {
         printf("thread has not created\n");
@@ -82,13 +88,42 @@ int main(int argc, char *argv[]) {
     }
 
     pthread_t tid_get;
-    if (pthread_create(&tid_get, NULL, (void *) get_msg, &sockfd) != 0) {
+    if (pthread_create(&tid_get, NULL, (void *) get_msg, &fdreed) != 0) {
         printf("thread has not created\n");
     }
 
     pthread_join(tid_send, NULL);
     pthread_join(tid_get, NULL);
     return 0;
+}
+
+void init_socket() {
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (sockfd < 0) {
+        perror("ERROR opening socket");
+        exit(1);
+    }
+
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
+        perror("ERROR making socket nonblock");
+        exit(1);
+    }
+}
+
+void init_connection(uint16_t portno, struct hostent *server) {
+    struct sockaddr_in serv_addr;
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
+    serv_addr.sin_port = htons(portno);
+
+    while (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+        /*if (errno != EWOULDBLOCK) {
+            perror("ERROR reading from socket");
+            exit(1);
+        }*/
+    }
 }
 
 void send_msg(void *arg) {
@@ -101,8 +136,8 @@ void send_msg(void *arg) {
         buffer = NULL;
         n = 0;
         printf(">");
-        //fflush(stdout);
         buff_size = getline(&buffer, &n, stdin);
+        make_str_without_line_break(buffer);
 
         //send message size
         if (write(sock, &buff_size, sizeof(int)) < 0) {
@@ -119,30 +154,57 @@ void send_msg(void *arg) {
         make_str_without_line_break(buffer);
         if (strcmp(buffer, "/exit") == 0) {
             printf("Goodbye\n");
-            close(sock);
-            exit(EXIT_SUCCESS);
+            exit_client();
         }
     }
 }
 
 void get_msg(void *arg) {
-    int sock = *(int *) arg;
+    struct pollfd fdreed = *(struct pollfd *) arg;
+    int check;
     char *buffer;
     uint32_t buff_size;
     while (1) {
+        check = poll(&fdreed, 1, 5 * 60 * 1000);
+        if (check < 0) {
+            perror("ERROR on poll");
+            exit(1);
+        }
+        if (check == 0) {
+            printf("Timeout.\n");
+            break;
+        }
+        if (fdreed.revents == 0) {
+            continue;
+        }
+
+        if (fdreed.revents != POLLIN) {
+            printf("ERROR wrong revents");
+            exit(1);
+        }
 
         //get size of message
         buff_size = 0;
-        if (read(sock, &buff_size, sizeof(int)) < 0) {
-            perror("ERROR reading from socket");
-            exit(1);
+        check = read(fdreed.fd, &buff_size, sizeof(int));
+        if (check < 0) {
+            if (errno != EWOULDBLOCK) {
+                perror("ERROR reading from socket");
+                exit_client();
+            }
+        }
+
+        if (check == 0) {
+            printf("\rServer shutdown\n");
+            exit_client();
         }
 
         //get message
         buffer = (char *) malloc(buff_size);
-        if (readn(sock, buffer, buff_size) < 0) {
-            perror("ERROR reading from socket");
-            exit(1);
+        if (readn(fdreed.fd, buffer, buff_size) < 0) {
+            if (errno != EWOULDBLOCK) {
+                perror("ERROR reading from socket");
+                exit_client();
+            }
         }
 
         printf("\r%s", buffer);
@@ -151,4 +213,9 @@ void get_msg(void *arg) {
         fflush(stdout);
         free(buffer);
     }
+}
+
+void exit_client() {
+    close(sockfd);
+    exit(EXIT_SUCCESS);
 }

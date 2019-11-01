@@ -1,17 +1,34 @@
 #ifndef CLIENT_SERVER_HEADER_H
 #define CLIENT_SERVER_HEADER_H
 
+#include <time.h>
+
 typedef struct Client {
-    int sock;
+    int fd;
+    int flag;
     char *name;
     struct Client *next;
 } ClientChain;
 
-ClientChain *chain_init(int sock) {
+ClientChain *client_init(int fd) {
     ClientChain *temp = (ClientChain *) malloc(sizeof(ClientChain));
-    temp->sock = sock;
+    temp->fd = fd;
+    temp->flag = 0;
     temp->next = NULL;
     return temp;
+}
+
+ClientChain* get_client(int fd, ClientChain *root) {
+    ClientChain *temp = root;
+    while (temp->next != NULL) {
+        if (temp->fd == fd) {
+            return temp;
+        }
+        temp = temp->next;
+    }
+    if (temp->fd == fd) {
+        return temp;
+    }
 }
 
 void make_str_without_line_break(char *str) {
