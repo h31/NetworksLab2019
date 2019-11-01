@@ -1,3 +1,4 @@
+#include <pthread.h>
 #include "headers/list.h"
 
 int eq(Client *cli1, Client *cli2) {
@@ -24,15 +25,18 @@ int exists(List *list, Client *client) {
     return 1;
 }
 
-void push(List *list, Client *client) {
+void push(List *list, Client *client, pthread_mutex_t *locker) {
+    pthread_mutex_lock(locker);
     Node *tmp = (Node *) malloc(sizeof(Node));
     tmp->client = client;
     tmp->next = list->node;
     list->node = tmp;
     list->size += 1;
+    pthread_mutex_unlock(locker);
 }
 
-void delete(List *list, Client *client) {
+void delete(List *list, Client *client, pthread_mutex_t *locker) {
+    pthread_mutex_lock(locker);
     if (!exists(list, client)) raise_error(NO_SUCH_ELEMENT);
     if (list->size == 1 || eq(list->node->client, client)) return pop(list);
     Node *current = list->node->next;
@@ -45,5 +49,14 @@ void delete(List *list, Client *client) {
     prev->next = current->next;
     free_space(current);
     list->size -= 1;
+    pthread_mutex_lock(locker);
+}
+
+void foreach(void (*f)(int), List *list) {
+    Node *current = list->node;
+    while (current != NULL) {
+        (*f)(current->client->id);
+        current = current->next;
+    }
 }
 

@@ -7,18 +7,41 @@
 
 #define MAX_QUEUED_CLIENTS 7
 
-void wait_client(int sockfd);
+/* global vars between server functions */
+pthread_mutex_t *locker = NULL;
+List *cache = NULL;
 
-void allocate_thread();
+void start_client_scenario(void *args) {
+
+    // TODO get client name
+    Client *client = allocate_client(*((int *) args), ???);
+
+    /* apply client to cache */
+    push(cache, client, locker);
+    // TODO call read msgs
+}
+
+void allocate_thread(int *client_id) {
+    pthread_t client_thread;
+    int status;
+    status = pthread_create(&client_thread, NULL, (void *) &start_client_scenario, client_id);
+    if (status != 0) raise_error(THREAD_ERROR);
+}
+
+void wait_client(int sockfd) {
+    socket_descriptor client_addr;
+    socklen_t clilen = sizeof(client_addr);
+
+    int newsockfd = accept(sockfd, (address *) &client_addr, &clilen);
+    if (newsockfd < 0) raise_error(ACCEPT_ERROR);
+    else allocate_thread(&newsockfd);
+}
 
 void start_server(const uint16_t *port) {
-    // govno-code :(
-    List *cache = (List *) malloc(sizeof(List));
-    *cache = (struct List) {0, NULL};
-    pthread_mutex_t locker;
-    if (pthread_mutex_init(&locker, NULL) != 0) {
-        raise_error(MUTEX_INIT_ERROR);
-    }
+    /* initialize global variabels */
+    Env *env = init_env();
+    locker = env->blocker;
+    cache = env->cache;
 
     int sockfd = create_tcpsocket();
 
@@ -36,20 +59,4 @@ void start_server(const uint16_t *port) {
     for (;;) {
         wait_client(sockfd);
     }
-}
-
-void wait_client(int sockfd) {
-    socket_descriptor client_addr;
-    socklen_t clilen = sizeof(client_addr);
-
-    int newsockfd = accept(sockfd, (address *) &client_addr, &clilen);
-    if (newsockfd < 0) raise_error(ACCEPT_ERROR);
-    else allocate_thread();
-}
-
-void allocate_thread() {
-    pthread_t client_thread;
-    int status;
-    status = pthread_create(&client_thread, NULL, ???, NULL); // TODO
-    if (status != 0) raise_error(THREAD_ERROR);
 }

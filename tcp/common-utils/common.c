@@ -1,5 +1,6 @@
 #include "headers/common.h"
 #include "headers/errors.h"
+#include "headers/list.h"
 
 #define DECIMAL 10
 
@@ -22,4 +23,25 @@ uint16_t exclude_servport(int argc, char *argv[]) {
 
 uint16_t exclude_cliport(int argc, char *argv[]) {
     return exclude(argc, 3, argv, 2);
+}
+
+Client *allocate_client(int *id, char *name) {
+    Client *client = (Client *) malloc(sizeof(Client));
+    client->id = *id;
+    client->name = name;
+    return client;
+}
+
+Env *init_env() {
+    List *cache = (List *) malloc(sizeof(List));
+    *cache = (struct List) {0, NULL};
+
+    pthread_mutex_t blocker;
+    if (pthread_mutex_init(&blocker, NULL) != 0) {
+        raise_error(MUTEX_INIT_ERROR);
+    }
+
+    Env *init_structure = (Env *) malloc(sizeof(Env));
+    *init_structure = (struct Env) {cache, &blocker};
+    return init_structure;
 }
