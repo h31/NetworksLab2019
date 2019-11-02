@@ -163,6 +163,7 @@ void accept_client_to_list(Client *new_client) {
 
 // Удалить из списка отключеннного клиента
 void remove_client(Client *dead_client) {
+    pthread_mutex_lock(&lock);
     if (current_client == dead_client) {
         current_client = current_client->prev_client;
     }
@@ -172,7 +173,6 @@ void remove_client(Client *dead_client) {
     if (dead_client->next_client != NULL) {
         dead_client->next_client->prev_client = dead_client->prev_client;
     }
-    pthread_mutex_lock(&lock);
     dead_client->is_alive = false;
     close(dead_client->fd);
     num_of_clients--;
