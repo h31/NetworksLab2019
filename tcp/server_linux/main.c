@@ -9,6 +9,9 @@
 
 #include <string.h>
 
+#define PORT_NUMBER 5001
+#define MAX_MESSAGE_SIZE 5000
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct Client {
@@ -61,7 +64,7 @@ int main(int argc, char *argv[]) {
 
     /* Инициализируем структуру сокета */
     bzero((char *) &serverAddress, sizeof(serverAddress));
-    portNumber = 5001;
+    portNumber = PORT_NUMBER;
 
     //Задаём семейство адресов
     serverAddress.sin_family = AF_INET;
@@ -81,18 +84,18 @@ int main(int argc, char *argv[]) {
     int clientAddressLength;
     clientAddressLength = sizeof(clientAddress);
 
-    int newsockfd;
+    int newClientSocket;
 
     for (;;) {
         /* Accept actual connection from the client */
-        newsockfd = accept(sockfd, (struct sockaddr *) &clientAddress, &clientAddressLength);
+        newClientSocket = accept(sockfd, (struct sockaddr *) &clientAddress, &clientAddressLength);
 
-        if (newsockfd < 0) {
+        if (newClientSocket < 0) {
             perror("ERROR on accept");
             break;
         }
 
-        ClientsLinkedList *newClient = addClient(newsockfd, NULL);
+        ClientsLinkedList *newClient = addClient(newClientSocket, NULL);
         char *nickName = readMessage(newClient);
         newClient->name = nickName;
 
@@ -184,8 +187,8 @@ char *readMessage(ClientsLinkedList *client) {
     }
 
     //Вдруг нам пришлют MAX_INT, чё мы потом будем делать когда выделим столько памяти
-    if (size > 10000) {
-        size = 10000;
+    if (size > MAX_MESSAGE_SIZE) {
+        size = MAX_MESSAGE_SIZE;
     }
 
     //Выделяем память под полученную длину
@@ -205,9 +208,9 @@ char *readMessage(ClientsLinkedList *client) {
 
 int sendAll(char *name, char *buffer) {
     printf("sendAll\n");
-    char formedMessage[300] = {0};
+    char formedMessage[MAX_MESSAGE_SIZE] = {0};
     sprintf(formedMessage, "<%s> : %s", name, buffer);
-//    formedMessage[300 - 1] = '\0';
+    formedMessage[MAX_MESSAGE_SIZE - 1] = '\0';
     ClientsLinkedList *currentClient = first;
     for (int i = 0; i < numberOfClients; ++i) {
         sendContent(currentClient->sock, formedMessage);
@@ -249,7 +252,7 @@ void *handleClient(void *arg) {
 
     for (;;) {
         buffer = readMessage(client);
-        if (buffer == NULL){
+        if (buffer == NULL) {
             break;
         }
         time = currentTime();

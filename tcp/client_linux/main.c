@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+#define MAX_MESSAGE_SIZE 5000;
+
 int sendContent(int destination, char *content);
 
 void *readingMessages(void *args);
@@ -209,8 +211,8 @@ char *readMessage(int fromSock) {
     }
 
     //Вдруг нам пришлют MAX_INT, чё мы потом будем делать когда выделим столько памяти
-    if (size > 10000) {
-        size = 10000;
+    if (size > MAX_MESSAGE_SIZE) {
+        size = MAX_MESSAGE_SIZE;
     }
 
     //Выделяем память под полученную длину
