@@ -1,23 +1,35 @@
 #include <unistd.h>
 #include <pthread.h>
 
+#include "reader.h"
 #include "../common-utils/headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/list.h"
+#include "../common-utils/headers/common.h"
+
 
 #define MAX_QUEUED_CLIENTS 7
+
 
 /* global vars between server functions */
 pthread_mutex_t *locker = NULL;
 List *cache = NULL;
 
 void start_client_scenario(void *args) {
+    int *client_id = (int *) args;
 
-    // TODO get client name
-    Client *client = allocate_client(*((int *) args), ???);
+    /*
+     * It is neccesary to define buffer here, because
+     * we can't define and return pointer to local var's
+     */
+    char name_buffer[CLIENT_NAME_SIZE];
+
+    char *name = read_username(client_id, name_buffer);
+    Client *client = allocate_client(client_id, name);
 
     /* apply client to cache */
     push(cache, client, locker);
+
     // TODO call read msgs
 }
 

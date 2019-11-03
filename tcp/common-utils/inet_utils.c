@@ -2,7 +2,7 @@
 #include "../common-utils/headers/errors.h"
 
 void set_sockdescriptor(socket_descriptor *serv_addr, uint16_t port) {
-    memset(serv_addr, 0, sizeof(socket_descriptor)); // TODO
+    memset(serv_addr, 0, sizeof(socket_descriptor));
 
     serv_addr->sin_family = AF_INET;
     serv_addr->sin_addr.s_addr = INADDR_ANY;

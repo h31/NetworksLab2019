@@ -5,6 +5,8 @@
 #include <ntsid.h>
 #include <pthread.h>
 
+#define CLIENT_NAME_SIZE 10
+
 typedef struct Client {
     char *name;
     int id; // id stores unique socketfd
