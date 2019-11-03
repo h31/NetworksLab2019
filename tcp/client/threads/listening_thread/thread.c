@@ -13,15 +13,20 @@
 int readn(int sockfd, void* dst, size_t len) {
     int total_number_read = 0;
     int local_number_read = 0;
+    void* tmp_buffer = malloc(len);
 
     while (len > 0) {
-        local_number_read = read(sockfd, dst, len);
+        bzero(tmp_buffer, sizeof(tmp_buffer));
+        local_number_read = read(sockfd, tmp_buffer, len);
+        memcpy(dst + strlen(dst), tmp_buffer, local_number_read);
 
         if (local_number_read == 0) {
+            free(tmp_buffer);
             return total_number_read;
         }
 
         if (local_number_read < 0) {
+            free(tmp_buffer);
             return -1;
         }
 
@@ -29,6 +34,7 @@ int readn(int sockfd, void* dst, size_t len) {
         len -= local_number_read;
     }
 
+    free(tmp_buffer);
     return total_number_read;
 }
 
@@ -65,8 +71,10 @@ void* listening_thread(void* arg) {
 
 
     while (1) {
-        bzero(message, MESSAGE_SIZE);
         int message_size;
+
+        bzero(message, MESSAGE_SIZE);
+        bzero(&message_size, sizeof(int));
         //reading message size
         readn(((Listening_thread_input *) arg)-> sockfd, &message_size, sizeof(int));
         // reading message

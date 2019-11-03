@@ -16,15 +16,22 @@
 int readn(int sockfd, void* dst, size_t len) {
     int total_number_read = 0;
     int local_number_read = 0;
+    //буффер для чтения
+    void* tmp_buffer = malloc(len);
 
     while (len > 0) {
-        local_number_read = read(sockfd, dst, len);
+        bzero(tmp_buffer, sizeof(tmp_buffer));
+
+        local_number_read = read(sockfd, tmp_buffer, len);
+        memcpy(dst + strlen(dst), tmp_buffer, local_number_read);
 
         if (local_number_read == 0) {
+            free(tmp_buffer);
             return total_number_read;
         }
 
         if (local_number_read < 0) {
+            free(tmp_buffer);
             return -1;
         }
 
@@ -32,6 +39,7 @@ int readn(int sockfd, void* dst, size_t len) {
         len -= local_number_read;
     }
 
+    free(tmp_buffer);
     return total_number_read;
 }
 
@@ -62,6 +70,7 @@ char* read_user_nickname(int sockfd) {
 
     bzero(buffer, L_THREAD_MESSAGE_TEXT);
     int tmp ;
+    bzero(&tmp, sizeof(int));
     // read message size
     readn(sockfd, (char*) &tmp, sizeof(int));
     // read message
@@ -92,6 +101,8 @@ void *listening_thread(void *arg) {
         bzero(full_message, TIME_SIZE + NICKNAME_SIZE + L_THREAD_MESSAGE_TEXT);
 
         int tmp;
+        bzero(&tmp, sizeof(int));
+
         readn(((Listening_thread_input*) arg) -> sockfd, &tmp, sizeof(int));
         number_read = readn(((Listening_thread_input*) arg) -> sockfd, message_text, tmp);
 
