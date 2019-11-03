@@ -98,6 +98,9 @@ void* writing_thread(void* arg) {
                 break;
             }
             case '\n': {
+                if (strlen(user_message) == 0) {
+                    strcat(user_message, " ");
+                }
                 send_message_to_server(((Writing_thread_input *) arg)->sockfd, user_message, strlen(user_message));
                 bzero(user_message, ((Writing_thread_input*) arg) -> input_line_size + 1);
                 break;
