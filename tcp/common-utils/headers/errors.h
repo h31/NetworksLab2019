@@ -12,7 +12,6 @@
 #define ACCEPT_ERROR "can't accept new client"
 #define THREAD_ERROR "can't allocate a thread for a client"
 #define MUTEX_INIT_ERROR "can't initialize mutex"
-#define SOCKET_READ_ERROR "can't read from socket"
 #define SOCKET_WRITE_ERROR "can't write to socket"
 #define NO_SUCH_ELEMENT "no such element in a List"
 

@@ -53,11 +53,19 @@ void delete(List *list, Client *client, pthread_mutex_t *locker) {
     pthread_mutex_lock(locker);
 }
 
-void foreach(void (*f)(int), List *list) {
+/*
+ * It is neccessary to pass `info` through `foreach`, because
+ * we do not allocate a copy of the message for each sending
+ * and we can free then memory, that is allocated for message
+ */
+void foreach(void (*f)(Client *, char *), char *info, List *list, pthread_mutex_t *locker) {
+    pthread_mutex_lock(locker);
     Node *current = list->node;
     while (current != NULL) {
-        (*f)(current->client->id);
+        (*f)(current->client, info);
         current = current->next;
     }
+    pthread_mutex_unlock(locker);
+    free(info);
 }
 

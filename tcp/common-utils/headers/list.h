@@ -18,6 +18,6 @@ void push(List *list, Client *client, pthread_mutex_t *locker);
 
 void delete(List *list, Client *client, pthread_mutex_t *locker);
 
-void foreach(void (*f)(int), List *list);
+void foreach(void (*f)(Client *, char *), char *info, List *list, pthread_mutex_t *locker);
 
 #endif //SERVER_LIST_H

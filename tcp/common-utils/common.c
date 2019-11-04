@@ -25,11 +25,17 @@ uint16_t exclude_cliport(int argc, char *argv[]) {
     return exclude(argc, 3, argv, 2);
 }
 
-Client *allocate_client(int *id, char *name) {
+Client *new_client(int *id, char *name) {
     Client *client = (Client *) malloc(sizeof(Client));
     client->id = *id;
     client->name = name;
+    client->is_disconnected = 0;
     return client;
+}
+
+void free_client(Client *client) {
+    free(client->name);
+    free(client);
 }
 
 Env *init_env() {
