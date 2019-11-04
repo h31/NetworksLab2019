@@ -1,0 +1,7 @@
+
+#ifndef SERVER_LINUX_MESSAGES_SENDING_HANDLER_H
+#define SERVER_LINUX_MESSAGES_SENDING_HANDLER_H
+
+void message_sending_handler_send_messages(void);
+
+#endif //SERVER_LINUX_MESSAGES_SENDING_HANDLER_H
