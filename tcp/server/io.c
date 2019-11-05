@@ -4,30 +4,36 @@
 #include "../common-utils/headers/common.h"
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/list.h"
+#include "io.h"
 
-char *read_shared(Client *client, char *buffer) {
+int read_shared(Client *client, char *buffer) {
     ssize_t n;
     size_t message_size = 0;
     memset(buffer, 0, sizeof(char));
 
     /* firstly read message size, and then info */
     n = read(client->id, (void *) &message_size, HEADER_SIZE);
-    if (n <= 0) client->is_disconnected = 1;
-    else {
+    if (n <= 0) {
+        client->is_disconnected = 1;
+        return FAILURE;
+    } else {
         n = read(client->id, buffer, message_size);
-        if (n <= 0) client->is_disconnected = 1;
+        if (n <= 0) {
+            client->is_disconnected = 1;
+            return FAILURE;
+        }
     }
-    return buffer;
+    return SUCCESS;
 }
 
-char *read_clientname(int fd, char *name_bf) {
+int read_clientname(int fd, char *name_bf) {
     Client *client = new_client(&fd, EMPTY);
-    char *bf = read_shared(client, name_bf);
+    int exit_code = read_shared(client, name_bf);
     free(client);
-    return bf;
+    return exit_code;
 }
 
-char *read_message(Client *client, char *info_bf) {
+int read_message(Client *client, char *info_bf) {
     return read_shared(client, info_bf);
 }
 

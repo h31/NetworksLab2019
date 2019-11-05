@@ -6,10 +6,10 @@
 #define SUCCESS 1
 #define FAILURE 0
 
-char *read_clientname(int fd, char *name_bf);
+int read_clientname(int fd, char *name_bf);
 
 void send_message(Client *client, char *message);
 
-char *read_message(Client *client, char *info_bf);
+int read_message(Client *client, char *info_bf);
 
 #endif //SERVER_READER_H

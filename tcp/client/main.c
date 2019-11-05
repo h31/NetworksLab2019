@@ -8,69 +8,43 @@
 #include <string.h>
 #include "../common-utils/headers/common.h"
 #include "../common-utils/headers/inet_utils.h"
+#include "../common-utils/headers/errors.h"
 
-int main(int argc, char *argv[]) {
-    int sockfd;
-    ssize_t n;
-    uint16_t portno;
+int init_environment(int argc, char *argv[]) {
     socket_descriptor serv_addr;
-    struct hostent *server;
 
-    char buffer[256];
-
-    if (argc < 3) {
-        fprintf(stderr, "usage %s hostname port\n", argv[0]);
-        exit(0);
-    }
-
-    portno = exclude_cliport(argc, argv);
-
-    /* Create a socket point */
-    sockfd = create_tcpsocket();
-
-    server = gethostbyname(argv[1]);
+    uint16_t portno = exclude_cliport(argc, argv);
+    int sockfd = create_tcpsocket();
+    host_description *server = gethostbyname(argv[1]);
 
     if (server == NULL) {
-        fprintf(stderr, "ERROR, no such host\n");
-        exit(0);
+        raise_error(NO_SUCH_HOST);
     }
 
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
-    serv_addr.sin_port = htons(portno);
+    in_addr_t *in_addr = bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
+    set_clientsockdesc(&serv_addr, portno, in_addr);
 
     /* Now connect to the server */
     if (connect(sockfd, (address *) &serv_addr, sizeof(serv_addr)) < 0) {
-        perror("ERROR connecting");
-        exit(1);
+        raise_error(CONNECT_ERROR);
     }
+    return sockfd;
+}
 
-    /* Now ask for a message from the user, this message
-       * will be read by server
-    */
+int main(int argc, char *argv[]) {
+    ssize_t n;
+    int sockfd = init_environment(argc, argv);
 
-    printf("Please enter the message: ");
-    bzero(buffer, 256);
-    fgets(buffer, 255, stdin);
+    printf("Please enter your name: ");
+    char client_name[CLIENT_NAME_SIZE];
+    bzero(client_name, CLIENT_NAME_SIZE);
+    fgets(client_name, CLIENT_NAME_SIZE, stdin);
 
-    /* Send message to the server */
-    n = write(sockfd, buffer, strlen(buffer));
-
-    if (n < 0) {
-        perror("ERROR writing to socket");
-        exit(1);
+    /* Firstly send message size and then message */
+    n = write(sockfd, (char *) strlen(client_name), HEADER_SIZE);
+    if (n <= 0) {
+        raise_error(SOCKET_WRITE_ERROR);
     }
-
-    /* Now read server response */
-    bzero(buffer, 256);
-    n = read(sockfd, buffer, 255);
-
-    if (n < 0) {
-        perror("ERROR reading from socket");
-        exit(1);
-    }
-
-    printf("%s\n", buffer);
+    for (;;) {}
     return 0;
 }

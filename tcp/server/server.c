@@ -14,12 +14,13 @@ List *cache = NULL;
 
 void start_communication(Client *client) {
     while (!client->is_disconnected) {
-        char msg[MSG_SIZE];
-        char *message = read_message(client, msg);
-        if (strlen(message) != FAILURE) { // TODO govno_code
+        char message[MSG_SIZE];
+        if (read_message(client, message) != FAILURE) {
             foreach(&send_message, message, cache, locker);
         }
     }
+    delete(cache, client, locker);
+    free_client(client);
 }
 
 void start_client_scenario(void *args) {
@@ -29,9 +30,9 @@ void start_client_scenario(void *args) {
      * It is neccesary to define buffer here, because
      * we can't define and return pointer to local var's
      */
-    char name_buffer[CLIENT_NAME_SIZE];
+    char name[CLIENT_NAME_SIZE];
 
-    char *name = read_clientname(*client_id, name_buffer);
+    if (read_clientname(*client_id, name) == FAILURE) raise_error(SOCKET_READ_ERROR);
     Client *client = new_client(client_id, name);
 
     /* apply client to cache */
@@ -68,7 +69,7 @@ void start_server(const uint16_t *port) {
     int sockfd = create_tcpsocket();
 
     socket_descriptor serv_addr;
-    set_sockdescriptor(&serv_addr, *port);
+    set_servsockdesc(&serv_addr, *port);
 
     if (bind(sockfd, (address *) &serv_addr, sizeof(serv_addr)) < 0) {
         raise_error(BINDING_ERROR);
