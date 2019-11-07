@@ -3,5 +3,5 @@ project(client)
 
 set(CMAKE_C_FLAGS "-g -pthread ${CMAKE_C_FLAGS} -Wall -Wextra")
 
-set(SOURCE_FILES main.c ../common-utils/common.c ../common-utils/errors.c ../common-utils/inet_utils.c )
+set(SOURCE_FILES main.c ../common-utils/common.c ../common-utils/errors.c ../common-utils/inet_utils.c ../common-utils/io.c)
 add_executable(client ${SOURCE_FILES})

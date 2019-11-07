@@ -51,3 +51,7 @@ Env *init_env() {
     *init_structure = (struct Env) {cache, &blocker};
     return init_structure;
 }
+
+char *allocate_char_buffer(size_t size) {
+    return (char *) malloc(sizeof(char) * size);
+}

@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#include "io.h"
+#include "../common-utils/headers/io.h"
 #include "../common-utils/headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/list.h"
@@ -14,11 +14,13 @@ List *cache = NULL;
 
 void start_communication(Client *client) {
     while (!client->is_disconnected) {
-        char message[MSG_SIZE];
-        if (read_message(client, message) != FAILURE) {
-            foreach(&send_message, message, cache, locker);
+        Reader *reader = read_message(client);
+        if (reader->exit_code == SUCCESS) {
+            foreach(&send_message, reader->value, cache, locker);
         }
+        free_reader(reader);
     }
+    printf("<logger>: client with name: %s left the chat", client->name);
     delete(cache, client, locker);
     free_client(client);
 }
@@ -26,19 +28,27 @@ void start_communication(Client *client) {
 void start_client_scenario(void *args) {
     int *client_id = (int *) args;
 
-    /*
-     * It is neccesary to define buffer here, because
-     * we can't define and return pointer to local var's
-     */
-    char name[CLIENT_NAME_SIZE];
+    Reader *reader = read_clientname(*client_id);
+    if (reader->exit_code == FAILURE) {
+        free_reader(reader);
+        raise_error(SOCKET_READ_ERROR);
+    }
 
-    if (read_clientname(*client_id, name) == FAILURE) raise_error(SOCKET_READ_ERROR);
-    Client *client = new_client(client_id, name);
+    /* copying client_name is necessary for reader deallocating */
+    size_t len = strlen(reader->value);
+    char *client_name = allocate_char_buffer(len);
+    bcopy(reader->value, client_name, len);
+    Client *client = new_client(client_id, client_name);
+
+    free_reader(reader);
 
     /* apply client to cache */
     push(cache, client, locker);
 
-    char *welcome_msg = strcat(name, ": joined to the chat!");
+    // TODO ???
+    printf("<logger>: client with name %s is connected", client->name);
+    // TODO ???
+    char *welcome_msg = strcat(client_name, ": joined to the chat!");
     foreach(&send_message, welcome_msg, cache, locker);
 
     start_communication(client);

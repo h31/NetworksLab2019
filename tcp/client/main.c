@@ -9,8 +9,9 @@
 #include "../common-utils/headers/common.h"
 #include "../common-utils/headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
+#include "../common-utils/headers/io.h"
 
-int init_environment(int argc, char *argv[]) {
+void start_client(int argc, char *argv[]) {
     socket_descriptor serv_addr;
 
     uint16_t portno = exclude_cliport(argc, argv);
@@ -28,23 +29,17 @@ int init_environment(int argc, char *argv[]) {
     if (connect(sockfd, (address *) &serv_addr, sizeof(serv_addr)) < 0) {
         raise_error(CONNECT_ERROR);
     }
-    return sockfd;
-}
-
-int main(int argc, char *argv[]) {
-    ssize_t n;
-    int sockfd = init_environment(argc, argv);
 
     printf("Please enter your name: ");
     char client_name[CLIENT_NAME_SIZE];
     bzero(client_name, CLIENT_NAME_SIZE);
     fgets(client_name, CLIENT_NAME_SIZE, stdin);
 
-    /* Firstly send message size and then message */
-    n = write(sockfd, (char *) strlen(client_name), HEADER_SIZE);
-    if (n <= 0) {
-        raise_error(SOCKET_WRITE_ERROR);
-    }
+    /* firstly send client name */
+    send_message(sockfd, client_name);
     for (;;) {}
-    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    start_client(argc, argv);
 }
