@@ -20,9 +20,6 @@ Client *first_client;
 int global_sockfd;
 PollfdList *pollfd_list;
 
-void server_sigint_handler(int signo);
-
-
 /*------------------- SERVER WORK WITH POLLFDS LIST ---------------------------------*/
 void server_init_pollfd_list() {
     free(pollfd_list);
