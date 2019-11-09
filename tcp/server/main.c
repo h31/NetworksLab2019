@@ -87,34 +87,34 @@ void server_delete_client(Client *client) {
 }
 
 /*------------------- SERVER GET MESSAGE ---------------------------------*/
-Message serv_get_message(Client *client) {
-    Message message;
+Message *serv_get_message(Client *client) {
+    Message *message = calloc(1, sizeof(Message));
 
-    message.err = message.size = 0;
+    message->err = message->size = 0;
 
-    if (read(client->sockfd, &message.size, HEADER_SIZE) <= 0) {
-        message.err = 1;
+    if (read(client->sockfd, &message->size, HEADER_SIZE) <= 0) {
+        message->err = 1;
         return message;
     }
 
-    message.buffer = calloc(message.size, sizeof(char));
+    message->buffer = calloc(message->size, sizeof(char));
 
-    if (readN(client->sockfd, message.buffer, message.size) <= 0) {
-        message.err = 1;
+    if (readN(client->sockfd, message->buffer, message->size) <= 0) {
+        message->err = 1;
         return message;
     }
     return message;
 }
 
 /*------------------- SERVER SEND MESSAGE ---------------------------------*/
-void serv_send_response(Client *client, Message message) {
+void serv_send_response(Client *client, Message *message) {
 
-    if (write(client->sockfd, &message.size, HEADER_SIZE) <= 0) {
+    if (write(client->sockfd, &message->size, HEADER_SIZE) <= 0) {
         server_delete_client(client);
         return;
     }
 
-    if (write(client->sockfd, message.buffer, message.size) <= 0) {
+    if (write(client->sockfd, message->buffer, message->size) <= 0) {
         server_delete_client(client);
         return;
     }
@@ -123,11 +123,11 @@ void serv_send_response(Client *client, Message message) {
 /*------------------- SERVER PROCESS CLIENT -------------------------------------*/
 void serv_process_client(Client *client) {
 
-    Message message = serv_get_message(client);
-    if (message.err == 0) {
-        printf("\nRECEIVED:%s:message = %s(size = %d)\n", client->name, message.buffer, message.size);
-        message.buffer = str_concat(str_concat(client->name, ":"), message.buffer);
-        message = *get_new_message(message.buffer);
+    Message *message = serv_get_message(client);
+    if (message->err == 0) {
+        printf("\nRECEIVED:%s:message = %s(size = %d)\n", client->name, message->buffer, message->size);
+        message->buffer = str_concat(str_concat(client->name, ":"), message->buffer);
+        message = get_new_message(message->buffer);
 
         Client *another_client = first_client->next_client;
         while (another_client != NULL) {
@@ -137,8 +137,8 @@ void serv_process_client(Client *client) {
 
                 serv_send_response(another_client, message);
                 printf("SENDED:message = %s(size = %d) to %s\n",
-                       message.buffer,
-                       message.size,
+                       message->buffer,
+                       message->size,
                        another_client->name);
 
             }
@@ -151,6 +151,8 @@ void serv_process_client(Client *client) {
                 client->name, client->sockfd);
         server_delete_client(client);
     }
+    free(message->buffer);
+    free(message);
 
 }
 
@@ -281,8 +283,8 @@ int main(int argc, char *argv[]) {
 
                     new_client->sockfd = newsockfd;
 
-                    Message name_mess = serv_get_message(new_client);
-                    new_client->name = name_mess.buffer;
+                    Message *name_mess = serv_get_message(new_client);
+                    new_client->name = name_mess->buffer;
                     new_client->sockaddr = &cli_addr;
                     new_client->status = CL_STAT_ON;
                     printf("New client accepted: name = %s, sockfd = %d\n", new_client->name,

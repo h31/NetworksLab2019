@@ -42,6 +42,8 @@ void client_send_message_from_cmd(int sockfd) {
 
     client_send_message(sockfd, message);
 
+    free(message.buffer);
+
 }
 
 void client_send_message_loop(int sockfd) {
@@ -71,6 +73,8 @@ void client_get_response(int sockfd) {
 
     printf("\r%s\n%s:", message.buffer, user_name);
     fflush(stdout);
+
+    free(message.buffer);
 }
 
 void client_get_response_loop(int sockfd) {
