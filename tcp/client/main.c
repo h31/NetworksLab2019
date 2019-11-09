@@ -11,6 +11,27 @@
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/io.h"
 
+void replace(char *buff, size_t size) {
+    for (size_t i = 0; i < size; ++i) {
+        if (buff[i] == '\n') buff[i] = '\0';
+    }
+}
+
+void sendm(int id, size_t size) {
+    char message[size];
+    bzero(message, size);
+    fgets(message, (int) size, stdin);
+    replace(message, size);
+    send_message(id, message);
+}
+
+void *terminal(void *args) {
+    int *client_id = (int *) args;
+    for (;;) {
+        sendm(*client_id, MESSAGE_SIZE);
+    }
+}
+
 void start_client(int argc, char *argv[]) {
     socket_descriptor serv_addr;
 
@@ -30,14 +51,24 @@ void start_client(int argc, char *argv[]) {
         raise_error(CONNECT_ERROR);
     }
 
-    printf("Please enter your name: ");
-    char client_name[CLIENT_NAME_SIZE];
-    bzero(client_name, CLIENT_NAME_SIZE);
-    fgets(client_name, CLIENT_NAME_SIZE, stdin);
+    printf("Please enter your name: \n");
 
     /* firstly send client name */
-    send_message(sockfd, client_name);
-    for (;;) {}
+    sendm(sockfd, CLIENT_NAME_SIZE);
+
+    Client *this = empty_client(&sockfd);
+
+    pthread_t thread_id;
+    pthread_create(&thread_id, NULL, &terminal, &sockfd);
+
+    for (;;) {
+        Reader *reader = read_message(this);
+        if (reader->exit_code == FAILURE) raise_error(SOCKET_READ_ERROR);
+        else {
+            printf("%s\n", reader->value);
+            free_reader(reader);
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {

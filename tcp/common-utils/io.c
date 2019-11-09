@@ -6,10 +6,12 @@
 #include "headers/list.h"
 #include "headers/io.h"
 
+#define COLON " : "
+
 Reader *new_reader(int exit_code, size_t size) {
     Reader *reader = (Reader *) malloc(sizeof(Reader));
     reader->exit_code = exit_code;
-    reader->value = (char *) malloc(sizeof(char) * size);
+    reader->value = (char *) malloc(sizeof(char) * (size + 1));
     return reader;
 }
 
@@ -21,7 +23,7 @@ Reader *read_shared(Client *client) {
     ssize_t n;
     size_t message_size = 0;
 
-    /* firstly read message size, and then info */
+    /* firstly read message size, and then message */
     n = read(client->id, (void *) &message_size, HEADER_SIZE);
     if (n <= 0) {
         client->is_disconnected = 1;
@@ -38,9 +40,9 @@ Reader *read_shared(Client *client) {
 }
 
 Reader *read_clientname(int fd) {
-    Client *client = new_client(&fd, allocate_char_buffer(EMPTY));
+    Client *client = empty_client(&fd);
     Reader *reader = read_shared(client);
-    free(client);
+    free_client(client);
     return reader;
 }
 
@@ -49,10 +51,10 @@ Reader *read_message(Client *client) {
 }
 
 void send_message(int fd, char *message) {
-    size_t info_size = strlen(message);
+    size_t info_size = strlen(message) + 1;
     ssize_t n;
 
-    /* firstly write info_size as header to client, and then info */
+    /* firstly write message size as header to client, and then message */
     n = write(fd, &info_size, HEADER_SIZE);
     if (n < 0) raise_error(SOCKET_WRITE_ERROR);
     n = write(fd, message, info_size);

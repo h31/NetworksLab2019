@@ -5,6 +5,7 @@
 #include <ntsid.h>
 #include <pthread.h>
 
+#define MESSAGE_SIZE 1024
 #define CLIENT_NAME_SIZE 16
 #define HEADER_SIZE sizeof(size_t)
 
@@ -24,6 +25,8 @@ typedef struct Env {
 Env *init_env();
 
 Client *new_client(int *id, char *name);
+
+Client *empty_client(int *fd);
 
 uint16_t exclude_servport(int argc, char *argv[]);
 

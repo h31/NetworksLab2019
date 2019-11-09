@@ -21,9 +21,10 @@ void pop(List *list) {
 int exists(List *list, Client *client) {
     Node *current = list->node;
     while (current != NULL) {
-        if (eq(current->client, client)) return 0;
+        if (eq(current->client, client)) return 1;
+        current = current->next;
     }
-    return 1;
+    return 0;
 }
 
 void push(List *list, Client *client, pthread_mutex_t *locker) {

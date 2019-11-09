@@ -33,6 +33,14 @@ Client *new_client(int *id, char *name) {
     return client;
 }
 
+Client *empty_client(int *fd) {
+    Client *client = (Client *) malloc(sizeof(Client));
+    client->id = *fd;
+    client->name = allocate_char_buffer(EMPTY);
+    client->is_disconnected = 0;
+    return client;
+}
+
 void free_client(Client *client) {
     free(client->name);
     free(client);
@@ -53,5 +61,5 @@ Env *init_env() {
 }
 
 char *allocate_char_buffer(size_t size) {
-    return (char *) malloc(sizeof(char) * size);
+    return (char *) malloc(sizeof(char) * (size + 1));
 }

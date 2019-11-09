@@ -8,6 +8,9 @@
 
 #define MAX_QUEUED_CLIENTS 7
 
+#define JOIN " joined to the chat!"
+#define COLON " : "
+
 /* global vars between server functions */
 pthread_mutex_t *locker = NULL;
 List *cache = NULL;
@@ -16,13 +19,19 @@ void start_communication(Client *client) {
     while (!client->is_disconnected) {
         Reader *reader = read_message(client);
         if (reader->exit_code == SUCCESS) {
-            foreach(&send_message, reader->value, cache, locker);
+            char *message = allocate_char_buffer(strlen(client->name) + strlen(COLON) + strlen(reader->value));
+            /* insert client name, colon and message */
+            strcpy(message, client->name);
+            strcat(message, COLON);
+            strcat(message, reader->value);
+
+            foreach(&send_message, message, cache, locker);
+            free(message);
         }
         free_reader(reader);
     }
-    printf("<logger>: client with name: %s left the chat", client->name);
+    printf("<logger>: client left the chat, name: %s\n", client->name);
     delete(cache, client, locker);
-    free_client(client);
 }
 
 void start_client_scenario(void *args) {
@@ -37,7 +46,7 @@ void start_client_scenario(void *args) {
     /* copying client_name is necessary for reader deallocating */
     size_t len = strlen(reader->value);
     char *client_name = allocate_char_buffer(len);
-    bcopy(reader->value, client_name, len);
+    strcpy(client_name, reader->value);
     Client *client = new_client(client_id, client_name);
 
     free_reader(reader);
@@ -45,12 +54,15 @@ void start_client_scenario(void *args) {
     /* apply client to cache */
     push(cache, client, locker);
 
-    // TODO ???
-    printf("<logger>: client with name %s is connected", client->name);
-    // TODO ???
-    char *welcome_msg = strcat(client_name, ": joined to the chat!");
-    foreach(&send_message, welcome_msg, cache, locker);
+    char *welcome_msg = allocate_char_buffer(strlen(client->name) + strlen(JOIN));
+    /* insert client name and join literal */
+    strcpy(welcome_msg, client_name);
+    strcat(welcome_msg, JOIN);
 
+    printf("<logger>: %s\n", welcome_msg);
+
+    foreach(&send_message, welcome_msg, cache, locker);
+    free(welcome_msg);
     start_communication(client);
 }
 
