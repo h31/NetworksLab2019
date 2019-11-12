@@ -16,14 +16,12 @@
 #define time_length 50
 #define name_length 40
 #define total_length (msg_length + time_length + name_length + sizeof("<>:\r\n"))
-#define max_clients 50
+#define max_clients 2
 #define EXIT "/exit"
 
 int clients_sockets[max_clients];
 pthread_t clients_threads[max_clients];
-int clients_numb = 0, ret;
 pthread_mutex_t mp;
-pthread_mutexattr_t matr;
 
 int readN(int sock, char* buf, int length, int flags);
 int readFix(int sock, char* buf, int bufSize, int flags);
@@ -48,7 +46,7 @@ void* clientHandler(void* arg)
 
         res = readFix(sock, msg_buf, msg_length, 0);
         if (res <= 0) {
-            perror("\nA client left chat\n");
+            perror("A client left chat:");
 
 			pthread_mutex_lock(&mp);
 			clients_sockets[pos] = 0;
@@ -69,7 +67,7 @@ void* clientHandler(void* arg)
         printf("%s\n", text);
 		
 		pthread_mutex_lock(&mp);
-		for(int i = 0; i < clients_numb; i++) {
+		for(int i = 0; i < max_clients; i++) {
 			if (clients_sockets[i] != 0) {
 				res = sendFix(clients_sockets[i], text, 0);
 				if (res <= 0) {
@@ -90,34 +88,51 @@ void* acceptHandler(void* arg)
 	int server = (int) arg;
     struct sockaddr_in cli_addr;
 	unsigned int clilen = sizeof(cli_addr);
-	int i = 0;
+	int cli_sock;
 	int res;
 	for (;;) {
-
-        clients_sockets[i] = accept(server, (struct sockaddr*) &cli_addr, &clilen);
-		if (clients_sockets[i] < 0) {
+		int free_pos = -1;
+		pthread_mutex_lock(&mp);
+        for (int i = 0; i < max_clients; i++) {
+			if (clients_sockets[i] == 0) {
+				free_pos = i;
+				break;
+			}
+		}
+		pthread_mutex_unlock(&mp);
+		
+		if (free_pos == -1) {
+			continue;
+		}
+		
+		cli_sock = accept(server, (struct sockaddr*) &cli_addr, &clilen);
+		if (cli_sock < 0) {
 			perror("ERROR on accept");
 			exit(1);
 		}
 		
+		pthread_mutex_lock(&mp);
+		clients_sockets[free_pos] = cli_sock;
+		pthread_mutex_unlock(&mp);	
+		
         puts("\nNew client connected!\n");
-
-        pthread_mutex_lock(&mp);
-		clients_numb = i + 1;
-        pthread_mutex_unlock(&mp);
-
-        res = pthread_create(&clients_threads[i], NULL, clientHandler, (void*)(i));
+       
+        res = pthread_create(&clients_threads[free_pos], NULL, clientHandler, (void*)(free_pos));
         if (res) {
             printf("Error while creating new thread\n");
         }
 		
-		i++;
     }
 
 }
 
 int main(int argc, char** argv)
 {
+    
+    for (int i = 0; i < max_clients; i++) {
+        clients_sockets[i] = 0;
+    }
+
     int port = 0;
     if (argc < 2) {
         printf("Using default port %d\n", DEF_PORT);
@@ -128,9 +143,10 @@ int main(int argc, char** argv)
 
 	printf ("Enter <%s> to quit\n", EXIT);
 	
-	ret = pthread_mutexattr_init(&matr);
-    ret = pthread_mutexattr_setpshared(&matr, PTHREAD_PROCESS_PRIVATE);
-    pthread_mutex_init(&mp,&matr);
+	if (pthread_mutex_init(&mp, NULL) != 0) {
+		perror("ERROR on mutex:");
+		exit(1);
+	}
 	
     struct sockaddr_in serv_addr;
     serv_addr.sin_family = AF_INET;
@@ -178,7 +194,7 @@ int main(int argc, char** argv)
 			strcpy(text, "/goodbye");
 			
 	        pthread_mutex_lock(&mp);
-			for (int i = 0; i < clients_numb; i++) {
+			for (int i = 0; i < max_clients; i++) {
 				if (clients_sockets[i] != 0){
 					sendFix(clients_sockets[i], text, 0);
 					close(clients_sockets[i]);
