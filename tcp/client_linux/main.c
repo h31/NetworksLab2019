@@ -6,10 +6,11 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include <string.h>
 
-#define MAX_MESSAGE_SIZE 5000;
+#define MAX_MESSAGE_SIZE 5000
 
 int sendContent(int destination, char *content);
 

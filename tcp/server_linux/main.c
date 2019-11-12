@@ -26,7 +26,7 @@ void *handleClient(void *args);
 
 char *readMessage(ClientsLinkedList *client);
 
-int readN(int socket, char *buf, int length);
+int readN(int socket, char *buf, uint32_t length);
 
 int sendAll(char *name, char *buffer);
 
@@ -36,9 +36,9 @@ int printErrorAndExit(char *errorText);
 
 void clientDisconnected(ClientsLinkedList *clientToExit);
 
-ClientsLinkedList *createLinkedList(int sock, char *name);
+ClientsLinkedList *createLinkedList(int sock);
 
-ClientsLinkedList *addClient(int newsockfd, char *name);
+ClientsLinkedList *addClient(int newsockfd);
 
 void shutdownServer();
 
@@ -81,8 +81,7 @@ int main(int argc, char *argv[]) {
 
     //
     listen(sockfd, 5);
-    int clientAddressLength;
-    clientAddressLength = sizeof(clientAddress);
+    socklen_t clientAddressLength = sizeof(clientAddress);
 
     int newClientSocket;
 
@@ -95,13 +94,13 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        ClientsLinkedList *newClient = addClient(newClientSocket, NULL);
+        ClientsLinkedList *newClient = addClient(newClientSocket);
         char *nickName = readMessage(newClient);
         newClient->name = nickName;
 
         if (strcmp(nickName, "") == 0) {
             perror("Error! Client name should not be empty.");
-            continue;
+            continue; //TODO free
         }
 
         pthread_t tid;
@@ -115,20 +114,19 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-ClientsLinkedList *addClient(int newsockfd, char *name) {
+ClientsLinkedList *addClient(int newsockfd) {
     printf("addClient\n");
     if (numberOfClients < 0) {
         perror("Wait, what the hell?");
         shutdownServer();
     }
     if (numberOfClients == 0) {
-        first = createLinkedList(newsockfd, name);
+        first = createLinkedList(newsockfd);
         last = first;
         numberOfClients++;
         return first;
     }
-    ClientsLinkedList *newClient = (ClientsLinkedList *) malloc(sizeof(ClientsLinkedList));
-    newClient->name = name;
+    ClientsLinkedList *newClient = (ClientsLinkedList *) createLinkedList(newsockfd);
     newClient->sock = newsockfd;
     newClient->next = NULL;
     last->next = newClient;
@@ -141,13 +139,14 @@ void shutdownServer() {
     printf("shutdownServer\n");
     shutdown(sockfd, SHUT_RDWR);
     close(sockfd);
+
 }
 
-int readN(int socket, char *buf, int length) {
+int readN(int socket, char *buf, uint32_t length) {
     printf("readN\n");
     int result = 0;
-    int readedBytes = 0;
-    int sizeMsg = length;
+    uint32_t readedBytes = 0;
+    uint32_t sizeMsg = length;
     while (sizeMsg > 0) {
         readedBytes = read(socket, buf + result, sizeMsg);
         if (readedBytes <= 0) {
@@ -175,14 +174,18 @@ char *readMessage(ClientsLinkedList *client) {
     operationCode = readN(client->sock, &size, sizeof(int));
 
     //Проверяем всё ли в порядке с прочтением длины
+    printf("Проверяем всё ли в порядке с прочтением длины: %d\n", operationCode);
     if (operationCode < 0) {
         perror("ERROR reading from socket");
+        clientDisconnected(client);
+
         exit(EXIT_FAILURE);
     }
 
     if (operationCode == 0) {
-        perror("HE JUST LEFT AND SAID NOTHING!!!!");
+        perror("HE JUST LEFT AND SAID NOTHING!!!!\n");
         clientDisconnected(client);
+
         return NULL;
     }
 
@@ -191,14 +194,17 @@ char *readMessage(ClientsLinkedList *client) {
         size = MAX_MESSAGE_SIZE;
     }
 
+    printf("Выделяем память и читаем само сообщение\n");
     //Выделяем память под полученную длину
     char *buffer = (char *) malloc(size);
     //Читаем в этот буфер заранее известное кол-во данных
     operationCode = readN(client->sock, buffer, size);
 
+    printf("Проверяем всё ли в порядке с чтением сообщения: %d", operationCode);
     //Проверяем всё ли в порядке с чтением сообщения
     if (operationCode < 0) {
-        perror("ERROR reading from socket");
+        perror("ERROR reading from socket\n");
+
         exit(EXIT_FAILURE);
     }
 
@@ -213,10 +219,12 @@ int sendAll(char *name, char *buffer) {
     formedMessage[MAX_MESSAGE_SIZE - 1] = '\0';
     ClientsLinkedList *currentClient = first;
     for (int i = 0; i < numberOfClients; ++i) {
+        if (strcmp(currentClient->name, name) == 0) {
+            continue;
+        }
         sendContent(currentClient->sock, formedMessage);
         currentClient = currentClient->next;
     }
-
 }
 
 int sendContent(int destination, char *content) {
@@ -231,6 +239,7 @@ int sendContent(int destination, char *content) {
     //Проверяем всё ли в порядке с нашей записью
     if (operationCode <= 0) {
         printf("Ошибка передачи\n");
+
     }
     printf("Отправляю сообщение\n");
     //Теперь вслед передаём само сообщение
@@ -262,11 +271,11 @@ void *handleClient(void *arg) {
     }
 }
 
-ClientsLinkedList *createLinkedList(int sock, char *name) {
+ClientsLinkedList *createLinkedList(int sock) {
     printf("createLinkedList\n");
     ClientsLinkedList *temp = (ClientsLinkedList *) malloc(sizeof(ClientsLinkedList));
     temp->sock = sock;
-    temp->name = name;
+    temp->name = NULL;
     temp->next = NULL;
     return temp;
 }
