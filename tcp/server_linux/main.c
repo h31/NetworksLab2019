@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
 
         if (strcmp(nickName, "") == 0) {
             perror("Error! Client name should not be empty.");
-            continue; //TODO free
+            clientDisconnected(newClient);
         }
 
         pthread_t tid;

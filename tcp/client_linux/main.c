@@ -6,9 +6,11 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <unistd.h>
 
 #include <string.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <asm/errno.h>
 
 #define MAX_MESSAGE_SIZE 5000
 
@@ -18,21 +20,19 @@ void *readingMessages(void *args);
 
 void *sendingMessages(void *arg);
 
-char *readMessage(int fromSock);
-
 int readN(int socket, char *buf, int length);
 
 void removeNewLines(char *str);
 
+//Сокет для соединения с сервером
+int sockfd;
+
 /*
- * Основная функция для старта сервера
+ * Основная функция для старта клиента
  * */
 int main(int argc, char *argv[]) {
 
     printf("Client started with PID = %d\n", getpid());
-
-    //Сокет для соединения с сервером
-    int sockfd;
     //Номер порта
     uint16_t portNumber;
     //Адрес сервера
@@ -42,10 +42,12 @@ int main(int argc, char *argv[]) {
     //Имя пользователя
     char *nickname;
 
+    struct pollfd fdRead;
+
     //Проверка на количество аргументов
     if (argc != 4) {
         fprintf(stderr, "usage %s hostname port nickname\n", argv[0]);
-        exit(EXIT_FAILURE);
+        getchar(); exit(EXIT_FAILURE); 
     }
 
     //Преобразуем порт из строки в int
@@ -58,7 +60,12 @@ int main(int argc, char *argv[]) {
     //Проверяем корректно ли открылся сокет
     if (sockfd < 0) {
         perror("ERROR opening socket");
-        exit(EXIT_FAILURE);
+        getchar(); exit(EXIT_FAILURE); 
+    }
+
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
+        perror("ERROR making socket nonblock");
+        getchar(); exit(EXIT_FAILURE); 
     }
 
     //Получаем информацию о хосте с помощью адреса
@@ -68,7 +75,7 @@ int main(int argc, char *argv[]) {
     //Проверяем удалось ли получить информацию о хосте
     if (server == NULL) {
         fprintf(stderr, "ERROR, no such host\n");
-        exit(EXIT_FAILURE);
+        getchar(); exit(EXIT_FAILURE); 
     }
 
     //Читаем имя пользователя из аргумента
@@ -78,7 +85,7 @@ int main(int argc, char *argv[]) {
     //Проверяем не пустое ли имя пользователя
     if (strcmp(nickname, "") == 0) {
         fprintf(stderr, "ERROR, nickname is empty\n");
-        exit(EXIT_FAILURE);
+        getchar(); exit(EXIT_FAILURE); 
     }
 
     //На всякий случай обнуляем адрес сервера
@@ -93,27 +100,45 @@ int main(int argc, char *argv[]) {
 
     printf("Подключаюсь к серверу\n");
     //Подключаемся к серверу
-    if (connect(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
-        perror("ERROR connecting");
-        exit(EXIT_FAILURE);
+
+    while (connect(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
+        //Не представляю как это работает
+        //То, что ниже - не работает
     }
+
+//    int errcode;
+//    for (;;) {
+//        errcode = connect(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
+//        if (errcode > 0){
+//            break;
+//        }
+//        if (errcode == EINPROGRESS) {
+//            continue;
+//        } else {
+//            perror("ERROR connecting");
+//            getchar();
+//            exit(EXIT_FAILURE);
+//        }
+//    }
+
+    fdRead.fd = sockfd;
+    fdRead.events = POLLIN;
 
     //Первым делом посылаем имя пользователя
     sendContent(sockfd, nickname);
 
-
     //Создаём поток на чтение сообщений
     pthread_t tid_read;
-    if (pthread_create(&tid_read, NULL, (void *) readingMessages, &sockfd) != 0) {
+    if (pthread_create(&tid_read, NULL, (void *) readingMessages, &fdRead) != 0) {
         printf("Read thread has not created");
-        exit(EXIT_FAILURE);
+        getchar(); exit(EXIT_FAILURE); 
     }
 
     //создаём поток на отправку сообщений
     pthread_t tid_send;
     if (pthread_create(&tid_send, NULL, (void *) sendingMessages, &sockfd)) {
         printf("Send thread has not created");
-        exit(EXIT_FAILURE);
+        getchar(); exit(EXIT_FAILURE); 
     }
 
     //джойним потоки и заканчиваем работу
@@ -162,20 +187,65 @@ void *sendingMessages(void *arg) {
 
 //Функция для запуска в потоке на чтение сообщений с сервера.
 void *readingMessages(void *arg) {
-    //Достаём наш сокет из аргументов
-    int readSocket = *(int *) arg;
+    struct pollfd fdRead = *(struct pollfd *) arg;
+    int operationCode;
+    char *buffer = NULL;
+    size_t bufferSize;
 
     //Цикл в котором мы читаем входящие сообщения
     for (;;) {
-        //Достаём буфер прочтённого сообщения
-        char *readBuffer = readMessage(readSocket);
-        //Подпираем это всё костылём
-        removeNewLines(readBuffer);
-        //Выводим полученное сообщение
-        printf("\n%s\n", readBuffer);
+        operationCode = poll(&fdRead, 1, -1);
+        if (operationCode < 0) {
+            printf("Error using POLL!\n");
+            getchar(); exit(EXIT_FAILURE); 
+        }
+        if (fdRead.revents == 0) {
+            continue;
+        }
+        if (fdRead.revents != POLLIN) {
+            printf("Unexpected number in revents");
+            getchar(); exit(EXIT_FAILURE); 
+        }
+
+        //Размер сообщения
+        bufferSize = 0;
+        //Читаем сначала длину сообщения в переменную size
+        operationCode = readN(fdRead.fd, &bufferSize, sizeof(int));
+        if (operationCode < 0) {
+            printf("Error reading from socket!\n");
+            getchar(); exit(EXIT_FAILURE); 
+        }
+        if (operationCode == 0) {
+            printf("Server is now offline.");
+            exit(EXIT_SUCCESS);
+        }
+
+        operationCode = poll(&fdRead, 1, -1);
+        if (operationCode < 0) {
+            printf("Error using POLL!\n");
+            getchar(); exit(EXIT_FAILURE); 
+        }
+        if (fdRead.revents != POLLIN) {
+            printf("Unexpected number in revents");
+            getchar(); exit(EXIT_FAILURE); 
+        }
+
+        //Выделяем память под полученную длину
+        buffer = (char *) malloc(bufferSize);
+        //Читаем в этот буфер заранее известное кол-во данных
+        operationCode = readN(fdRead.fd, buffer, bufferSize);
+        if (operationCode < 0) {
+            printf("Error reading from socket!\n");
+            getchar(); exit(EXIT_FAILURE); 
+        }
+        if (operationCode == 0) {
+            printf("Server is now offline.");
+            exit(EXIT_SUCCESS);
+        }
+
+        printf("\n%s\n", buffer);
         fflush(stdout);
-        //Отпускаем память нашего буфера, так как больше этот текст нам не нужен
-        free(readBuffer);
+        free(buffer);
     }
 }
 
@@ -193,42 +263,6 @@ int readN(int socket, char *buf, int length) {
         sizeMsg -= readedBytes;
     }
     return result;
-}
-
-//Метод прочтения одного сообщения
-char *readMessage(int fromSock) {
-    //Код операции (Если меньше 0 то всё плохо)
-    int operationCode;
-    //Размер сообщения
-    int size;
-
-    //Читаем сначала длину сообщения в переменную size
-    operationCode = readN(fromSock, &size, sizeof(int));
-
-    //Проверяем всё ли в порядке с прочтением длины
-    if (operationCode < 0) {
-        perror("ERROR reading from socket");
-        exit(EXIT_FAILURE);
-    }
-
-    //Вдруг нам пришлют MAX_INT, чё мы потом будем делать когда выделим столько памяти
-    if (size > MAX_MESSAGE_SIZE) {
-        size = MAX_MESSAGE_SIZE;
-    }
-
-    //Выделяем память под полученную длину
-    char *buffer = (char *) malloc(size);
-    //Читаем в этот буфер заранее известное кол-во данных
-    operationCode = readN(fromSock, buffer, size);
-
-    //Проверяем всё ли в порядке с чтением сообщения
-    if (operationCode < 0) {
-        perror("ERROR reading from socket");
-        exit(EXIT_FAILURE);
-    }
-
-    //Возвращаем наш великолепный буффер
-    return buffer;
 }
 
 //Аналогично readMessage, только операция отправки текста
