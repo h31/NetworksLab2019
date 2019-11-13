@@ -1,0 +1,2 @@
+all:
+	gcc -Wall -Wextra server.c -lpthread -o server.o
