@@ -16,7 +16,7 @@
 #define time_length 50
 #define name_length 40
 #define total_length (msg_length + time_length + name_length + sizeof("<>:\r\n"))
-#define max_clients 2
+#define max_clients 50
 #define EXIT "/exit"
 
 int clients_sockets[max_clients];
