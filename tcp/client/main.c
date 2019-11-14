@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <poll.h>
 #include <fcntl.h>
+#include <errno.h>
 #include "../common.h"
 
 #define MAX_MESSAGE_SIZE 256
@@ -162,6 +163,9 @@ int main(int argc, char *argv[]) {
 
     /* Now connect to the server */
     while (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
+        if (errno != EINPROGRESS) {
+            PERROR_AND_EXIT("Server isn't runing");
+        }
     }
     printf("Connected to server \n");
 

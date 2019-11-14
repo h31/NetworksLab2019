@@ -60,7 +60,7 @@ Client *get_new_client_empty() {
 }
 
 #define PERROR_AND_EXIT(message){\
-    perror("ERROR opening socket");\
+    perror(message);\
     exit(1);\
 }
 
