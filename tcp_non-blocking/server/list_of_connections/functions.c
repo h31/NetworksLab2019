@@ -50,6 +50,13 @@ void list_of_connections_remove(int sockfd) {
 }
 
 
+// excluding initial_socket
 int list_of_connections_number_of_sockets_with_data(void) {
-    return poll(list_of_connections, (nfds_t) MAX_NUMBER_OF_CONNECTED_USERS, 0);
+    return poll(list_of_connections + 1, (nfds_t) MAX_NUMBER_OF_CONNECTED_USERS - 1, 0);
+}
+
+
+// only initial_socket
+int list_of_connections_is_initial_socket_not_empty(void) {
+    return poll(list_of_connections, (nfds_t) 1, 0);
 }

@@ -3,8 +3,6 @@
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <signal.h>
 #include "list_of_users/list_of_users.h"
 #include "list_of_connections/list_of_connections.h"
@@ -28,19 +26,6 @@ void add_user_info_(int user_sockfd) {
     }
 }
 
-
-void check_errno_() {
-    if (errno != EWOULDBLOCK) {
-        fprintf(stdout, "ERROR: something wrong while accepting (accepting code != 'EWOULDBLOCK'\n");
-    }
-}
-
-// making initial-socket non-blocking
-void make_socket_nonblocking_(int sockfd) {
-    if (fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0 ) | O_NONBLOCK ) < 0) {
-        printf("error in fcntl errno=%i\n", errno);
-    }
-}
 
 // make socket address reusable
 void make_socket_addr_reusable_(int sockfd) {
@@ -76,8 +61,6 @@ void setup_initial_socket_(int* initial_socket, uint16_t port_number) {
         exit(1);
     }
 
-    make_socket_nonblocking_(*initial_socket);
-
     make_socket_addr_reusable_(*initial_socket);
 
     init_socket_structure_(port_number, &serv_addr);
@@ -87,7 +70,7 @@ void setup_initial_socket_(int* initial_socket, uint16_t port_number) {
 
 
 int main(int argc, char* argv[]) {
-    int initial_socket, newsockfd;
+    int initial_socket;
     unsigned int clilen;
     struct sockaddr_in cli_addr;
 
@@ -108,12 +91,13 @@ int main(int argc, char* argv[]) {
     // чтобы не крашиться при попытке записать в закрытый сокет
     signal(SIGPIPE, SIG_IGN);
 
+    list_of_connections_add(initial_socket);
+
     while(1) {
-        newsockfd = accept(initial_socket, (struct sockaddr *) &cli_addr, &clilen);
 
-        check_errno_();
-
-        add_user_info_(newsockfd);
+        if (list_of_connections_is_initial_socket_not_empty()) {
+            add_user_info_( accept(initial_socket, (struct sockaddr *) &cli_addr, &clilen) );
+        }
 
         message_receiving_handler_read_messages();
 
