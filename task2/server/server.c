@@ -1,11 +1,3 @@
-//
-// Created by Malik Hiraev on 03.10.2019.
-//
-
-/**
- * https://www.ibm.com/support/knowledgecenter/en/ssw_ibm_i_71/rzab6/poll.htm
- */
-
 #include "server.h"
 
 static char *divider = " : ";
