@@ -15,8 +15,8 @@ struct Client *get_first_client();
 
 unsigned get_num_of_clients();
 
-void accept_client(struct Client *new_client);
+void accept_client(Client *new_client);
 
-void remove_client(struct Client *dead_client);
+void remove_client(Client *dead_client);
 
 #endif //NETWORKSLAB2019_CLIENTS_HANDLER_H

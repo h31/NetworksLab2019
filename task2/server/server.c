@@ -71,8 +71,8 @@ static Message *build_message_with_username(Client *sender) {
     strcpy(msg, sender->name);
     strcat(msg, divider);
     strcat(msg, message->msg);
-    Message *message_with_username = (struct Message *) malloc(sizeof(struct Message));
-    *message_with_username = (struct Message) {msg, full_msg_size};
+    Message *message_with_username = (Message *) malloc(sizeof(Message));
+    *message_with_username = (Message) {msg, full_msg_size};
     return message_with_username;
 }
 
@@ -112,7 +112,7 @@ static bool read_msg_size(Client *client) {
     if (check_error(r)) {
         return false;
     } else {
-        client->message = (Message *) malloc(sizeof(struct Message));
+        client->message = (Message *) malloc(sizeof(Message));
         client->message->msg = malloc(sizeof(char) * msg_size);
         client->message->size = msg_size;
         return true;
@@ -178,8 +178,8 @@ static void handle_new_client() {
      * add_function returns -1 so we can't communicate with this client
      */
     if (fd_index == -1) return;
-    Client *new_client = (struct Client *) malloc(sizeof(struct Client));
-    *new_client = (struct Client) {fd_index, &cli_addr, WAIT_FOR_NAME, NULL, NULL, NULL, NULL};
+    Client *new_client = (Client *) malloc(sizeof(Client));
+    *new_client = (Client) {fd_index, &cli_addr, WAIT_FOR_NAME, NULL, NULL, NULL, NULL};
     print_client_connected(new_client);
     accept_client(new_client);
 }

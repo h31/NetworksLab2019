@@ -10,10 +10,10 @@
 
 #include "client.h"
 
-void print_client_name_and_address(struct Client *client);
+void print_client_name_and_address(Client *client);
 
-void print_client_disconnected(struct Client *client);
+void print_client_disconnected(Client *client);
 
-void print_client_connected(struct Client *client);
+void print_client_connected(Client *client);
 
 #endif //NETWORKSLAB2019_PRINTER_H
