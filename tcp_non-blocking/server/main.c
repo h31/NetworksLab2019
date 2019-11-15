@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <poll.h>
 #include "list_of_users/list_of_users.h"
 #include "list_of_connections/list_of_connections.h"
 #include "message_sending_handler/messages_sending_handler.h"
@@ -96,7 +97,7 @@ int main(int argc, char* argv[]) {
     while(1) {
 
         if (list_of_connections_is_initial_socket_not_empty()) {
-            add_user_info_( accept(initial_socket, (struct sockaddr *) &cli_addr, &clilen) );
+            add_user_info_( accept(list_of_connections_get_item(0)->fd, (struct sockaddr *) &cli_addr, &clilen) );
         }
 
         message_receiving_handler_read_messages();

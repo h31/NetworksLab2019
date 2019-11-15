@@ -28,7 +28,7 @@ void remove_all_user_info(int user_sockfd) {
 
 
 void read_messages_() {
-    for (int user_index = 0; user_index < MAX_NUMBER_OF_CONNECTED_USERS; ++user_index) {
+    for (int user_index = 1; user_index < MAX_NUMBER_OF_CONNECTED_USERS; ++user_index) {
         int revents = list_of_connections_get_item(user_index) -> revents;
 
         if (revents == POLLIN) {
