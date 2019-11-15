@@ -27,12 +27,12 @@ unsigned get_fds_size() {
 }
 
 void close_all_fds() {
-    for (int i = 0; i < fds_size; ++i) {
+    for (unsigned i = 0; i < fds_size; ++i) {
         close(fds[i].fd);
     }
 }
 
-void remove_and_close_fd(int index) {
+void remove_and_close_fd(unsigned index) {
     struct pollfd pfd = fds[index];
     close(pfd.fd);
     /**
@@ -46,7 +46,7 @@ void remove_and_close_fd(int index) {
     fds_size--;
 }
 
-struct pollfd *get_pollfd(int index) {
+struct pollfd *get_pollfd(unsigned index) {
     return &fds[index];
 }
 

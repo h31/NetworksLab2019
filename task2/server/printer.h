@@ -5,7 +5,10 @@
 #ifndef NETWORKSLAB2019_PRINTER_H
 #define NETWORKSLAB2019_PRINTER_H
 
-#include "server.h"
+#include <stdio.h>
+#include <netdb.h>
+
+#include "client.h"
 
 void print_client_name_and_address(struct Client *client);
 

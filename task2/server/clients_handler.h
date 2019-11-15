@@ -5,8 +5,11 @@
 #ifndef NETWORKSLAB2019_CLIENTS_HANDLER_H
 #define NETWORKSLAB2019_CLIENTS_HANDLER_H
 
+#include <unistd.h>
+#include <stdlib.h>
+
 #include "../common/common.h"
-#include "server.h"
+#include "client.h"
 
 struct Client *get_first_client();
 

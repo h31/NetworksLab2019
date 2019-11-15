@@ -1,4 +1,19 @@
-#include "server.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <netdb.h>
+#include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/poll.h>
+#include <sys/ioctl.h>
+
+#include "../common/common.h"
+#include "client.h"
+#include "clients_handler.h"
+#include "printer.h"
+#include "fds_worker.h"
+
+#define BACKLOG 10
 
 static char *divider = " : ";
 static int sock_fd;
@@ -157,14 +172,14 @@ static void handle_new_client() {
         perror("ERROR on accept");
         end_server();
     }
-    int cli_fd = add_fd(new_sock_fd);
+    int fd_index = add_fd(new_sock_fd);
     /**
      * If file descriptor cannot be added to fds_list, because of there are no any space,
      * add_function returns -1 so we can't communicate with this client
      */
-    if (cli_fd == -1) return;
+    if (fd_index == -1) return;
     Client *new_client = (struct Client *) malloc(sizeof(struct Client));
-    *new_client = (struct Client) {cli_fd, &cli_addr, WAIT_FOR_NAME, NULL, NULL, NULL};
+    *new_client = (struct Client) {fd_index, &cli_addr, WAIT_FOR_NAME, NULL, NULL, NULL, NULL};
     print_client_connected(new_client);
     accept_client(new_client);
 }
@@ -217,6 +232,6 @@ int main(int argc, char *argv[]) {
     init_fds_worker(sock_fd);
     //Clients acceptor
     while (true) {
-        listen_poll(sock_fd);
+        listen_poll();
     }
 }

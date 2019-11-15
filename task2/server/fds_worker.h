@@ -5,7 +5,12 @@
 #ifndef NETWORKSLAB2019_FDS_WORKER_H
 #define NETWORKSLAB2019_FDS_WORKER_H
 
-#include "server.h"
+#include <string.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <sys/poll.h>
+
+#include "client.h"
 
 #define POLL_TIMEOUT (-1) //poll blocks indefinitely
 
@@ -19,9 +24,9 @@ int poll_inner();
 
 int add_fd(int fd);
 
-void remove_and_close_fd(int index);
+void remove_and_close_fd(unsigned index);
 
-struct pollfd *get_pollfd(int index);
+struct pollfd *get_pollfd(unsigned index);
 
 int get_acceptor_revents();
 
