@@ -16,6 +16,7 @@
 #define BACKLOG 10
 
 static char *divider = " : ";
+
 static int sock_fd;
 
 static int create_server(uint16_t port) {
@@ -59,10 +60,6 @@ static int end_server() {
     exit(1);
 }
 
-static bool check_error(int r) {
-    return r < 0 && (errno == EWOULDBLOCK || errno == EAGAIN);
-}
-
 static Message *build_message_with_username(Client *sender) {
     Message *message = sender->message;
     u_int32_t full_msg_size = (u_int32_t) (message->size + strlen(sender->name) + strlen(divider));
@@ -89,43 +86,60 @@ static void send_message_to_all_clients(Client *sender) {
         next_consumer = next_consumer->next_client;
     }
     free(sender->message->msg);
-    free(sender->message);
     free(message->msg);
     free(message);
-    sender->message = NULL;
+    sender->message->msg = NULL;
+    sender->message->size = 0;
 }
 
 static bool read_client_name(Client *client) {
-    char *name = (char *) malloc(sizeof(char) * USER_NAME_SIZE);
-    int r = readn(get_pollfd(client->fd_index)->fd, name, USER_NAME_SIZE);
-    if (check_error(r)) {
+    size_t offset = USER_NAME_SIZE - client->waiting_bytes;
+    ssize_t r = read(get_pollfd(client->fd_index)->fd, &client->name[offset], client->waiting_bytes);
+    if (r == 0) {
         return false;
-    } else {
-        client->name = name;
-        return true;
     }
+    if (r < client->waiting_bytes) {
+        client->waiting_bytes -= r;
+    } else {
+        client->waiting_bytes = 0;
+    }
+    return true;
 }
 
 static bool read_msg_size(Client *client) {
+    size_t offset = MSG_SIZE_VAL - client->waiting_bytes;
     size_t msg_size = 0;
-    int r = readn(get_pollfd(client->fd_index)->fd, (char *) &msg_size, MSG_SIZE_VAL);
-    if (check_error(r)) {
+    ssize_t r = read(get_pollfd(client->fd_index)->fd, (char *) &msg_size, client->waiting_bytes);
+    msg_size = client->message->size + (msg_size << (8 * offset));
+    if (r == 0) {
         return false;
-    } else {
-        client->message = (Message *) malloc(sizeof(Message));
-        client->message->msg = malloc(sizeof(char) * msg_size);
-        client->message->size = msg_size;
-        return true;
     }
+    if (r < client->waiting_bytes) {
+        client->waiting_bytes -= r;
+    } else {
+        client->message->msg = malloc(sizeof(char) * msg_size);
+        client->waiting_bytes = 0;
+    }
+    client->message->size = msg_size;
+    return true;
 }
 
 static bool read_client_msg(Client *client) {
-    int r = readn(get_pollfd(client->fd_index)->fd, client->message->msg, client->message->size);
-    if (check_error(r)) {
+    size_t offset = client->message->size - client->waiting_bytes;
+    ssize_t r = read(
+            get_pollfd(client->fd_index)->fd,
+            &client->message->msg[offset],
+            client->waiting_bytes
+    );
+    if (r == 0) {
         return false;
-    } else {
-        return true;
     }
+    if (r < client->waiting_bytes) {
+        client->waiting_bytes -= r;
+    } else {
+        client->waiting_bytes = 0;
+    }
+    return true;
 }
 
 /**
@@ -144,16 +158,21 @@ static void read_message(Client *client) {
         r = read_client_msg(client);
     }
     if (r) {
-        switch (client->status) {
-            case WAIT_FOR_NAME:
-                client->status = WAIT_FOR_SIZE;
-                break;
-            case WAIT_FOR_SIZE:
-                client->status = WAIT_FOR_MSG;
-                break;
-            case WAIT_FOR_MSG:
-                client->status = WAIT_FOR_SIZE;
-                send_message_to_all_clients(client);
+        if (client->waiting_bytes == 0) {
+            switch (client->status) {
+                case WAIT_FOR_NAME:
+                    client->status = WAIT_FOR_SIZE;
+                    client->waiting_bytes = MSG_SIZE_VAL;
+                    break;
+                case WAIT_FOR_SIZE:
+                    client->status = WAIT_FOR_MSG;
+                    client->waiting_bytes = client->message->size;
+                    break;
+                case WAIT_FOR_MSG:
+                    client->status = WAIT_FOR_SIZE;
+                    client->waiting_bytes = MSG_SIZE_VAL;
+                    send_message_to_all_clients(client);
+            }
         }
     } else {
         print_client_disconnected(client);
@@ -179,7 +198,11 @@ static void handle_new_client() {
      */
     if (fd_index == -1) return;
     Client *new_client = (Client *) malloc(sizeof(Client));
-    *new_client = (Client) {fd_index, &cli_addr, WAIT_FOR_NAME, NULL, NULL, NULL, NULL};
+    char *name = (char *) malloc(sizeof(char) * USER_NAME_SIZE);
+    Message *message = (Message *) malloc(sizeof(Message));
+    *message = (Message) {NULL, 0};
+    // Init with USER_NAME_SIZE to wait
+    *new_client = (Client) {fd_index, &cli_addr, WAIT_FOR_NAME, USER_NAME_SIZE, message, name, NULL, NULL};
     print_client_connected(new_client);
     accept_client(new_client);
 }

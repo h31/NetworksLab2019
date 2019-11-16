@@ -17,6 +17,7 @@ typedef struct Client {
     int fd_index;
     struct sockaddr_in *sockaddr;
     enum client_status status;
+    unsigned waiting_bytes; // Сколько байтов осталось прочитать
     Message *message;
     char *name; // имя клиента. Максимум 32 символа
     struct Client *prev_client; // Предыдущий клиента
