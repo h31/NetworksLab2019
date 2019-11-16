@@ -86,7 +86,8 @@ void *terminal_reader(void *args) {
     int sockfd = *(int *) args;
     while (1) {
         bzero(terminal_buff, MSG_BUFF_SIZE);
-        fgets(terminal_buff, MSG_BUFF_SIZE, stdin);
+        char *r = fgets(terminal_buff, MSG_BUFF_SIZE, stdin);
+        if (r == NULL) exit(1); // Just for testing purposes
         replace(terminal_buff, MSG_BUFF_SIZE, '\n', '\0');
         /* Send message to the server */
         size_t len = strlen(terminal_buff) + 1;
