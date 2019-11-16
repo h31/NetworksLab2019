@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/poll.h>
+#include <sys/socket.h>
 
 #include "client.h"
 

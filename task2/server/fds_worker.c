@@ -28,12 +28,14 @@ unsigned get_fds_size() {
 
 void close_all_fds() {
     for (unsigned i = 0; i < fds_size; ++i) {
+        shutdown(fds[i].fd, SHUT_RDWR);
         close(fds[i].fd);
     }
 }
 
 void remove_and_close_fd(unsigned index) {
     struct pollfd pfd = fds[index];
+    shutdown(pfd.fd, SHUT_RDWR);
     close(pfd.fd);
     /**
      * Restructure to avoid empty cells in the array
