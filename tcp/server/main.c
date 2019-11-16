@@ -98,9 +98,10 @@ void sigHandler(int sig) {
 
 //поток каждого нового клиента, слушаем
 void *newClient(void *numb) {
+    char buffer[256];
     while (1) {
         //читаем из клиента
-        char buffer[256];
+        bzero(buffer,256);
         if (read(newsockfd[(int) numb], buffer, 256) <= 0) {
             closeSocket((int)numb);
         }
@@ -116,6 +117,7 @@ void *newClient(void *numb) {
 void writeToClients(char *msg, int number) {
     int count = 0;
     //всем клиентам в массиве
+    printf("\nOтправляю%s\n",msg);
     while (count < MAX_CLIENTS && newsockfd[count] != 0) {
         //кроме отправителя
         if (newsockfd[count] != number) {

@@ -14,9 +14,6 @@
 
 #include <termios.h>
 
-#define _XOPEN_SOURCE 700
-
-
 void sigHandlerOut(int sig);
 
 void *reading(void *sockfd);
@@ -25,8 +22,15 @@ void sendMessage(char *message);
 
 void closeClient();
 
+void addNewMessage(char *message);
+
+void printReceivedMessenges();
+
 bool toRead = true;
 int sockfd;
+char *receivedMessenges[1024];
+
+int nextFreeString = 0;
 
 
 int main(int argc, char *argv[]) {
@@ -122,18 +126,21 @@ int main(int argc, char *argv[]) {
             time(&my_time);
             timeinfo = localtime(&my_time);
 
-            //длина моего сообщения, включая время и имя отправителя
-            len = strlen(name) + strlen(timeToSend) + strlen(buffer);
-
             //подготовила согласно формату время и длину
             snprintf(timeToSend, sizeof timeToSend, "<%d:%d>", timeinfo->tm_hour, timeinfo->tm_min);
+
+            //длина моего сообщения, включая время и имя отправителя
+            len = strlen(name) + strlen(timeToSend) + strlen(buffer);
             snprintf(length, sizeof length, "%d", len);
 
             //отправляю данные согласно протоколу: длинуб имя, время, сообщение
             sendMessage(length);
             sendMessage(name);
             sendMessage(timeToSend);
+            sendMessage(buffer);
 
+            //вывожу на экран сообщения, которые пришли пока я писала
+            printReceivedMessenges();
             //возвращаюсь в режим принятия сообщений, сама снова не могу писать пока не нажму esc
             toRead = true;
         }
@@ -144,12 +151,14 @@ int main(int argc, char *argv[]) {
 void *reading(void *sockfd) {
     char buffer[256];
     while (1) {
-        while (toRead) {
-            bzero(buffer, 256);
-            if (read((uintptr_t) sockfd, buffer, 256) <= 0) {
-                closeClient();
-            }
+        bzero(buffer, 256);
+        if (read((uintptr_t) sockfd, buffer, 256) <= 0) {
+            closeClient();
+        }
+        if (toRead) {
             printf("%s\n", buffer);
+        } else {
+            addNewMessage(buffer);
         }
     }
 }
@@ -177,5 +186,21 @@ void closeClient() {
     exit(1);
 }
 
+//добавление нового сообщения в массив
+void addNewMessage(char *message) {
+    if (nextFreeString < 1023) {
+        receivedMessenges[nextFreeString] = strdup(message);
+        nextFreeString++;
+    }
+}
 
-
+//вывод на экран сообщений, которые пришли пока я писала
+void printReceivedMessenges() {
+    int count = 0;
+    while (count < nextFreeString) {
+        printf("%s\n", receivedMessenges[count]);
+        free(receivedMessenges[count]);
+        count++;
+    }
+    nextFreeString = 0;
+}
