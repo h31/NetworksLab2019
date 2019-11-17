@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
         }
 
         clientsSockets *newClient = (clientsSockets *) malloc(sizeof(clientsSockets));
+        pthread_mutex_lock(&mutex);
         newClient->socket = sock;
         newClient->next = NULL;
         if (firstClient == NULL) {
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
             newClient->prev = tmpClient;
             tmpClient->next = newClient;
         }
-
+        pthread_mutex_unlock(&mutex);
         //под каждого клиента свой поток(функция обработчик - newClient)
         if (pthread_create(&tid, NULL, newClientFunc, (void *) newClient) < 0) {
             perror("ERROR on create phread");
@@ -149,6 +150,7 @@ void *newClientFunc(void *clientStruct) {
 void writeToClients(void *msg, void *size) {
     //всем клиентам в массиве
     clientsSockets *tmpClient = firstClient;
+    pthread_mutex_lock(&mutex);
     while (tmpClient != NULL){
         if (write(tmpClient->socket, size, sizeof(int)) <= 0) {
             closeSocket(tmpClient);
@@ -158,6 +160,7 @@ void writeToClients(void *msg, void *size) {
         }
         tmpClient = tmpClient ->next;
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 
@@ -166,13 +169,14 @@ void closeSocket(clientsSockets* socket) {
     //закрываю сокет
     shutdown(socket ->socket, SHUT_RDWR);
     close(socket->socket);
+    pthread_mutex_lock(&mutex);
     if(socket->prev !=NULL){
         socket->prev->next = socket->next;
     }
     if(socket->next!=NULL){
         socket->next->prev = socket->prev;
     }
-
+    pthread_mutex_unlock(&mutex);
     //закрываю поток
     pthread_exit(NULL);
 }
@@ -192,6 +196,7 @@ char *readMessage(clientsSockets* socket, int *sz, char *buffer) {
 }
 
 int readN(int socket, void *buf, int length) {
+
     int result = 0;
     int readedBytes = 0;
     int messageLength = length;
@@ -203,5 +208,6 @@ int readN(int socket, void *buf, int length) {
         result += readedBytes;
         messageLength -= readedBytes;
     }
+
     return result;
 }

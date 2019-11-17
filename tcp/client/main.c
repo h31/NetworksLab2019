@@ -34,7 +34,7 @@ char *receivedMessenges[1024];
 bool toRead = true;
 int sockfd;
 int nextFreeString = 0;
-
+pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
     //объявление переменных
@@ -85,6 +85,9 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    //Инициализация мьютекса
+    pthread_mutex_init(&mutex, NULL);
+
     //каждому клиенты отдельный поток чтения
     if (pthread_create(&tid, NULL, reading, (void *) (intptr_t) sockfd) < 0) {
         perror("ERROR on create phread");
@@ -115,7 +118,7 @@ int main(int argc, char *argv[]) {
             if (character == 0x1B) {
                 //не вывожу сообщения в терминал и могу печатать своё сообщение
                 toRead = false;
-                printf("\nВведите сообщение:\n");
+                printf("Введите сообщение: ");
             }
         } else {
             //обнуляю буфер и считываю новое сообщение
@@ -156,7 +159,7 @@ void *reading(void *sockfd) {
     while (1) {
         buffer = readMessagee();
         if (toRead) {
-            printf("%s\n", buffer);
+            printf("%s", buffer);
         } else {
             addNewMessage(buffer);
         }
@@ -184,25 +187,31 @@ void closeClient() {
     printf("\nВыход из чата\n");
     shutdown(sockfd, SHUT_RDWR);
     close(sockfd);
+    //Уничтожение мьютекса
+    pthread_mutex_destroy(&mutex);
     exit(1);
 }
 
 //добавление нового сообщения в массив
 void addNewMessage(char *message) {
+    pthread_mutex_lock(&mutex);
     if (nextFreeString < 1023) {
         receivedMessenges[nextFreeString] = strdup(message);
         nextFreeString++;
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 //вывод на экран сообщений, которые пришли пока я писала
 void printReceivedMessenges() {
     int count = 0;
+    pthread_mutex_lock(&mutex);
     while (count < nextFreeString) {
         printf("%s\n", receivedMessenges[count]);
         free(receivedMessenges[count]);
         count++;
     }
+    pthread_mutex_unlock(&mutex);
     nextFreeString = 0;
 }
 
@@ -214,9 +223,7 @@ char *readMessagee() {
         close(sockfd);
         closeClient();
     }
-
     char *buffer = (char *) malloc(size * sizeof(char));
-
     //считываю остальное сообщение
     if (readN(sockfd, buffer, size) <= 0) {
         perror("ERROR reading from socket");
