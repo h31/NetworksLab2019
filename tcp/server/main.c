@@ -72,13 +72,15 @@ int main(int argc, char *argv[]) {
     //ждем новых клиентов
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
-
+    //для accept
     int sock;
+    //для pthread_create
     pthread_t tid;
+    //"вечно" первый элемент
     clientSocket *tmpClient;
     while (1) {
-        //принимаем клиента и запоминаем его(проверка того, что соединение прошло успешно)
         tmpClient = firstClient;
+        //принимаем клиента и запоминаем его(проверка того, что соединение прошло успешно)
         sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
         if (sock < 0) {
             perror("ERROR on accept");
@@ -137,7 +139,9 @@ void *newClientFunc(void *clientStruct) {
     char buffer[256];
     int sz;
     while (1) {
+        //для сообщения
         bzero(buffer, 256);
+        //для его длины
         sz = 0;
         readMessage((clientSocket*)clientStruct, &sz, buffer);
         //рассылаем всем принятое сообщение
@@ -169,6 +173,7 @@ void closeSocket(clientSocket* socket) {
     shutdown(socket ->socket, SHUT_RDWR);
     close(socket->socket);
     pthread_mutex_lock(&mutex);
+    //удаляю из списка
     if(socket->prev !=NULL){
         socket->prev->next = socket->next;
     }
@@ -195,7 +200,6 @@ char *readMessage(clientSocket* socket, int *sz, char *buffer) {
 }
 
 int readN(int socket, void *buf, int length) {
-
     int result = 0;
     int readedBytes = 0;
     int messageLength = length;
@@ -207,6 +211,5 @@ int readN(int socket, void *buf, int length) {
         result += readedBytes;
         messageLength -= readedBytes;
     }
-
     return result;
 }

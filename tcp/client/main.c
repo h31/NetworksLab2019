@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
             //длина моего сообщения, включая время и имя отправителя
             len = strlen(name)+strlen(timeToSend)+strlen(buffer);
 
-            //отправляю данные согласно протоколу: длинуб имя, время, сообщение
+            //отправляю данные согласно протоколу: длину, имя, время, сообщение
             if (write(sockfd, &len, sizeof(int)) <= 0) {
                 closeClient();
             }
