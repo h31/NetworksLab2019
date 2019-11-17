@@ -18,7 +18,7 @@ void sigHandlerOut(int sig);
 
 void *reading(void *sockfd);
 
-void sendMessage(char *message);
+void sendMessage(void *message);
 
 void closeClient();
 
@@ -26,20 +26,22 @@ void addNewMessage(char *message);
 
 void printReceivedMessenges();
 
+char *readMessagee();
+
+int readN(int socket, void *buf, int length);
+
+char *receivedMessenges[1024];
 bool toRead = true;
 int sockfd;
-char *receivedMessenges[1024];
-
 int nextFreeString = 0;
 
 
 int main(int argc, char *argv[]) {
     //объявление переменных
-    int nameLength = (int) strlen(argv[3]) + 5;
+    int nameLength = (int) strlen(argv[3]) + 3;
     char name[nameLength];
     char timeToSend[8];
     char buffer[256];
-    char length[5];
     int len;
 
     pthread_t tid;
@@ -130,11 +132,12 @@ int main(int argc, char *argv[]) {
             snprintf(timeToSend, sizeof timeToSend, "<%d:%d>", timeinfo->tm_hour, timeinfo->tm_min);
 
             //длина моего сообщения, включая время и имя отправителя
-            len = strlen(name) + strlen(timeToSend) + strlen(buffer);
-            snprintf(length, sizeof length, "%d", len);
+            len = strlen(name)+strlen(timeToSend)+strlen(buffer);
 
             //отправляю данные согласно протоколу: длинуб имя, время, сообщение
-            sendMessage(length);
+            if (write(sockfd, &len, sizeof(int)) <= 0) {
+                closeClient();
+            }
             sendMessage(name);
             sendMessage(timeToSend);
             sendMessage(buffer);
@@ -149,22 +152,20 @@ int main(int argc, char *argv[]) {
 
 //поток чтения сообщений с сервера
 void *reading(void *sockfd) {
-    char buffer[256];
+    char *buffer;
     while (1) {
-        bzero(buffer, 256);
-        if (read((uintptr_t) sockfd, buffer, 256) <= 0) {
-            closeClient();
-        }
+        buffer = readMessagee();
         if (toRead) {
             printf("%s\n", buffer);
         } else {
             addNewMessage(buffer);
         }
+        free(buffer);
     }
 }
 
 //отправка сообщения
-void sendMessage(char *message) {
+void sendMessage(void *message) {
     if (write(sockfd, message, strlen(message)) <= 0) {
         closeClient();
     }
@@ -203,4 +204,37 @@ void printReceivedMessenges() {
         count++;
     }
     nextFreeString = 0;
+}
+
+char *readMessagee() {
+    int size;
+    //считываю длину сообщения - 1 байт
+    if (readN(sockfd, &size, sizeof(int)) <= 0) {
+        perror("ERROR reading from socket");
+        close(sockfd);
+    }
+
+    char *buffer = (char *) malloc(size * sizeof(char));
+
+    //считываю остальное сообщение
+    if (readN(sockfd, buffer, size) <= 0) {
+        perror("ERROR reading from socket");
+        close(sockfd);
+    }
+    return buffer;
+}
+
+int readN(int socket, void *buf, int length) {
+    int result = 0;
+    int readedBytes = 0;
+    int messageLength = length;
+    while (messageLength > 0) {
+        readedBytes = read(socket, buf + result, messageLength);
+        if (readedBytes <= 0) {
+            return -1;
+        }
+        result += readedBytes;
+        messageLength -= readedBytes;
+    }
+    return result;
 }
