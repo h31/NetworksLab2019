@@ -14,10 +14,12 @@ typedef struct Node {
     struct Node *next;
 } Node;
 
-void push(List *list, Client *client, pthread_mutex_t *locker);
+void push(List *list, Client *client);
 
-void delete(List *list, Client *client, pthread_mutex_t *locker);
+void delete(List *list, Client *client);
 
-void foreach(void (*f)(int, char *), char *info, List *list, pthread_mutex_t *locker);
+Client *get_by_id(List *list, int id);
+
+void foreach(void (*f)(int, char *), char *info, List *list);
 
 #endif //SERVER_LIST_H

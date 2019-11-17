@@ -26,13 +26,11 @@ Reader *read_shared(Client *client) {
     /* firstly read message size, and then message */
     n = read(client->id, (void *) &message_size, HEADER_SIZE);
     if (n <= 0) {
-        client->is_disconnected = 1;
         return empty();
     } else {
         Reader *reader = new_reader(SUCCESS, message_size);
         n = read(client->id, reader->value, message_size);
         if (n <= 0) {
-            client->is_disconnected = 1;
             free_reader(reader);
             return empty();
         } else return reader;

@@ -27,18 +27,15 @@ int exists(List *list, Client *client) {
     return 0;
 }
 
-void push(List *list, Client *client, pthread_mutex_t *locker) {
-    pthread_mutex_lock(locker);
+void push(List *list, Client *client) {
     Node *tmp = (Node *) malloc(sizeof(Node));
     tmp->client = client;
     tmp->next = list->node;
     list->node = tmp;
     list->size += 1;
-    pthread_mutex_unlock(locker);
 }
 
-void delete(List *list, Client *client, pthread_mutex_t *locker) {
-    pthread_mutex_lock(locker);
+void delete(List *list, Client *client) {
     if (!exists(list, client)) raise_error(NO_SUCH_ELEMENT);
     if (list->size == 1 || eq(list->node->client, client)) return pop(list);
     Node *current = list->node->next;
@@ -51,7 +48,17 @@ void delete(List *list, Client *client, pthread_mutex_t *locker) {
     prev->next = current->next;
     free_space(current);
     list->size -= 1;
-    pthread_mutex_lock(locker);
+}
+
+Client *get_by_id(List *list, int id) {
+    Node *current = list->node;
+    Client *stub = empty_client(&id);
+    if (!exists(list, stub)) raise_error(NOT_EXISTS);
+    while (!eq(current->client, stub)) {
+        current = current->next;
+    }
+    free_client(stub);
+    return current->client;
 }
 
 /*
@@ -59,13 +66,11 @@ void delete(List *list, Client *client, pthread_mutex_t *locker) {
  * we do not allocate a copy of the message for each sending
  * and we can free then memory, that is allocated for message
  */
-void foreach(void (*f)(int, char *), char *info, List *list, pthread_mutex_t *locker) {
-    pthread_mutex_lock(locker);
+void foreach(void (*f)(int, char *), char *info, List *list) {
     Node *current = list->node;
     while (current != NULL) {
         (*f)(current->client->id, info);
         current = current->next;
     }
-    pthread_mutex_unlock(locker);
 }
 

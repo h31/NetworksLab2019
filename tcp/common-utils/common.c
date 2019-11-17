@@ -29,15 +29,14 @@ Client *new_client(int *id, char *name) {
     Client *client = (Client *) malloc(sizeof(Client));
     client->id = *id;
     client->name = name;
-    client->is_disconnected = 0;
     return client;
 }
 
 Client *empty_client(int *fd) {
     Client *client = (Client *) malloc(sizeof(Client));
+    client->state = FHEADER_SIZE;
     client->id = *fd;
     client->name = allocate_char_buffer(EMPTY);
-    client->is_disconnected = 0;
     return client;
 }
 
@@ -46,17 +45,21 @@ void free_client(Client *client) {
     free(client);
 }
 
-Env *init_env() {
+Env *init_env(int sockfd) {
     List *cache = (List *) malloc(sizeof(List));
     *cache = (struct List) {0, NULL};
 
-    pthread_mutex_t blocker;
-    if (pthread_mutex_init(&blocker, NULL) != 0) {
-        raise_error(MUTEX_INIT_ERROR);
-    }
+    /* set up the initial listening socket */
+    poll_descriptor *descriptors = (poll_descriptor *) malloc(MAX_CLIENTS * sizeof(poll_descriptor));
+    descriptors[0].fd = sockfd;
+    descriptors[0].events = POLLIN;
+
+    Poll_vector *vector = (Poll_vector *) malloc(sizeof(Poll_vector));
+    vector->length = 1;
+    vector->descriptors = descriptors;
 
     Env *init_structure = (Env *) malloc(sizeof(Env));
-    *init_structure = (struct Env) {cache, &blocker};
+    *init_structure = (struct Env) {cache, vector};
     return init_structure;
 }
 

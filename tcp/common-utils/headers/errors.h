@@ -18,6 +18,14 @@
 #define NO_SUCH_HOST "no such host"
 #define CONNECT_ERROR "can't connect"
 
+#define SOCK_OPT "set reusable socket failed"
+#define ASYNC_SOCK "ioctl failed"
+#define POLL_ERROR "call poll function failed"
+#define REVENTS_ERROR "error, revent is not POLLIN"
+#define INTERNAL_ERROR "internal server error"
+#define SHOULD_NOT_BE "that's should not be"
+#define NOT_EXISTS "client does not exists"
+
 void raise_error(char *error);
 
 #endif //SERVER_ERRORS_H

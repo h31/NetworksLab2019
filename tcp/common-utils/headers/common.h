@@ -4,25 +4,28 @@
 #include <stdlib.h>
 #include <ntsid.h>
 #include <pthread.h>
+#include "inet_utils.h"
+#include "fsm.h"
 
 #define MESSAGE_SIZE 1024
 #define CLIENT_NAME_SIZE 16
 #define HEADER_SIZE sizeof(size_t)
+#define MAX_CLIENTS 256
 
 #define EMPTY 1
 
 typedef struct Client {
     char *name;
-    int is_disconnected;
     int id; // id stores unique socketfd
+    State state;
 } Client;
 
 typedef struct Env {
     void *cache;
-    pthread_mutex_t *blocker;
+    Poll_vector *vector;
 } Env;
 
-Env *init_env();
+Env *init_env(int sockfd);
 
 Client *new_client(int *id, char *name);
 

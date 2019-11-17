@@ -1,4 +1,6 @@
 #include <netdb.h>
+#include <sys/filio.h>
+#include <sys/ioctl.h>
 #include "headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
 
@@ -26,4 +28,14 @@ int create_socket(int domain, int socktype, int protocol) {
 
 int create_tcpsocket() {
     return create_socket(AF_INET, SOCK_STREAM, 0);
+}
+
+int async_socket(int sock_descriptor) {
+    int on = 1;
+    int exit_code;
+    exit_code = setsockopt(sock_descriptor, SOL_SOCKET, SO_REUSEADDR, (char *) &on, sizeof(on));
+    if (exit_code < 0) raise_error(SOCK_OPT);
+    exit_code = ioctl(sock_descriptor, FIONBIO, (char *) &on);
+    if (exit_code < 0) raise_error(ASYNC_SOCK);
+    return exit_code;
 }
