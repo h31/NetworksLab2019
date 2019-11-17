@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
 
@@ -11,22 +10,28 @@
 #include <signal.h>
 
 #define MAX_CLIENTS 5
+typedef struct list{
+    int socket; // поле данных
+    struct list *next; // указатель на следующий элемент
+    struct list *prev; // указатель на предыдущий элемент
+} clientsSockets;
+
+clientsSockets *firstClient = NULL;
 
 void sigHandler(int sig);
 
-void closeSocket(int i);
+void closeSocket(clientsSockets* socket);
 
-void writeToClients(void *msg, int number, void *size);
+void writeToClients(void *msg, void *size);
 
-void *newClient(void *numb);
+void *newClientFunc(void *clientStruct);
 
-char *readMessage(int numb, int *sz, char* buffer);
+char *readMessage(clientsSockets* socket, int *sz, char *buffer);
 
 int readN(int socket, void *buf, int length);
 
-int newsockfd[MAX_CLIENTS];
-pthread_t tid[MAX_CLIENTS];
 int sockfd;
+pthread_mutex_t mutex;
 
 int main(int argc, char *argv[]) {
     //инициализация
@@ -57,24 +62,46 @@ int main(int argc, char *argv[]) {
     }
 
     printf("Сервер запущен\n");
-    //обнуление массива для хранения клиентов
-    bzero(newsockfd, MAX_CLIENTS);
 
     //отлавливаем закрытие сервера
     signal(SIGINT, sigHandler);
 
+    //Инициализация мьютекса
+    pthread_mutex_init(&mutex, NULL);
+
     //ждем новых клиентов
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
+
+    //clientsSockets *newClient;
+    int sock;
+    pthread_t tid;
+    clientsSockets *tmpClient;
     while (1) {
         //принимаем клиента и запоминаем его(проверка того, что соединение прошло успешно)
-        newsockfd[i] = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-        if (newsockfd[i] < 0) {
+        tmpClient = firstClient;
+        sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if (sock < 0) {
             perror("ERROR on accept");
             exit(1);
         }
+
+        clientsSockets *newClient = (clientsSockets *) malloc(sizeof(clientsSockets));
+        newClient->socket = sock;
+        newClient->next = NULL;
+        if (firstClient == NULL) {
+            newClient->prev = NULL;
+            firstClient=newClient;
+        } else {
+            while (tmpClient->next != NULL) {
+                tmpClient = tmpClient->next;
+            }
+            newClient->prev = tmpClient;
+            tmpClient->next = newClient;
+        }
+
         //под каждого клиента свой поток(функция обработчик - newClient)
-        if (pthread_create(&tid[i], NULL, newClient, (void *)(uintptr_t) i) < 0) {
+        if (pthread_create(&tid, NULL, newClientFunc, (void *) newClient) < 0) {
             perror("ERROR on create phread");
             exit(1);
         }
@@ -87,80 +114,80 @@ void sigHandler(int sig) {
     if (sig != SIGINT) return;
     else {
         printf("\nСервер остановлен\n");
-        int count = 0;
         //закрываем всех клиентов
-        while (count < MAX_CLIENTS && newsockfd[count] != 0) {
-            shutdown(newsockfd[count], SHUT_RDWR);
-            close(newsockfd[count]);
-            count++;
+        clientsSockets *tmpClient = firstClient;
+        while (tmpClient != NULL){
+            shutdown(tmpClient->socket, SHUT_RDWR);
+            close(tmpClient->socket);
+            tmpClient = tmpClient ->next;
         }
+
         //закрываем главный сокет
         shutdown(sockfd, SHUT_RDWR);
         close(sockfd);
+
+        //Уничтожение мьютекса
+        pthread_mutex_destroy(&mutex);
         exit(1);
     }
 }
 
 //поток каждого нового клиента, слушаем
-void *newClient(void *numb) {
+void *newClientFunc(void *clientStruct) {
     char buffer[256];
     int sz;
     while (1) {
-        bzero(buffer,256);
-        sz=0;
-        readMessage((uintptr_t) numb, &sz, buffer);
-
+        bzero(buffer, 256);
+        sz = 0;
+        readMessage((clientsSockets*)clientStruct, &sz, buffer);
         //рассылаем всем принятое сообщение
-        writeToClients(buffer, newsockfd[(uintptr_t) numb], &sz);
+        writeToClients(buffer , &sz);
     }
 }
 
 //рассылка пришедшего сообщения остальным клиентам
-void writeToClients(void *msg, int number, void *size) {
-    int count = 0;
+void writeToClients(void *msg, void *size) {
     //всем клиентам в массиве
-    printf("\nOтправляю%s\n", (char*) msg);
-    while (count < MAX_CLIENTS && newsockfd[count] != 0) {
-        //кроме отправителя
-        if (newsockfd[count] != number) {
-            if (write(newsockfd[count], size, sizeof(int)) <= 0) {
-                closeSocket(count);
-            }
-            if (write(newsockfd[count], msg, strlen(msg)) <= 0) {
-                closeSocket(count);
-            }
+    clientsSockets *tmpClient = firstClient;
+    while (tmpClient != NULL){
+        if (write(tmpClient->socket, size, sizeof(int)) <= 0) {
+            closeSocket(tmpClient);
         }
-        count++;
+        if (write(tmpClient->socket, msg, strlen(msg)) <= 0) {
+            closeSocket(tmpClient);
+        }
+        tmpClient = tmpClient ->next;
     }
 }
 
 
 //закрытие/удаление клиента
-void closeSocket(int i) {
+void closeSocket(clientsSockets* socket) {
     //закрываю сокет
-    shutdown(newsockfd[i], SHUT_RDWR);
-    close(newsockfd[i]);
+    shutdown(socket ->socket, SHUT_RDWR);
+    close(socket->socket);
+    if(socket->prev !=NULL){
+        socket->prev->next = socket->next;
+    }
+    if(socket->next!=NULL){
+        socket->next->prev = socket->prev;
+    }
 
-    //подчищаем в массивах данные
-    tid[i] = 0;
-    newsockfd[i] = 0;
     //закрываю поток
-    pthread_exit(&tid[i]);
+    pthread_exit(NULL);
 }
 
-char *readMessage(int numb, int *sz, char* buffer) {
-    //считываю длину сообщения - 1 байт
-    if (readN(newsockfd[numb], sz, sizeof(int)) <= 0) {
-        perror("ERROR reading from socket");
-        closeSocket(numb);
+char *readMessage(clientsSockets* socket, int *sz, char *buffer) {
+    //считываю длину сообщения - 4 байтф
+    if (readN(socket ->socket, sz, sizeof(int)) <= 0) {
+        perror("ERROR reading from socket\n");
+        closeSocket(socket);
     }
-
     //считываю остальное сообщение
-    if (readN(newsockfd[numb], buffer, *sz) <= 0) {
-        perror("ERROR reading from socket");
-        closeSocket((uintptr_t) numb);
+    if (readN(socket->socket, buffer, *sz) <= 0) {
+        perror("ERROR reading from socket\n");
+        closeSocket(socket);
     }
-    printf("прочитал %s\n",buffer);
     return buffer;
 }
 

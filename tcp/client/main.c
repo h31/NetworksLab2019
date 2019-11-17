@@ -212,6 +212,7 @@ char *readMessagee() {
     if (readN(sockfd, &size, sizeof(int)) <= 0) {
         perror("ERROR reading from socket");
         close(sockfd);
+        closeClient();
     }
 
     char *buffer = (char *) malloc(size * sizeof(char));
@@ -220,6 +221,7 @@ char *readMessagee() {
     if (readN(sockfd, buffer, size) <= 0) {
         perror("ERROR reading from socket");
         close(sockfd);
+        closeClient();
     }
     return buffer;
 }
