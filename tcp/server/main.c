@@ -14,19 +14,19 @@ typedef struct list{
     int socket; // поле данных
     struct list *next; // указатель на следующий элемент
     struct list *prev; // указатель на предыдущий элемент
-} clientsSockets;
+} clientSocket;
 
-clientsSockets *firstClient = NULL;
+clientSocket *firstClient = NULL;
 
 void sigHandler(int sig);
 
-void closeSocket(clientsSockets* socket);
+void closeSocket(clientSocket* socket);
 
 void writeToClients(void *msg, void *size);
 
 void *newClientFunc(void *clientStruct);
 
-char *readMessage(clientsSockets* socket, int *sz, char *buffer);
+char *readMessage(clientSocket* socket, int *sz, char *buffer);
 
 int readN(int socket, void *buf, int length);
 
@@ -73,10 +73,9 @@ int main(int argc, char *argv[]) {
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
 
-    //clientsSockets *newClient;
     int sock;
     pthread_t tid;
-    clientsSockets *tmpClient;
+    clientSocket *tmpClient;
     while (1) {
         //принимаем клиента и запоминаем его(проверка того, что соединение прошло успешно)
         tmpClient = firstClient;
@@ -86,7 +85,7 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
 
-        clientsSockets *newClient = (clientsSockets *) malloc(sizeof(clientsSockets));
+        clientSocket *newClient = (clientSocket *) malloc(sizeof(clientSocket));
         pthread_mutex_lock(&mutex);
         newClient->socket = sock;
         newClient->next = NULL;
@@ -116,7 +115,7 @@ void sigHandler(int sig) {
     else {
         printf("\nСервер остановлен\n");
         //закрываем всех клиентов
-        clientsSockets *tmpClient = firstClient;
+        clientSocket *tmpClient = firstClient;
         while (tmpClient != NULL){
             shutdown(tmpClient->socket, SHUT_RDWR);
             close(tmpClient->socket);
@@ -140,7 +139,7 @@ void *newClientFunc(void *clientStruct) {
     while (1) {
         bzero(buffer, 256);
         sz = 0;
-        readMessage((clientsSockets*)clientStruct, &sz, buffer);
+        readMessage((clientSocket*)clientStruct, &sz, buffer);
         //рассылаем всем принятое сообщение
         writeToClients(buffer , &sz);
     }
@@ -149,7 +148,7 @@ void *newClientFunc(void *clientStruct) {
 //рассылка пришедшего сообщения остальным клиентам
 void writeToClients(void *msg, void *size) {
     //всем клиентам в массиве
-    clientsSockets *tmpClient = firstClient;
+    clientSocket *tmpClient = firstClient;
     pthread_mutex_lock(&mutex);
     while (tmpClient != NULL){
         if (write(tmpClient->socket, size, sizeof(int)) <= 0) {
@@ -165,7 +164,7 @@ void writeToClients(void *msg, void *size) {
 
 
 //закрытие/удаление клиента
-void closeSocket(clientsSockets* socket) {
+void closeSocket(clientSocket* socket) {
     //закрываю сокет
     shutdown(socket ->socket, SHUT_RDWR);
     close(socket->socket);
@@ -181,7 +180,7 @@ void closeSocket(clientsSockets* socket) {
     pthread_exit(NULL);
 }
 
-char *readMessage(clientsSockets* socket, int *sz, char *buffer) {
+char *readMessage(clientSocket* socket, int *sz, char *buffer) {
     //считываю длину сообщения - 4 байтф
     if (readN(socket ->socket, sz, sizeof(int)) <= 0) {
         perror("ERROR reading from socket\n");
