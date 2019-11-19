@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <asm/errno.h>
+#include <errno.h>
 
 #define MAX_MESSAGE_SIZE 5000
 
@@ -189,15 +190,16 @@ void *sendingMessages(void *arg) {
 void *readingMessages(void *arg) {
     struct pollfd fdRead = *(struct pollfd *) arg;
     int operationCode;
-    char *buffer = NULL;
+    char *buffer;
     size_t bufferSize;
 
     //Цикл в котором мы читаем входящие сообщения
-    for (;;) {
+    while (1) {
+        printf("Checking for messages");
         operationCode = poll(&fdRead, 1, -1);
         if (operationCode < 0) {
             printf("Error using POLL!\n");
-            getchar(); exit(EXIT_FAILURE); 
+            getchar(); exit(EXIT_FAILURE);
         }
         if (fdRead.revents == 0) {
             continue;
@@ -210,10 +212,12 @@ void *readingMessages(void *arg) {
         //Размер сообщения
         bufferSize = 0;
         //Читаем сначала длину сообщения в переменную size
-        operationCode = readN(fdRead.fd, &bufferSize, sizeof(int));
+        operationCode = read(fdRead.fd, &bufferSize, sizeof(int));
         if (operationCode < 0) {
-            printf("Error reading from socket!\n");
-            getchar(); exit(EXIT_FAILURE); 
+            if (errno != EWOULDBLOCK){
+                printf("Error reading from socket!\n");
+                getchar(); exit(EXIT_FAILURE);
+            }
         }
         if (operationCode == 0) {
             printf("Server is now offline.");
@@ -235,8 +239,10 @@ void *readingMessages(void *arg) {
         //Читаем в этот буфер заранее известное кол-во данных
         operationCode = readN(fdRead.fd, buffer, bufferSize);
         if (operationCode < 0) {
-            printf("Error reading from socket!\n");
-            getchar(); exit(EXIT_FAILURE); 
+            if (errno != EWOULDBLOCK) {
+                printf("Error reading from socket!\n");
+                getchar(); exit(EXIT_FAILURE);
+            }
         }
         if (operationCode == 0) {
             printf("Server is now offline.");
