@@ -1,0 +1,225 @@
+from errPackages import *
+
+import socket
+import struct
+import sys
+import os
+
+
+class Client:
+    def __init__(self, serverIP, clientDir, fileName):
+        self.serverIP = serverIP
+        self.filePath = os.path.join(clientDir, fileName)
+        self.fileName = fileName
+
+        self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.clientSocket.settimeout(5)
+
+    def get(self):
+
+        if os.path.isfile(self.filePath):
+            print(self.fileName + ' is alredy exist. Can not start.')
+            return None
+
+        ##Opcode 1 [ Read request ]
+        ##
+        ##          2 bytes    string   1 byte     string   1 byte
+        ##          -----------------------------------------------
+        ##   RRQ   |  01   |  Filename  |   0  |    Mode    |   0  |
+        ##          -----------------------------------------------
+
+        format = '!H' + str(len(self.fileName)) + 'sB5sB'
+        self.sendPacket = struct.pack(format.encode(), 1, \
+                                      self.fileName.encode(), 0, b'octet', 0)
+        self.clientSocket.sendto(self.sendPacket, (self.serverIP, 69))
+
+        try:
+            getFile = open(self.filePath, 'wb')
+        except:
+            print(self.fileName + ' can not open.')
+            return None
+
+        totalDatalen = 0
+        countBlock = 1
+        errCount = 0
+
+        while True:
+
+            while errCount < 3:
+                try:
+                    data, remoteSocket = self.clientSocket.recvfrom(4096)
+                    Opcode = struct.unpack('!H', data[0:2])[0]
+                    errCount = 0
+                    break
+                except:
+                    self.clientSocket.sendto(self.sendPacket, (self.serverIP, 69))
+                    Opcode = 'Timeout'
+                    errCount += 1
+
+            ##Opcode 3 [ Data ]
+            ##
+            ##          2 bytes    2 bytes       n bytes
+            ##          ---------------------------------
+            ##   DATA  | 03    |   Block #  |    Data    |
+            ##          ---------------------------------
+
+            if Opcode == 3:
+
+                blockNo = struct.unpack('!H', data[2:4])[0]
+                if blockNo != countBlock:
+                    self.clientSocket.sendto(errBlockNo, remoteSocket)
+                    print('Receive wrong block. Session closed.')
+                    getFile.close()
+                    break
+
+                countBlock += 1
+                if countBlock == 65536:
+                    countBlock = 1
+
+                dataPayload = data[4:]
+
+                try:
+                    getFile.write(dataPayload)
+                except:
+                    self.clientSocket.sendto(errFilewrite, remoteSocket)
+                    print('Can not write data. Session closed.')
+                    getFile.close()
+                    break
+
+                totalDatalen += len(dataPayload)
+                sys.stdout.write('\rget %s :%s bytes.' \
+                                 % (self.fileName, totalDatalen))
+
+                self.sendPacket = struct.pack(b'!2H', 4, blockNo)
+                self.clientSocket.sendto(self.sendPacket, remoteSocket)
+
+                if len(dataPayload) < 512:
+                    sys.stdout.write('\rget %s :%s bytes. finish.' \
+                                     % (self.fileName, totalDatalen))
+                    getFile.close()
+                    break
+
+
+            elif Opcode == 5:
+
+                errCode = struct.unpack('!H', data[2:4])[0]
+                errString = data[4:-1]
+                print('Received error code %s : %s' \
+                      % (str(errCode), bytes.decode(errString)))
+                getFile.close()
+                break
+
+
+            elif Opcode == 'Timeout':
+                print('Timeout. Session closed.')
+                try:
+                    getFile.close()
+                except:
+                    pass
+                break
+
+
+            else:
+
+                print('Unknown error. Session closed.')
+                try:
+                    getFile.close()
+                except:
+                    pass
+                break
+
+    def put(self):
+
+        if not os.path.isfile(self.filePath):
+            print(self.fileName + ' not exist. Can not start.')
+            return None
+
+        ##Opcode 2 [ Write request ]
+        ##
+        ##          2 bytes    string   1 byte     string   1 byte
+        ##          -----------------------------------------------
+        ##   WRQ   |  02   |  Filename  |   0  |    Mode    |   0  |
+        ##          -----------------------------------------------
+
+        format = '!H' + str(len(self.fileName)) + 'sB5sB'
+        WRQpacket = struct.pack(format.encode(), 2, self.fileName.encode(), 0, \
+                                b'octet', 0)
+        self.clientSocket.sendto(WRQpacket, (self.serverIP, 69))
+
+        try:
+            putFile = open(self.filePath, 'rb')
+        except:
+            print(self.fileName + ' can not open.')
+            return None
+
+        endFlag = False
+        totalDatalen = 0
+        countBlock = 0
+
+        while True:
+
+            data, remoteSocket = self.clientSocket.recvfrom(4096)
+            Opcode = struct.unpack('!H', data[0:2])[0]
+
+            ##Opcode 4 [ ack ]
+            ##
+            ##          2 bytes    2 bytes
+            ##          --------------------
+            ##   ACK   | 04    |   Block #  |
+            ##          --------------------
+
+            if Opcode == 4:
+
+                if endFlag == True:
+                    putFile.close()
+                    sys.stdout.write('\rput %s :%s bytes. finish.' \
+                                     % (self.fileName, totalDatalen))
+                    break
+
+                blockNo = struct.unpack('!H', data[2:4])[0]
+
+                if blockNo != countBlock:
+                    self.clientSocket.sendto(errBlockNo, remoteSocket)
+                    print('Receive wrong block. Session closed.')
+                    putFile.close()
+                    break
+
+                blockNo += 1
+                if blockNo == 65536:
+                    blockNo = 0
+
+                dataChunk = putFile.read(512)
+
+                DATApacket = struct.pack(b'!2H', 3, blockNo) + dataChunk
+                self.clientSocket.sendto(DATApacket, remoteSocket)
+
+                totalDatalen += len(dataChunk)
+                sys.stdout.write('\rput %s :%s bytes.' \
+                                 % (self.fileName, totalDatalen))
+
+                countBlock += 1
+                if countBlock == 65536:
+                    countBlock = 0
+
+                if len(dataChunk) < 512:
+                    endFlag = True
+
+
+            elif Opcode == 5:
+
+                errCode = struct.unpack('!H', data[2:4])[0]
+                errString = data[4:-1]
+                print('Receive error code %s : %s' \
+                      % (str(errCode), bytes.decode(errString)))
+                putFile.close()
+                break
+
+
+            else:
+
+                self.clear('Unknown error. Session closed.')
+                try:
+                    putFile.close()
+                except:
+                    pass
+                break
