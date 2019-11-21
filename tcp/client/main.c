@@ -21,6 +21,14 @@ char *user_name;
 int global_sockfd;
 struct pollfd *fdreed;
 
+#define IP_FLAG         1 << 1
+#define PORT_FLAG       1 << 2
+#define NAME_FLAG       1 << 3
+
+#define IP_PASSED(flags)    (flags >> 1) & 1
+#define PORT_PASSED(flags)  (flags >> 2) & 1
+#define NAME_PASSED(flags)  (flags >> 3) & 1
+
 /*------------------- CLIENT SEND MESSAGE ---------------------------------*/
 void client_send_message(int sockfd, Message message) {
     if (write(sockfd, &message.size, sizeof(int)) <= 0) {
@@ -106,10 +114,11 @@ void client_sigint_handler(int signo) {
 
 /*------------------- MAIN -----------------------------------------------------*/
 int main(int argc, char *argv[]) {
-    uint16_t portno;
+    uint16_t portno = 5001;
     struct sockaddr_in serv_addr;
     struct hostent *server = NULL;
     int sockfd;
+    int flags = 0;
 
     int opt;
     while ((opt = getopt(argc, argv, "i:p:n:")) != -1) {
@@ -120,12 +129,15 @@ int main(int argc, char *argv[]) {
                     fprintf(stderr, "ERROR, no such host\n");
                     exit(0);
                 }
+                flags |= IP_FLAG;
                 break;
             case 'p':
                 portno = (uint16_t) atoi(optarg);
+                flags |= PORT_FLAG;
                 break;
             case 'n':
                 user_name = strdup(optarg);
+                flags |= NAME_FLAG;
                 break;
             default:
                 /* unrecognised opt ... add your error condition */
@@ -133,6 +145,17 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
     }
+    /*check passed flags*/
+    if (!IP_PASSED(flags)) {
+        PERROR_AND_EXIT("-i (server ip) isn't passed")
+    }
+    if (!PORT_PASSED(flags)) {
+        PERROR_AND_EXIT("-p (port of server) isn't passed")
+    }
+    if (!NAME_PASSED(flags)) {
+        PERROR_AND_EXIT("-n (client name) isn't passed")
+    }
+
     if (signal(SIGINT, client_sigint_handler) == SIG_ERR) {
         PERROR_AND_EXIT("client_sigint_handler initialized failed");
     }
