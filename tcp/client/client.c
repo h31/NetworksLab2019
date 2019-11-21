@@ -23,6 +23,7 @@ pthread_mutex_t mp;
 
 void* sendHandler(void*);
 void* rcvHandler(void*);
+int strCmp(char* static_str, char* final_str);
 int readN(int sock, char* buf, int length, int flags);
 int readFix(int sock, char* buf, int bufSize, int flags);
 int sendFix(int sock, char* buf, int flags);
@@ -133,11 +134,12 @@ void* sendHandler(void *arg)
 			
 			int res = sendFix(sock, text, 0);
 			if (res <= 0) {
-				perror("send call failed");
+				perror("Client: send call failed");
 				close(sock);
 				pthread_exit(NULL);
 				exit(1);
 			}	
+			
 		}
 		else printf("Illegal input\n");
 		
@@ -159,7 +161,7 @@ void* rcvHandler(void *arg)
 			bzero(msg, msg_length);
 			int res = readFix(sock, msg, msg_length, 0);		
 			if (res <= 0) {
-				perror("send call failed");
+				perror("Client: recv call failed");
 				close(sock);
 				pthread_exit(NULL);
 				exit(1);
