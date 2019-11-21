@@ -83,7 +83,7 @@ class Client:
                 try:
                     getFile.write(dataPayload)
                 except:
-                    self.clientSocket.sendto(errFilewrite, remoteSocket)
+                    self.clientSocket.sendto(errFileWrite, remoteSocket)
                     print('Can not write data. Session closed.')
                     getFile.close()
                     break

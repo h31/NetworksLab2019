@@ -97,7 +97,7 @@ class PacketProcess:
                 try:
                     self.sendFile = open(filePath, 'rb')
                 except:
-                    self.server.serverLocalSocket.sendto(errFileopen, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(errFileOpen, self.remoteSocket)
                     self.clear('Can not read file. Session closed. (%s:%s)' \
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
@@ -116,7 +116,7 @@ class PacketProcess:
                 self.watchdog.start()
 
             else:
-                self.server.serverLocalSocket.sendto(errNofile, self.remoteSocket)
+                self.server.serverLocalSocket.sendto(errNoFile, self.remoteSocket)
                 self.clear('Requested file not found. Session closed. (%s:%s)' \
                            % (self.remoteSocket[0], self.remoteSocket[1]))
 
@@ -144,7 +144,7 @@ class PacketProcess:
                 try:
                     self.rcvFile = open(filePath, 'wb')
                 except:
-                    self.server.serverLocalSocket.sendto(errFileopen, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(errFileOpen, self.remoteSocket)
                     self.clear('Can not open file. Session closed. (%s:%s)' \
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
@@ -175,7 +175,7 @@ class PacketProcess:
                 try:
                     self.rcvFile.write(dataPayload)
                 except:
-                    self.server.serverLocalSocket.sendto(errFilewrite, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(errFileWrite, self.remoteSocket)
                     self.clear('Can not write data. Session closed. (%s:%s)' \
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
