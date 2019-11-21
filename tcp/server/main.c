@@ -186,7 +186,7 @@ Client *get_last_not_null_client() {
 /*------------------- MAIN -----------------------------------------------------*/
 int main(int argc, char *argv[]) {
     int sockfd;
-    uint16_t portno;
+    uint16_t portno = 5001;
     unsigned int clilen;
     struct sockaddr_in serv_addr, cli_addr;
     int newsockfd = 0;
