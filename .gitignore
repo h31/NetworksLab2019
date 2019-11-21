@@ -1,2 +1,4 @@
 .idea
 __pycache__
+tftp/client_dir/*
+tftp/server_dir/*
