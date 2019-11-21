@@ -74,6 +74,7 @@ class PacketProcess:
         self.endFrag = False
         self.server = server
         self.watchdog = Watchdog(self.remoteSocket, self.server)
+        self._chunkSize = 512
 
     def runProc(self, data):
         self.watchdog.countReset()
@@ -102,7 +103,7 @@ class PacketProcess:
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
 
-                dataChunk = self.sendFile.read(512)
+                dataChunk = self.sendFile.read(self._chunkSize)
                 self.totalDatalen = len(dataChunk)
                 self.countBlock = 1
 
@@ -110,7 +111,7 @@ class PacketProcess:
                                   + dataChunk
                 self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
-                if len(dataChunk) < 512:
+                if len(dataChunk) < self._chunkSize:
                     self.endFrag = True
 
                 self.watchdog.start()
@@ -189,7 +190,7 @@ class PacketProcess:
 
                 self.watchdog.countReset()
 
-                if len(dataPayload) < 512:
+                if len(dataPayload) < self._chunkSize:
                     self.clear('Data receive finish. %s bytes (%s:%s)' \
                                % (self.totalDatalen, self.remoteSocket[0],
                                   self.remoteSocket[1]))
@@ -218,7 +219,7 @@ class PacketProcess:
 
                 if blockNo == self.countBlock:
                     try:
-                        dataChunk = self.sendFile.read(512)
+                        dataChunk = self.sendFile.read(self._chunkSize)
                     except:
                         dataChunk = ''
 
@@ -234,7 +235,7 @@ class PacketProcess:
 
                     self.watchdog.countReset()
 
-                    if dataLen < 512:
+                    if dataLen < self._chunkSize:
                         self.endFrag = True
 
                 else:

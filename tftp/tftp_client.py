@@ -14,6 +14,7 @@ class Client:
 
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.clientSocket.settimeout(5)
+        self._chunkSize = 512
 
     def get(self, fileName):
         self.filePath = os.path.join(self.clientDir, fileName)
@@ -95,7 +96,7 @@ class Client:
                 self.sendPacket = struct.pack(b'!2H', 4, blockNo)
                 self.clientSocket.sendto(self.sendPacket, remoteSocket)
 
-                if len(dataPayload) < 512:
+                if len(dataPayload) < self._chunkSize:
                     sys.stdout.write('\rget %s :%s bytes. finish.\n' \
                                      % (self.fileName, totalDatalen))
                     getFile.close()
@@ -193,7 +194,7 @@ class Client:
                 if blockNo == 65536:
                     blockNo = 0
 
-                dataChunk = putFile.read(512)
+                dataChunk = putFile.read(self._chunkSize)
 
                 DATApacket = struct.pack(b'!2H', 3, blockNo) + dataChunk
                 self.clientSocket.sendto(DATApacket, remoteSocket)
@@ -206,7 +207,7 @@ class Client:
                 if countBlock == 65536:
                     countBlock = 0
 
-                if len(dataChunk) < 512:
+                if len(dataChunk) < self._chunkSize:
                     endFlag = True
 
 
