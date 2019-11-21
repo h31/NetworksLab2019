@@ -9,35 +9,33 @@ import time
 
 class Server:
     def __init__(self, dPath, portno):
-        global serverDir, serverLocalSocket, remoteDict
-        serverDir = dPath
-        serverLocalSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        serverLocalSocket.bind(('', portno))
-        remoteDict = {}
+        self.serverDir = dPath
+        self.serverLocalSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.portno = portno
+        self.serverLocalSocket.bind(('', self.portno))
+        self.remoteDict = {}
 
     def run(self):
+        print("server running on port = %s" % self.portno)
         while True:
 
-            try:
-                data, remoteSocket = serverLocalSocket.recvfrom(4096)
+            data, remoteSocket = self.serverLocalSocket.recvfrom(4096)
 
-                if remoteSocket in remoteDict:
-                    remoteDict[remoteSocket].runProc(data)
-                else:
-                    remoteDict[remoteSocket] = packetProcess(remoteSocket)
-                    remoteDict[remoteSocket].runProc(data)
-
-            except:
-                pass
+            if remoteSocket in self.remoteDict:
+                self.remoteDict[remoteSocket].runProc(data)
+            else:
+                self.remoteDict[remoteSocket] = PacketProcess(remoteSocket, self)
+                self.remoteDict[remoteSocket].runProc(data)
 
 
-class watchdog(threading.Thread):
-    def __init__(self, owner):
+class Watchdog(threading.Thread):
+    def __init__(self, owner, server):
         threading.Thread.__init__(self)
         self.setDaemon(True)
         self.resetEvent = threading.Event()
         self.stopEvent = threading.Event()
         self.owner = owner
+        self.server = server
 
     def run(self):
         timeCount = 0
@@ -48,12 +46,12 @@ class watchdog(threading.Thread):
                 break
 
             if timeCount % 5 == 0 and 0 < timeCount < 25:
-                remoteDict[self.owner].reSend()
+                self.server.remoteDict[self.owner].reSend()
                 print('Resend data.(%s:%s)' % (self.owner[0], self.owner[1]))
 
             elif timeCount >= 25:
-                remoteDict[self.owner].clear('Session timeout. (%s:%s)' \
-                                             % (self.owner[0], self.owner[1]))
+                self.server.remoteDict[self.owner].clear('Session timeout. (%s:%s)' \
+                                                         % (self.owner[0], self.owner[1]))
                 break
 
             if self.resetEvent.isSet():
@@ -70,11 +68,12 @@ class watchdog(threading.Thread):
         self.stopEvent.set()
 
 
-class packetProcess:
-    def __init__(self, remoteSocket):
+class PacketProcess:
+    def __init__(self, remoteSocket, server):
         self.remoteSocket = remoteSocket
         self.endFrag = False
-        self.watchdog = watchdog(self.remoteSocket)
+        self.server = server
+        self.watchdog = Watchdog(self.remoteSocket, self.server)
 
     def runProc(self, data):
         self.watchdog.countReset()
@@ -90,7 +89,7 @@ class packetProcess:
         if Opcode == 1:
 
             filename = bytes.decode(data[2:].split(b'\x00')[0])
-            filePath = os.path.join(serverDir, filename)
+            filePath = os.path.join(self.server.serverDir, filename)
             print('Read request from:%s:%s, filename:%s' \
                   % (self.remoteSocket[0], self.remoteSocket[1], filename))
 
@@ -98,7 +97,7 @@ class packetProcess:
                 try:
                     self.sendFile = open(filePath, 'rb')
                 except:
-                    serverLocalSocket.sendto(errFileopen, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(errFileopen, self.remoteSocket)
                     self.clear('Can not read file. Session closed. (%s:%s)' \
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
@@ -109,7 +108,7 @@ class packetProcess:
 
                 self.sendPacket = struct.pack(b'!2H', 3, self.countBlock) \
                                   + dataChunk
-                serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
+                self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
                 if len(dataChunk) < 512:
                     self.endFrag = True
@@ -117,7 +116,7 @@ class packetProcess:
                 self.watchdog.start()
 
             else:
-                serverLocalSocket.sendto(errNofile, self.remoteSocket)
+                self.server.serverLocalSocket.sendto(errNofile, self.remoteSocket)
                 self.clear('Requested file not found. Session closed. (%s:%s)' \
                            % (self.remoteSocket[0], self.remoteSocket[1]))
 
@@ -132,12 +131,12 @@ class packetProcess:
         elif Opcode == 2:
 
             filename = bytes.decode(data[2:].split(b'\x00')[0])
-            filePath = os.path.join(serverDir, filename)
+            filePath = os.path.join(self.server.serverDir, filename)
             print('Write request from:%s:%s, filename:%s' \
                   % (self.remoteSocket[0], self.remoteSocket[1], filename))
 
             if os.path.isfile(filePath):
-                serverLocalSocket.sendto(errFileExists, self.remoteSocket)
+                self.server.serverLocalSocket.sendto(errFileExists, self.remoteSocket)
                 self.clear('File already exist. Session closed. (%s:%s)' \
                            % (self.remoteSocket[0], self.remoteSocket[1]))
 
@@ -145,7 +144,7 @@ class packetProcess:
                 try:
                     self.rcvFile = open(filePath, 'wb')
                 except:
-                    serverLocalSocket.sendto(errFileopen, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(errFileopen, self.remoteSocket)
                     self.clear('Can not open file. Session closed. (%s:%s)' \
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
@@ -154,7 +153,7 @@ class packetProcess:
                 self.countBlock = 1
 
                 self.sendPacket = struct.pack(b'!2H', 4, 0)
-                serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
+                self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
                 self.watchdog.start()
 
@@ -176,7 +175,7 @@ class packetProcess:
                 try:
                     self.rcvFile.write(dataPayload)
                 except:
-                    serverLocalSocket.sendto(errFilewrite, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(errFilewrite, self.remoteSocket)
                     self.clear('Can not write data. Session closed. (%s:%s)' \
                                % (self.remoteSocket[0], self.remoteSocket[1]))
                     return None
@@ -186,7 +185,7 @@ class packetProcess:
                     self.countBlock = 0
 
                 self.sendPacket = struct.pack(b'!2H', 4, blockNo)
-                serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
+                self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
                 self.watchdog.countReset()
 
@@ -231,7 +230,7 @@ class packetProcess:
 
                     self.sendPacket = struct.pack(b'!2H', 3, self.countBlock) \
                                       + dataChunk
-                    serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
+                    self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
                     self.watchdog.countReset()
 
@@ -264,12 +263,12 @@ class packetProcess:
         ##
 
         else:
-            serverLocalSocket.sendto(errUnknown, self.remoteSocket)
+            self.server.serverLocalSocket.sendto(errUnknown, self.remoteSocket)
             self.clear('Unknown error. Session closed.(%s:%s)' \
                        % (self.remoteSocket[0], self.remoteSocket[1]))
 
     def reSend(self):
-        serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
+        self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
     def clear(self, message):
         try:
@@ -281,6 +280,6 @@ class packetProcess:
         except:
             pass
 
-        del remoteDict[self.remoteSocket]
+        del self.server.remoteDict[self.remoteSocket]
         self.watchdog.stop()
         print(message.strip())

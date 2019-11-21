@@ -7,8 +7,9 @@ import os
 
 
 class Client:
-    def __init__(self, serverIP, clientDir, fileName):
+    def __init__(self, serverIP, serverPort, clientDir, fileName):
         self.serverIP = serverIP
+        self.serverPort = serverPort
         self.filePath = os.path.join(clientDir, fileName)
         self.fileName = fileName
 
@@ -31,7 +32,7 @@ class Client:
         format = '!H' + str(len(self.fileName)) + 'sB5sB'
         self.sendPacket = struct.pack(format.encode(), 1, \
                                       self.fileName.encode(), 0, b'octet', 0)
-        self.clientSocket.sendto(self.sendPacket, (self.serverIP, 69))
+        self.clientSocket.sendto(self.sendPacket, (self.serverIP, self.serverPort))
 
         try:
             getFile = open(self.filePath, 'wb')
@@ -52,7 +53,7 @@ class Client:
                     errCount = 0
                     break
                 except:
-                    self.clientSocket.sendto(self.sendPacket, (self.serverIP, 69))
+                    self.clientSocket.sendto(self.sendPacket, (self.serverIP, self.serverPort))
                     Opcode = 'Timeout'
                     errCount += 1
 
@@ -144,7 +145,7 @@ class Client:
         format = '!H' + str(len(self.fileName)) + 'sB5sB'
         WRQpacket = struct.pack(format.encode(), 2, self.fileName.encode(), 0, \
                                 b'octet', 0)
-        self.clientSocket.sendto(WRQpacket, (self.serverIP, 69))
+        self.clientSocket.sendto(WRQpacket, (self.serverIP, self.serverPort))
 
         try:
             putFile = open(self.filePath, 'rb')
