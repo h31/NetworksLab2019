@@ -7,16 +7,17 @@ import os
 
 
 class Client:
-    def __init__(self, serverIP, serverPort, clientDir, fileName):
+    def __init__(self, serverIP, serverPort, clientDir):
         self.serverIP = serverIP
         self.serverPort = serverPort
-        self.filePath = os.path.join(clientDir, fileName)
-        self.fileName = fileName
+        self.clientDir = clientDir
 
         self.clientSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.clientSocket.settimeout(5)
 
-    def get(self):
+    def get(self, fileName):
+        self.filePath = os.path.join(self.clientDir, fileName)
+        self.fileName = fileName
 
         if os.path.isfile(self.filePath):
             print(self.fileName + ' is alredy exist. Can not start.')
@@ -95,7 +96,7 @@ class Client:
                 self.clientSocket.sendto(self.sendPacket, remoteSocket)
 
                 if len(dataPayload) < 512:
-                    sys.stdout.write('\rget %s :%s bytes. finish.' \
+                    sys.stdout.write('\rget %s :%s bytes. finish.\n' \
                                      % (self.fileName, totalDatalen))
                     getFile.close()
                     break
@@ -108,6 +109,7 @@ class Client:
                 print('Received error code %s : %s' \
                       % (str(errCode), bytes.decode(errString)))
                 getFile.close()
+                os.remove(getFile.name)
                 break
 
 
@@ -129,7 +131,9 @@ class Client:
                     pass
                 break
 
-    def put(self):
+    def put(self, fileName):
+        self.filePath = os.path.join(self.clientDir, fileName)
+        self.fileName = fileName
 
         if not os.path.isfile(self.filePath):
             print(self.fileName + ' not exist. Can not start.')
