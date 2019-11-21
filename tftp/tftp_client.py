@@ -177,7 +177,7 @@ class Client:
 
                 if endFlag == True:
                     putFile.close()
-                    sys.stdout.write('\rput %s :%s bytes. finish.' \
+                    sys.stdout.write('\rput %s :%s bytes. finish.\n' \
                                      % (self.fileName, totalDatalen))
                     break
 
