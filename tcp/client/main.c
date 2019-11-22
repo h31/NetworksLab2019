@@ -35,6 +35,7 @@ bool toRead = true;
 int sockfd;
 int nextFreeString = 0;
 pthread_mutex_t mutex;
+struct termios orig_term_attr;
 
 int main(int argc, char *argv[]) {
     //объявление переменных
@@ -79,6 +80,12 @@ int main(int argc, char *argv[]) {
     bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
     serv_addr.sin_port = htons(portno);
 
+    // получить параметры, связанные с объектом, на который ссылается fd,
+    // и сохранить их в структуре termios, на которую ссылается termios_p.
+    // tcgetattr(int fd, struct termios *termios_p);
+    //fileno(stdin) возвращает дескриптор файла stdin
+    tcgetattr(fileno(stdin), &orig_term_attr);
+
     //соединение с сервером
     if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
         perror("ERROR connecting");
@@ -99,12 +106,13 @@ int main(int argc, char *argv[]) {
     while (1) {
         if (toRead) { // true - пока не нажата esc, то есть нельзя писать сообщение
             int character;
-            struct termios orig_term_attr;
             struct termios new_term_attr;
 
             // что-то там для терминала, чтобы считать нажатие клавиши
-            tcgetattr(fileno(stdin), &orig_term_attr);
+
+            //копирование в new из orig
             memcpy(&new_term_attr, &orig_term_attr, sizeof(struct termios));
+
             new_term_attr.c_lflag &= ~(ECHO | ICANON);
             new_term_attr.c_cc[VTIME] = 0;
             new_term_attr.c_cc[VMIN] = 0;
@@ -189,6 +197,7 @@ void closeClient() {
     close(sockfd);
     //Уничтожение мьютекса
     pthread_mutex_destroy(&mutex);
+    tcsetattr(fileno(stdin), TCSANOW, &orig_term_attr);
     exit(1);
 }
 
