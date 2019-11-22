@@ -7,6 +7,10 @@ import os
 
 
 class Client:
+    """
+    Class Main that can get files from Server and put files to the server
+    """
+
     def __init__(self, serverIP, serverPort, clientDir):
         self.serverIP = serverIP
         self.serverPort = serverPort

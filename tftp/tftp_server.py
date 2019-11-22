@@ -8,6 +8,10 @@ import time
 
 
 class Server:
+    """
+    Class Main that receive packets and pass they to the PacketProcess
+    """
+
     def __init__(self, dPath, portno):
         self.serverDir = dPath
         self.serverLocalSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -29,6 +33,10 @@ class Server:
 
 
 class Watchdog(threading.Thread):
+    """
+    Class for time control
+    """
+
     def __init__(self, owner, server):
         threading.Thread.__init__(self)
         self.setDaemon(True)
@@ -69,6 +77,10 @@ class Watchdog(threading.Thread):
 
 
 class PacketProcess:
+    """
+    Class for processing packets
+    """
+
     def __init__(self, remoteSocket, server):
         self.remoteSocket = remoteSocket
         self.endFrag = False
