@@ -123,10 +123,10 @@ void init_connection(uint16_t portno, struct hostent *server) {
     serv_addr.sin_port = htons(portno);
 
     while (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        /*if (errno != EWOULDBLOCK) {
-            perror("ERROR reading from socket");
+        if (errno != EINPROGRESS) {
+            perror("ERROR on connection");
             exit(1);
-        }*/
+        }
     }
 }
 
