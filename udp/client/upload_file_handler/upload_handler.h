@@ -1,0 +1,7 @@
+
+#ifndef UDP_CLIENT_LINUX_UPLOAD_HANDLER_H
+#define UDP_CLIENT_LINUX_UPLOAD_HANDLER_H
+
+void upload_file(char* file_path);
+
+#endif //UDP_CLIENT_LINUX_UPLOAD_HANDLER_H
