@@ -1,5 +1,5 @@
 import argparse
-from tftp_test import Client
+from tftp_client import Client
 
 
 def get_req_from_cmd():
