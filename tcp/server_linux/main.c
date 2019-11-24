@@ -2,27 +2,26 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <pthread.h>
 
 #include <string.h>
+#include <poll.h>
+#include <errno.h>
 
 #define PORT_NUMBER 5001
 #define MAX_MESSAGE_SIZE 5000
-
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#define MESSAGE_HEADER_SIZE 60
 
 typedef struct Client {
-    int sock;
+    int FD;
     char *name;
+    int flag;
     struct Client *next;
 } ClientsLinkedList;
 
 char *currentTime();
-
-void *handleClient(void *args);
 
 char *readMessage(ClientsLinkedList *client);
 
@@ -38,9 +37,21 @@ void clientDisconnected(ClientsLinkedList *clientToExit);
 
 ClientsLinkedList *createLinkedList(int sock);
 
-ClientsLinkedList *addClient(int newsockfd);
+ClientsLinkedList *addClient(int newClientFD);
 
 void shutdownServer();
+
+const char *readAndFormatMessage(int fromFD, char *formatedMessage, char *buffer, int messageSize);
+
+int getMessageSize(int fromFD);
+
+void sendMessageToClient(int clientFD, char *message, int messageSize);
+
+ClientsLinkedList *findClient(int clientFD);
+
+void removeFD(int fdToRemove);
+
+void addFD();
 
 //Связный список клиентов
 ClientsLinkedList *first, *last;
@@ -48,10 +59,15 @@ ClientsLinkedList *first, *last;
 int numberOfClients = 0;
 //Сокет, на котором мы встречаем клиентов
 int sockfd;
+struct pollfd *FDs;
+//Кол-во fd
+int pollSize = 1;
 
 int main(int argc, char *argv[]) {
     //Порт
     uint16_t portNumber;
+    //Код для проверок
+    int operationCode;
     //Адреса сервера и клиента
     struct sockaddr_in serverAddress, clientAddress;
 
@@ -83,51 +99,199 @@ int main(int argc, char *argv[]) {
     listen(sockfd, 5);
     socklen_t clientAddressLength = sizeof(clientAddress);
 
-    int newClientSocket;
+    FDs = (struct pollfd *) malloc(sizeof(struct pollfd));
+    bzero(FDs, sizeof(FDs));
+    FDs[0].fd = sockfd;
+    FDs[0].events = POLLIN;
 
     for (;;) {
-        /* Accept actual connection from the client */
-        newClientSocket = accept(sockfd, (struct sockaddr *) &clientAddress, &clientAddressLength);
-
-        if (newClientSocket < 0) {
-            perror("ERROR on accept");
+        operationCode = poll(FDs, 1, -1);
+        if (operationCode < 0) {
+            printf("Ошибка при использовании poll");
             break;
         }
 
-        ClientsLinkedList *newClient = addClient(newClientSocket);
-        char *nickName = readMessage(newClient);
-        newClient->name = nickName;
+        for (int i = 0; i < pollSize; ++i) {
 
-        if (strcmp(nickName, "") == 0) {
-            perror("Error! Client name should not be empty.");
-            clientDisconnected(newClient);
+            if (FDs[i].revents == 0) {
+                continue;
+            }
+
+            if (FDs[i].revents != POLLIN) {
+                printf("loop: %d\n", i);
+                perror("ERROR wrong revents\n");
+                shutdownServer();
+            }
+
+            if (FDs[i].fd == sockfd) {
+                //accept client
+                while (1) {
+                    operationCode = accept(sockfd, (struct sockaddr *) &clientAddress, &clientAddressLength);
+                    if (operationCode < 0) {
+                        break;
+                    }
+
+                    addFD();
+                    FDs[pollSize - 1].fd = operationCode;
+                    FDs[pollSize - 1].events = POLLIN;
+
+                    ClientsLinkedList *newClient = addClient(operationCode);
+                    char *nickName = readMessage(newClient);
+                    newClient->name = nickName;
+
+                    if (strcmp(nickName, "") == 0) {
+                        perror("Error! Client name should not be empty.");
+                        clientDisconnected(newClient);
+                    }
+
+                }
+            } else {
+                //read message size
+                int bufferSize = getMessageSize(FDs[i].fd);
+                char *messageBuffer = (char *) malloc(bufferSize);
+                char *formatedMessage = (char *) malloc(bufferSize + MESSAGE_HEADER_SIZE);
+
+                int tempFD = FDs[i].fd;
+
+                //wait for message income
+                operationCode = poll(&FDs[i], 1, -1);
+                if (operationCode < 0) {
+                    perror("ERROR on poll");
+                    exit(1);
+                }
+                if (FDs[i].revents != POLLIN) {
+                    printf("ERROR wrong revents");
+                    exit(1);
+                }
+
+                //read message
+                strcpy(formatedMessage, readAndFormatMessage(FDs[i].fd, formatedMessage, messageBuffer, bufferSize));
+
+                for (int j = 0; j < pollSize; j++) {
+                    if (FDs[j].fd != sockfd && FDs[j].fd != tempFD) {
+                        sendMessageToClient(FDs[j].fd, formatedMessage, bufferSize + MESSAGE_HEADER_SIZE);
+                    }
+                }
+                free(messageBuffer);
+                free(formatedMessage);
+            }
+
         }
 
-        pthread_t tid;
-        if (pthread_create(&tid, NULL, handleClient, (void *) newClient) != 0) {
-            printf("thread has not created");
-            exit(1);
-        }
+
     }
 
     shutdownServer();
     return 0;
 }
 
-ClientsLinkedList *addClient(int newsockfd) {
+void addFD() {
+    pollSize++;
+    FDs = (struct pollfd *) realloc(FDs, pollSize * sizeof(struct pollfd));
+}
+
+void removeFD(int fdToRemove) {
+    for (int i = 0; i < pollSize; i++) {
+        if (FDs[i].fd == fdToRemove) {
+            for (int j = i; j < pollSize; j++) {
+                if (j != pollSize - 1) {
+                    FDs[j] = FDs[j + 1];
+                }
+            }
+            pollSize--;
+            FDs = (struct pollfd *) realloc(FDs, pollSize * sizeof(struct pollfd));
+            break;
+        }
+    }
+}
+
+void sendMessageToClient(int clientFD, char *message, int messageSize) {
+    if (write(clientFD, &messageSize, sizeof(int)) < 0) {
+        if (errno != EWOULDBLOCK) {
+            perror("ERROR writing to socket");
+            shutdownServer();
+        }
+    }
+    if (write(clientFD, message, messageSize) < 0) {
+        if (errno != EWOULDBLOCK) {
+            perror("ERROR writing to socket");
+            shutdownServer();
+        }
+    }
+}
+
+int getMessageSize(int fromFD) {
+    uint32_t messageSize;
+    if (read(fromFD, &messageSize, sizeof(int)) < 0) {
+        if (errno != EWOULDBLOCK) {
+            perror("ERROR reading from socket");
+            shutdownServer();
+        }
+    }
+    return messageSize;
+}
+
+const char *readAndFormatMessage(int fromFD, char *formatedMessage, char *buffer, int messageSize) {
+    int check;
+    check = readN(fromFD, buffer, messageSize);
+    if (check < 0) {
+        if (errno != EWOULDBLOCK) {
+            perror("ERROR reading from socket");
+            shutdownServer();
+        }
+    }
+
+    ClientsLinkedList *client = findClient(fromFD);
+
+    if (check == 0 || !strcmp(buffer, "/exit")) {
+        printf("Client \"%s\" disconnected\n", client->name);
+        sprintf(formatedMessage, "Client \"%s\" disconnected\n", client->name);
+        removeFD(client->FD);
+        clientDisconnected(findClient(fromFD));
+    } else if (!client->flag) {
+        client->name = (char *) malloc(messageSize);
+        strcpy(client->name, buffer);
+        printf("Client \"%s\" connected\n", buffer);
+        sprintf(formatedMessage, "Client \"%s\" connected\n", buffer);
+        client->flag = 1;
+    } else {
+        printf("message from %s: %s\n", client->name, buffer);
+        sprintf(formatedMessage, "<%s> %s: %s\n", currentTime(), client->name, buffer);
+    }
+
+    return formatedMessage;
+}
+
+
+ClientsLinkedList *findClient(int clientFD) {
+    ClientsLinkedList *pointer = first;
+    while (pointer != last) {
+        if (pointer->FD == clientFD) {
+            return pointer;
+        }
+        pointer = pointer->next;
+    }
+    if (pointer->FD == clientFD) {
+        return pointer;
+    } else {
+        return NULL;
+    }
+}
+
+ClientsLinkedList *addClient(int newClientFD) {
     printf("addClient\n");
     if (numberOfClients < 0) {
         perror("Wait, what the hell?");
         shutdownServer();
     }
     if (numberOfClients == 0) {
-        first = createLinkedList(newsockfd);
+        first = createLinkedList(newClientFD);
         last = first;
         numberOfClients++;
         return first;
     }
-    ClientsLinkedList *newClient = (ClientsLinkedList *) createLinkedList(newsockfd);
-    newClient->sock = newsockfd;
+    ClientsLinkedList *newClient = (ClientsLinkedList *) createLinkedList(newClientFD);
+    newClient->FD = newClientFD;
     newClient->next = NULL;
     last->next = newClient;
     last = newClient;
@@ -171,7 +335,7 @@ char *readMessage(ClientsLinkedList *client) {
     int size;
 
     //Читаем сначала длину сообщения в переменную size
-    operationCode = readN(client->sock, &size, sizeof(int));
+    operationCode = readN(client->FD, &size, sizeof(int));
 
     //Проверяем всё ли в порядке с прочтением длины
     printf("Проверяем всё ли в порядке с прочтением длины: %d\n", operationCode);
@@ -198,7 +362,7 @@ char *readMessage(ClientsLinkedList *client) {
     //Выделяем память под полученную длину
     char *buffer = (char *) malloc(size);
     //Читаем в этот буфер заранее известное кол-во данных
-    operationCode = readN(client->sock, buffer, size);
+    operationCode = readN(client->FD, buffer, size);
 
     printf("Проверяем всё ли в порядке с чтением сообщения: %d", operationCode);
     //Проверяем всё ли в порядке с чтением сообщения
@@ -222,7 +386,7 @@ int sendAll(char *name, char *buffer) {
         if (strcmp(currentClient->name, name) == 0) {
             continue;
         }
-        sendContent(currentClient->sock, formedMessage);
+        sendContent(currentClient->FD, formedMessage);
         currentClient = currentClient->next;
     }
 }
@@ -274,7 +438,7 @@ void *handleClient(void *arg) {
 ClientsLinkedList *createLinkedList(int sock) {
     printf("createLinkedList\n");
     ClientsLinkedList *temp = (ClientsLinkedList *) malloc(sizeof(ClientsLinkedList));
-    temp->sock = sock;
+    temp->FD = sock;
     temp->name = NULL;
     temp->next = NULL;
     return temp;
@@ -296,7 +460,7 @@ char *currentTime() {
 
 void clientDisconnected(ClientsLinkedList *clientToExit) {
     printf("clientDisconnected\n");
-    close(clientToExit->sock);
+    close(clientToExit->FD);
     if (first == clientToExit) {
         if (numberOfClients == 1) {
             first = NULL;
@@ -319,5 +483,5 @@ void clientDisconnected(ClientsLinkedList *clientToExit) {
     }
     numberOfClients--;
     free(clientToExit);
-    pthread_exit(NULL);
+    exit(1);
 }

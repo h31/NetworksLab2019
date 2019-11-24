@@ -132,14 +132,12 @@ int main(int argc, char *argv[]) {
     pthread_t tid_read;
     if (pthread_create(&tid_read, NULL, (void *) readingMessages, &fdRead) != 0) {
         printf("Read thread has not created");
-        getchar(); exit(EXIT_FAILURE); 
     }
 
     //создаём поток на отправку сообщений
     pthread_t tid_send;
-    if (pthread_create(&tid_send, NULL, (void *) sendingMessages, &sockfd)) {
+    if (pthread_create(&tid_send, NULL, (void *) sendingMessages, &sockfd) != 0) {
         printf("Send thread has not created");
-        getchar(); exit(EXIT_FAILURE); 
     }
 
     //джойним потоки и заканчиваем работу
