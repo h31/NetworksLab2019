@@ -28,6 +28,7 @@ class Client:
             print(self.fileName + ' is alredy exist. Can not start.')
             return None
 
+        # --------------------- Send read request to server -------------------------
         ##Opcode 1 [ Read request ]
         ##
         ##          2 bytes    string   1 byte     string   1 byte
@@ -63,6 +64,7 @@ class Client:
                     Opcode = 'Timeout'
                     errCount += 1
 
+            # --------------------- Get new block of file from server -------------------------
             ##Opcode 3 [ Data ]
             ##
             ##          2 bytes    2 bytes       n bytes
@@ -107,6 +109,7 @@ class Client:
                     break
 
 
+            # --------------------- Error processing -------------------------
             elif Opcode == 5:
 
                 errCode = struct.unpack('!H', data[2:4])[0]
@@ -144,6 +147,7 @@ class Client:
             print(self.fileName + ' not exist. Can not start.')
             return None
 
+        # --------------------- Send write request to server -------------------------
         ##Opcode 2 [ Write request ]
         ##
         ##          2 bytes    string   1 byte     string   1 byte
@@ -152,8 +156,7 @@ class Client:
         ##          -----------------------------------------------
 
         format = '!H' + str(len(self.fileName)) + 'sB5sB'
-        WRQpacket = struct.pack(format.encode(), 2, self.fileName.encode(), 0, \
-                                b'octet', 0)
+        WRQpacket = struct.pack(format.encode(), 2, self.fileName.encode(), 0, b'octet', 0)
         self.clientSocket.sendto(WRQpacket, (self.serverIP, self.serverPort))
 
         try:
@@ -171,6 +174,7 @@ class Client:
             data, remoteSocket = self.clientSocket.recvfrom(4096)
             Opcode = struct.unpack('!H', data[0:2])[0]
 
+            # --------------------- Send new block of file to server -------------------------
             ##Opcode 4 [ ack ]
             ##
             ##          2 bytes    2 bytes
@@ -215,6 +219,7 @@ class Client:
                     endFlag = True
 
 
+            # --------------------- Error processing -------------------------
             elif Opcode == 5:
 
                 errCode = struct.unpack('!H', data[2:4])[0]

@@ -12,15 +12,21 @@ class Server:
     Class Main that receive packets and pass they to the PacketProcess
     """
 
-    def __init__(self, dPath, portno):
+    def __init__(self, dPath, portno, verbose):
         self.serverDir = dPath
         self.serverLocalSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.portno = portno
         self.serverLocalSocket.bind(('', self.portno))
         self.remoteDict = {}
+        self.verbose = verbose
+
+    def verbose_print(self, text):
+        if self.verbose:
+            print("DEBUG:%s" % text)
 
     def run(self):
         print("server running on port = %s" % self.portno)
+        self.verbose_print("TURNED ON")
         while True:
 
             data, remoteSocket = self.serverLocalSocket.recvfrom(4096)
@@ -91,7 +97,7 @@ class PacketProcess:
     def runProc(self, data):
         self.watchdog.countReset()
         Opcode = struct.unpack('!H', data[0:2])[0]
-
+        # --------------------- New read request -------------------------
         ##Opcode 1 [ Read request ]
         ##
         ##          2 bytes    string   1 byte     string   1 byte
@@ -133,7 +139,7 @@ class PacketProcess:
                 self.clear('Requested file not found. Session closed. (%s:%s)' \
                            % (self.remoteSocket[0], self.remoteSocket[1]))
 
-
+        # --------------------- New write request -------------------------
         ##Opcode 2 [ Write request ]
         ##
         ##          2 bytes    string   1 byte     string   1 byte
@@ -170,7 +176,7 @@ class PacketProcess:
 
                 self.watchdog.start()
 
-
+        # --------------------- Receive new block from client -------------------------
         ##Opcode 3 [ Data ]
         ##
         ##          2 bytes    2 bytes       n bytes
@@ -179,7 +185,6 @@ class PacketProcess:
         ##          ---------------------------------
 
         elif Opcode == 3:
-
             blockNo = struct.unpack('!H', data[2:4])[0]
             dataPayload = data[4:]
             self.totalDatalen += len(dataPayload)
@@ -211,7 +216,7 @@ class PacketProcess:
                 print('Receive wrong block. Resend data. (%s:%s)'
                       % (self.remoteSocket[0], self.remoteSocket[1]))
 
-
+        # --------------------- Send new block to client -------------------------
         ##Opcode 4 [ ack ]
         ##
         ##          2 bytes    2 bytes
@@ -220,7 +225,6 @@ class PacketProcess:
         ##          --------------------
 
         elif Opcode == 4:
-
             if self.endFrag:
                 self.clear('Data send finish. %s bytes (%s:%s)' \
                            % (self.totalDatalen, self.remoteSocket[0],
@@ -254,7 +258,7 @@ class PacketProcess:
                     print('Receive wrong block. Resend data. (%s:%s)'
                           % (self.remoteSocket[0], self.remoteSocket[1]))
 
-
+        # --------------------- Error processing -------------------------
         ##Opcode 5 [ error ]
         ##
         ##          2 bytes  2 bytes        string    1 byte
@@ -263,7 +267,7 @@ class PacketProcess:
         ##          ----------------------------------------
 
         elif Opcode == 5:
-
+            self.server.verbose_print("ERROR OPCODE")
             errCode = struct.unpack('!H', data[2:4])[0]
             errString = data[4:-1]
             self.clear('Received error code %s:%s Session closed.(%s:%s)' \
