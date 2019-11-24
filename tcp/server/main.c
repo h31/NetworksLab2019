@@ -5,47 +5,47 @@
 #include <unistd.h>
 
 #include <string.h>
-#include <pthread.h>
 #include <stdint.h>
 #include <signal.h>
+#include <sys/poll.h>
 
-#define MAX_CLIENTS 5
-typedef struct list{
-    int socket; // поле данных
-    struct list *next; // указатель на следующий элемент
-    struct list *prev; // указатель на предыдущий элемент
-} clientSocket;
-
-clientSocket *firstClient = NULL;
+#define CLIENTNUMBER 100
 
 void sigHandler(int sig);
 
-void closeSocket(clientSocket* socket);
+void closeSocket(int socketIndex);
 
 void writeToClients(void *msg, void *size);
 
-void *newClientFunc(void *clientStruct);
 
-char *readMessage(clientSocket* socket, int *sz, char *buffer);
+char *readMessage(int socketIndex, int *sz, char *buffer);
 
 int readN(int socket, void *buf, int length);
 
 int sockfd;
-pthread_mutex_t mutex;
+struct pollfd fds[CLIENTNUMBER];
 
-int main(int argc, char *argv[]) {
+int main() {
     //инициализация
     uint16_t portno;
     unsigned int clilen;
-    int i = 0;
     struct sockaddr_in serv_addr, cli_addr;
+    int count;
+    int ret;
+    char buffer[256];
+    int sz;
 
+    for (int j = 0; j < CLIENTNUMBER; ++j) {
+        fds[j].fd = -1;
+        fds[j].events = POLLIN;
+        fds[j].revents = 0;
+    }
     //создание сокета и проверка
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("ERROR opening socket");
     }
-
+    fds[0].fd = sockfd;
     //инициализация структуры сокета
     bzero((char *) &serv_addr, sizeof(serv_addr));
     portno = (uint16_t) 5001;
@@ -60,54 +60,51 @@ int main(int argc, char *argv[]) {
             exit(1);
         }
     }
-
     printf("Сервер запущен\n");
 
     //отлавливаем закрытие сервера
     signal(SIGINT, sigHandler);
 
-    //Инициализация мьютекса
-    pthread_mutex_init(&mutex, NULL);
 
     //ждем новых клиентов
     listen(sockfd, 5);
     clilen = sizeof(cli_addr);
     //для accept
     int sock;
-    //для pthread_create
-    pthread_t tid;
-    //"вечно" первый элемент
-    clientSocket *tmpClient;
-    while (1) {
-        tmpClient = firstClient;
-        //принимаем клиента и запоминаем его(проверка того, что соединение прошло успешно)
-        sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
-        if (sock < 0) {
-            perror("ERROR on accept");
-            exit(1);
-        }
 
-        clientSocket *newClient = (clientSocket *) malloc(sizeof(clientSocket));
-        pthread_mutex_lock(&mutex);
-        newClient->socket = sock;
-        newClient->next = NULL;
-        if (firstClient == NULL) {
-            newClient->prev = NULL;
-            firstClient=newClient;
-        } else {
-            while (tmpClient->next != NULL) {
-                tmpClient = tmpClient->next;
-            }
-            newClient->prev = tmpClient;
-            tmpClient->next = newClient;
-        }
-        pthread_mutex_unlock(&mutex);
-        //под каждого клиента свой поток(функция обработчик - newClient)
-        if (pthread_create(&tid, NULL, newClientFunc, (void *) newClient) < 0) {
-            perror("ERROR on create phread");
+    while (1) {
+        ret = poll(fds, CLIENTNUMBER, 0);
+        if (ret == -1) {
+            perror("poll error");
             exit(1);
+        } else if (ret > 0) {
+            if (fds[0].revents == POLLIN) {
+                sock = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
+                if (sock < 0) {
+                    perror("ERROR on accept");
+                    exit(1);
+                }
+                count = 1;
+                while (fds[count].fd != -1 && count < CLIENTNUMBER) {
+                    count++;
+                }
+                if (count < CLIENTNUMBER) {
+                    fds[count].fd = sock;
+                } else {
+                    printf("Превышено количество клиентов");
+                }
+            }
+            for (int i = 1; i < CLIENTNUMBER; ++i) {
+                if (fds[i].revents == POLLIN) {
+                    bzero(buffer, 256);
+                    sz = 0;
+                    readMessage(i, &sz, buffer);
+                    if(sz > 0) {
+                        writeToClients(buffer, &sz);
+                    }
+                }
+            }
         }
-        i++;
     }
 }
 
@@ -117,84 +114,54 @@ void sigHandler(int sig) {
     else {
         printf("\nСервер остановлен\n");
         //закрываем всех клиентов
-        clientSocket *tmpClient = firstClient;
-        while (tmpClient != NULL){
-            shutdown(tmpClient->socket, SHUT_RDWR);
-            close(tmpClient->socket);
-            tmpClient = tmpClient ->next;
+        for (int i = 0; i < CLIENTNUMBER; ++i) {
+            if (fds[i].fd != -1) {
+                shutdown(fds[i].fd, SHUT_RDWR);
+                close(fds[i].fd);
+            }
         }
-
-        //закрываем главный сокет
-        shutdown(sockfd, SHUT_RDWR);
-        close(sockfd);
-
-        //Уничтожение мьютекса
-        pthread_mutex_destroy(&mutex);
         exit(1);
     }
 }
 
-//поток каждого нового клиента, слушаем
-void *newClientFunc(void *clientStruct) {
-    char buffer[256];
-    int sz;
-    while (1) {
-        //для сообщения
-        bzero(buffer, 256);
-        //для его длины
-        sz = 0;
-        readMessage((clientSocket*)clientStruct, &sz, buffer);
-        //рассылаем всем принятое сообщение
-        writeToClients(buffer , &sz);
-    }
-}
 
 //рассылка пришедшего сообщения остальным клиентам
 void writeToClients(void *msg, void *size) {
-    //всем клиентам в массиве
-    clientSocket *tmpClient = firstClient;
-    pthread_mutex_lock(&mutex);
-    while (tmpClient != NULL){
-        if (write(tmpClient->socket, size, sizeof(int)) <= 0) {
-            closeSocket(tmpClient);
+    int count = 1;
+    while (count != CLIENTNUMBER) {
+        if (fds[count].fd != -1) {
+            if (write(fds[count].fd, size, sizeof(int)) <= 0) {
+                closeSocket(count);
+            }
+            if (write(fds[count].fd, msg, strlen(msg)) <= 0) {
+                closeSocket(count);
+            }
         }
-        if (write(tmpClient->socket, msg, strlen(msg)) <= 0) {
-            closeSocket(tmpClient);
-        }
-        tmpClient = tmpClient ->next;
+        count++;
     }
-    pthread_mutex_unlock(&mutex);
 }
 
 
 //закрытие/удаление клиента
-void closeSocket(clientSocket* socket) {
+void closeSocket(int socketIndex) {
     //закрываю сокет
-    shutdown(socket ->socket, SHUT_RDWR);
-    close(socket->socket);
-    pthread_mutex_lock(&mutex);
+    shutdown(fds[socketIndex].fd, SHUT_RDWR);
+    close(fds[socketIndex].fd);
     //удаляю из списка
-    if(socket->prev !=NULL){
-        socket->prev->next = socket->next;
-    }
-    if(socket->next!=NULL){
-        socket->next->prev = socket->prev;
-    }
-    pthread_mutex_unlock(&mutex);
-    //закрываю поток
-    pthread_exit(NULL);
+    fds[socketIndex].fd = -1;
+    fds[socketIndex].revents = 0;
 }
 
-char *readMessage(clientSocket* socket, int *sz, char *buffer) {
+char *readMessage(int socketIndex, int *sz, char *buffer) {
     //считываю длину сообщения - 4 байтф
-    if (readN(socket ->socket, sz, sizeof(int)) <= 0) {
+    if (readN(fds[socketIndex].fd, sz, sizeof(int)) <= 0) {
         perror("ERROR reading from socket\n");
-        closeSocket(socket);
+        closeSocket(socketIndex);
     }
     //считываю остальное сообщение
-    if (readN(socket->socket, buffer, *sz) <= 0) {
+    if (readN(fds[socketIndex].fd, buffer, *sz) <= 0) {
         perror("ERROR reading from socket\n");
-        closeSocket(socket);
+        closeSocket(socketIndex);
     }
     return buffer;
 }
