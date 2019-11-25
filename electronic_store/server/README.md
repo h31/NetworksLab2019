@@ -9,6 +9,15 @@
 
 ## Типы пакетов
 
+  |Type number|  Type name                                    |
+  |:---------:|:---------------------------------------------:|
+  | 01        | [error](#a_error)                             |
+  | 02        | [list of products](#a_list_of_products)       |
+  | 03        | [add product](#a_add_product)                 |
+  | 04        | [buy product](#a_buy_product)                 |
+  | 05        | [acknowledgment](#a_acknowledgment)           |
+  | 06        |[get list of products](#a_get_list_of_products)|
+  
 * <a name="a_error">**Error**</a>
 
   ***Посылается сервером при отсутствии запрашиваемого товара.***
@@ -91,7 +100,7 @@
   
 * <a name="a_get_list_of_products">**Get list of products**</a>
   
-  ***Посылается клиентом для запроса списка товаров.***
+  ***Посылается клиентом для запроса списка товаров.***  
   ***В ответ на данный запрос клиенту посылается пакет типа*** ["List of products"](#a_list_of_products) ***.***
   
   **Формат пакета:**
