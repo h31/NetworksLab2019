@@ -4,7 +4,7 @@ public interface Request {
 
     byte[] getRawRequest();
 
-    String getDomainName();
+    String getRequestAdress();
 
     int getRequestType();
 

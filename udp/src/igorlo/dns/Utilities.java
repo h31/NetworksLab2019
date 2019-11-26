@@ -1,5 +1,8 @@
 package igorlo.dns;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 public final class Utilities {
 
     //Do not use
@@ -27,6 +30,17 @@ public final class Utilities {
             buffer = (byte) (buffer >> 8 - to - 1);
         }
         return buffer;
+    }
+
+    public static int intFromTwoBytes(final byte left, final byte right){
+        return ((left & 0xff) << 8) | (right & 0xff);
+    }
+
+    public static byte[] shortToBytes(final short origin){
+        byte[] result = new byte[2];
+        result[0] = (byte)(origin & 0xff);
+        result[1] = (byte)((origin >> 8) & 0xff);
+        return result;
     }
 
 }

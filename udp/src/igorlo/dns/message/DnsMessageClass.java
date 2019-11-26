@@ -3,6 +3,8 @@ package igorlo.dns.message;
 import java.util.Arrays;
 import java.util.Collection;
 
+import static igorlo.dns.Utilities.intFromTwoBytes;
+
 public class DnsMessageClass implements DnsMessage {
 
     private final byte[] fullMessage;
@@ -14,9 +16,7 @@ public class DnsMessageClass implements DnsMessage {
         }
 
         fullMessage = Arrays.copyOf(rawMessage, rawMessage.length);
-
-        byte[] flagsBytes = Arrays.copyOfRange(rawMessage, 2, 4);
-        flags = new DnsFlagsClass(flagsBytes);
+        flags = new DnsFlagsClass(rawMessage[2], rawMessage[3]);
     }
 
     @Override
@@ -26,12 +26,27 @@ public class DnsMessageClass implements DnsMessage {
 
     @Override
     public int getId() {
-        return ((fullMessage[0] & 0xff) << 8) | (fullMessage[1] & 0xff);
+        return intFromTwoBytes(fullMessage[0], fullMessage[1]);
     }
 
     @Override
     public DnsFlags getFlags() {
         return flags;
+    }
+
+    @Override
+    public int getRequestQuantity() {
+        return intFromTwoBytes(fullMessage[4], fullMessage[5]);
+    }
+
+    @Override
+    public int getResponseQuantity() {
+        return intFromTwoBytes(fullMessage[6], fullMessage[7]);
+    }
+
+    @Override
+    public int getAdditionalInfoQuantity() {
+        return intFromTwoBytes(fullMessage[10], fullMessage[11]);
     }
 
     @Override
@@ -42,6 +57,11 @@ public class DnsMessageClass implements DnsMessage {
     @Override
     public Collection<Response> getResponses() {
         throw new UnsupportedOperationException("To be implemented");
+    }
+
+    @Override
+    public DnsAdditionalInfo getAdditionalInfo() {
+        return null;
     }
 
     @Override

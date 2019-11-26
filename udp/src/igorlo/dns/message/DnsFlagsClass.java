@@ -5,15 +5,19 @@ import static igorlo.dns.Utilities.isBitSet;
 
 public class DnsFlagsClass implements DnsFlags {
 
+    public static final DnsFlags DEFAULT_QUERRY_FLAGS = new DnsFlagsClass(
+            (byte) 0b00000001, (byte) 0b00000000
+    );
+    public static final DnsFlags DEFAULT_RESPONSE_FLAGS = new DnsFlagsClass(
+            (byte) 0b10000001, (byte) 0b10000000
+    );
+
     private final byte first;
     private final byte second;
 
-    public DnsFlagsClass(byte[] flagsBytes) {
-        if (flagsBytes.length != 2){
-            throw new IllegalArgumentException("Flags cannot have other than 2 bytes : found " + flagsBytes.length);
-        }
-        first = flagsBytes[0];
-        second = flagsBytes[1];
+    public DnsFlagsClass(final byte first, final byte second){
+        this.first = first;
+        this.second = second;
     }
 
     @Override

@@ -10,8 +10,16 @@ public interface DnsMessage {
 
     DnsFlags getFlags();
 
+    int getRequestQuantity();
+
+    int getResponseQuantity();
+
+    int getAdditionalInfoQuantity();
+
     Collection<Request> getRequests();
 
     Collection<Response> getResponses();
+
+    DnsAdditionalInfo getAdditionalInfo();
 
 }
