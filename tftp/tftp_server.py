@@ -7,40 +7,10 @@ import threading
 import time
 
 
-class Server:
-    """
-    Class Main that receive packets and pass they to the PacketProcess
-    """
-
-    def __init__(self, dPath, portno, verbose):
-        self.serverDir = dPath
-        self.serverLocalSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.portno = portno
-        self.serverLocalSocket.bind(('', self.portno))
-        self.remoteDict = {}
-        self.verbose = verbose
-
-    def verbose_print(self, text):
-        if self.verbose:
-            print("DEBUG:%s" % text)
-
-    def run(self):
-        print("server running on port = %s" % self.portno)
-        self.verbose_print("TURNED ON")
-        while True:
-
-            data, remoteSocket = self.serverLocalSocket.recvfrom(4096)
-
-            if remoteSocket in self.remoteDict:
-                self.remoteDict[remoteSocket].runProc(data)
-            else:
-                self.remoteDict[remoteSocket] = PacketProcess(remoteSocket, self)
-                self.remoteDict[remoteSocket].runProc(data)
-
-
 class Watchdog(threading.Thread):
     """
-    Class for time control
+    Class for packets sending control.
+    Run new thread for every sended package and awaiting for confirmation.
     """
 
     def __init__(self, owner, server):
@@ -300,3 +270,34 @@ class PacketProcess:
         del self.server.remoteDict[self.remoteSocket]
         self.watchdog.stop()
         print(message.strip())
+
+
+class Server:
+    """
+    Class Main that receive packets and pass they to the PacketProcess
+    """
+
+    def __init__(self, dPath, portno, verbose):
+        self.serverDir = dPath
+        self.serverLocalSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.portno = portno
+        self.serverLocalSocket.bind(('', self.portno))
+        self.remoteDict = {}
+        self.verbose = verbose
+
+    def verbose_print(self, text):
+        if self.verbose:
+            print("DEBUG:%s" % text)
+
+    def run(self):
+        print("server running on port = %s" % self.portno)
+        self.verbose_print("TURNED ON")
+        while True:
+
+            data, remoteSocket = self.serverLocalSocket.recvfrom(4096)
+
+            if remoteSocket in self.remoteDict:
+                self.remoteDict[remoteSocket].runProc(data)
+            else:
+                self.remoteDict[remoteSocket] = PacketProcess(remoteSocket, self)
+                self.remoteDict[remoteSocket].runProc(data)
