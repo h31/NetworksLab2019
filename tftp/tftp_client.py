@@ -20,11 +20,15 @@ class Client:
         self.clientSocket.settimeout(5)
         self._chunkSize = 512
 
-    def get(self, fileName):
-        self.filePath = os.path.join(self.clientDir, fileName)
+    def get(self, fileName, localFileName=None):
+        if localFileName == None:
+            self.localFilePath = os.path.join(self.clientDir, fileName)
+        else:
+            self.localFilePath = os.path.join(self.clientDir, localFileName)
+
         self.fileName = fileName
 
-        if os.path.isfile(self.filePath):
+        if os.path.isfile(self.localFilePath):
             print(self.fileName + ' is alredy exist. Can not start.')
             return None
 
@@ -42,7 +46,7 @@ class Client:
         self.clientSocket.sendto(self.sendPacket, (self.serverIP, self.serverPort))
 
         try:
-            getFile = open(self.filePath, 'wb')
+            getFile = open(self.localFilePath, 'wb')
         except:
             print(self.fileName + ' can not open.')
             return None
@@ -139,11 +143,15 @@ class Client:
                     pass
                 break
 
-    def put(self, fileName):
-        self.filePath = os.path.join(self.clientDir, fileName)
-        self.fileName = fileName
+    def put(self, fileName, targetFileName=None):
+        self.localFilePath = os.path.join(self.clientDir, fileName)
 
-        if not os.path.isfile(self.filePath):
+        if targetFileName == None:
+            self.fileName = fileName
+        else:
+            self.fileName = targetFileName
+
+        if not os.path.isfile(self.localFilePath):
             print(self.fileName + ' not exist. Can not start.')
             return None
 
@@ -160,7 +168,7 @@ class Client:
         self.clientSocket.sendto(WRQpacket, (self.serverIP, self.serverPort))
 
         try:
-            putFile = open(self.filePath, 'rb')
+            putFile = open(self.localFilePath, 'rb')
         except:
             print(self.fileName + ' can not open.')
             return None

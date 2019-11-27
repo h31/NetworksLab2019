@@ -8,13 +8,21 @@ def get_req_from_cmd():
         command_list = command.split(" ")
         if command_list[0] == "EXIT" or command_list[0] == "exit":
             exit(0)
-        elif command_list.__len__() != 2:
+        elif len(command_list) < 2 or len(command_list) > 3:
             print("Unexpected arguments number")
             continue
         elif command_list[0] == "GET" or command_list[0] == "get":
-            return tftpClient.get, command_list[1]
+            if len(command_list) == 2:
+                return tftpClient.get, command_list[1], None
+            else:
+                return tftpClient.get, command_list[1], command_list[2]
+
         elif command_list[0] == "PUT" or command_list[0] == "put":
-            return tftpClient.put, command_list[1]
+            if len(command_list) == 2:
+                return tftpClient.put, command_list[1], None
+            else:
+                return tftpClient.put, command_list[1], command_list[2]
+
         else:
             print("Unexpected command '%s'" % command_list[0])
 
@@ -44,6 +52,6 @@ if __name__ == '__main__':
     # ---------------------------- running client ----------------------------
     tftpClient = Client(serverIp, serverPort, "client_dir")
     while True:
-        request, fileName = get_req_from_cmd()
+        request, fileName, targetFileName = get_req_from_cmd()
 
-        request(fileName)
+        request(fileName, targetFileName)
