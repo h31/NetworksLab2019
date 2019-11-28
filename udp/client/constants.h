@@ -4,7 +4,7 @@
 
 #define MAX_FILE_PATH_SIZE 255
 
-#define MAX_PACKET_SIZE 512
+#define MAX_PACKET_SIZE 516
 
 #define PACKET_TYPE_SIZE 2
 
