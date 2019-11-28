@@ -31,7 +31,7 @@ class Watchdog(threading.Thread):
 
             if timeCount % 5 == 0 and 0 < timeCount < 25:
                 self.server.remoteDict[self.owner].reSend()
-                print('Resend data.(%s:%s)' % (self.owner[0], self.owner[1]))
+                print('WATCH_DOG:Resend data.(%s:%s)' % (self.owner[0], self.owner[1]))
 
             elif timeCount >= 25:
                 self.server.remoteDict[self.owner].clear('Session timeout. (%s:%s)' \
@@ -184,8 +184,8 @@ class PacketProcess:
                                   self.remoteSocket[1]))
 
             else:
-                print('Receive wrong block. Resend data. (%s:%s)'
-                      % (self.remoteSocket[0], self.remoteSocket[1]))
+                print('Receive wrong block. Resend data. (%d:%s:%s)'
+                      % (blockNo, self.remoteSocket[0], self.remoteSocket[1]))
 
         # --------------------- Send new block to client -------------------------
         ##Opcode 4 [ ack ]
@@ -226,8 +226,8 @@ class PacketProcess:
                         self.endFrag = True
 
                 else:
-                    print('Receive wrong block. Resend data. (%s:%s)'
-                          % (self.remoteSocket[0], self.remoteSocket[1]))
+                    print('Receive wrong block. Resend data. (%d:%s:%s)'
+                          % (blockNo, self.remoteSocket[0], self.remoteSocket[1]))
 
         # --------------------- Error processing -------------------------
         ##Opcode 5 [ error ]
