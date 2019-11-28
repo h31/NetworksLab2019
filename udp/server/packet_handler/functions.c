@@ -67,7 +67,7 @@ int receive_packet(void* buffer, struct sockaddr_in* cliaddr, int* cliaddr_len) 
 
 void send_data_packet(void* data, int data_size, int block_number, struct sockaddr_in cliaddr, int len) {
     void* data_packet = NULL;
-    int data_packet_size = create_data_packet(&data_packet, block_number, data, data_size);
+    int data_packet_size = create_data_packet(&data_packet, htons(block_number), data, data_size);
     send_packet(data_packet, data_packet_size, &cliaddr, len);
     free(data_packet);
 }
@@ -75,7 +75,7 @@ void send_data_packet(void* data, int data_size, int block_number, struct sockad
 
 void send_acknowledgment_packet(int block_number, struct sockaddr_in cliaddr, int len) {
     void* acknowledgment_packet = NULL;
-    int ack_packet_size = create_acknowledgment_packet(&acknowledgment_packet, block_number);
+    int ack_packet_size = create_acknowledgment_packet(&acknowledgment_packet, htons(block_number));
     send_packet(acknowledgment_packet, ack_packet_size, &cliaddr, len);
     free(acknowledgment_packet);
 }
@@ -83,7 +83,7 @@ void send_acknowledgment_packet(int block_number, struct sockaddr_in cliaddr, in
 
 void send_error_packet(char* error_message, struct sockaddr_in cliaddr, int len) {
     void* err_packet = NULL;
-    int err_packet_size = create_error_packet(&err_packet, 2, error_message, (int) strlen(error_message));
+    int err_packet_size = create_error_packet(&err_packet, htons(2), error_message, (int) strlen(error_message));
     send_packet(err_packet, err_packet_size, &cliaddr, len);
     free(err_packet);
 }
@@ -217,8 +217,8 @@ void handle_data_packet(void* packet, int packet_size, struct sockaddr_in cliadd
     }
 
     // отправка подтверждения
-    uint16_t* packet_number = (uint16_t*) (packet + PACKET_TYPE_SIZE);
-    send_acknowledgment_packet(*packet_number, cliaddr, len);
+    uint16_t packet_number = ntohs( *(uint16_t*) (packet + PACKET_TYPE_SIZE));
+    send_acknowledgment_packet(packet_number, cliaddr, len);
 
     // если был получен неполный пакет (последний)
     if (packet_size < MAX_PACKET_SIZE) {
@@ -249,14 +249,14 @@ void handle_acknowledgment_packet(void* packet, struct sockaddr_in cliaddr, int 
     int number_read = (int) fread(data, 1, MAX_PACKET_SIZE - PACKET_TYPE_SIZE-PACKET_BLOCK_NUMBER_SIZE, file);
 
     // отправление пакета с данными
-    uint16_t* packet_number = (uint16_t*) (packet + PACKET_TYPE_SIZE);
-    send_data_packet(data, number_read, (*(int *) packet_number) + 1, cliaddr, len);
+    uint16_t packet_number = ntohs( *(uint16_t*) (packet + PACKET_TYPE_SIZE));
+    send_data_packet(data, number_read, packet_number + 1, cliaddr, len);
 
     if (number_read < MAX_PACKET_SIZE-PACKET_TYPE_SIZE-PACKET_BLOCK_NUMBER_SIZE) {
         //если было прочитано меньше нужного, то это последний пакет => удаление клиента
         list_of_clients__remove_client(cliaddr);
     } else {
         //запись нового номера ожидаемого блока
-        list_of_clients__set_block_number(cliaddr, (*(uint16_t *) packet_number) + 1);
+        list_of_clients__set_block_number(cliaddr, htons(packet_number + 1) );
     }
 }

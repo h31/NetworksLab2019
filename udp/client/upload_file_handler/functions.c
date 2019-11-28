@@ -11,15 +11,15 @@
 
 // проверка типа полученного пакета
 int check_received_packet_(void* packet, int required_block_number) {
-    uint16_t* packet_number = (uint16_t*) (packet + sizeof(uint16_t));
-    uint16_t* packet_type = (uint16_t*) packet;
+    uint16_t packet_number = ntohs(*(uint16_t*) (packet + sizeof(uint16_t)));
+    uint16_t packet_type = ntohs(*(uint16_t*) packet);
 
-    if (*packet_type == DTG_ERROR) {
-        console_print_error(*packet_number, (char*) (packet + PACKET_TYPE_SIZE + PACKET_BLOCK_NUMBER_SIZE));
+    if (packet_type == DTG_ERROR) {
+        console_print_error(packet_number, (char*) (packet + PACKET_TYPE_SIZE + PACKET_BLOCK_NUMBER_SIZE));
         return -1;
     }
 
-    if (*packet_type != DTG_ACKNOWLEDGMENT || *packet_number != required_block_number) {
+    if (packet_type != DTG_ACKNOWLEDGMENT || packet_number != required_block_number) {
         fprintf(stdout, "Получили не подтверждение.\n");
         return -1;
     }

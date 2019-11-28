@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <netinet/in.h>
 
 #include "packet_types.h"
 #include "../constants.h"
@@ -27,7 +28,7 @@ int create_data_packet(void** packet, __uint16_t block_number, void* data, int d
     int packet_size = PACKET_TYPE_SIZE + PACKET_BLOCK_NUMBER_SIZE + data_size;
     *packet = realloc(*packet, packet_size);
     bzero(*packet, packet_size);
-    __uint16_t type = DTG_DATA;
+    __uint16_t type = htons(DTG_DATA);
 
     //add packet type
     memcpy(*packet, &type, PACKET_TYPE_SIZE);
@@ -43,7 +44,7 @@ int create_data_packet(void** packet, __uint16_t block_number, void* data, int d
 int create_acknowledgment_packet(void** packet, uint16_t block_number) {
     int packet_size = PACKET_TYPE_SIZE + PACKET_BLOCK_NUMBER_SIZE;
     *packet = realloc(*packet, packet_size);
-    uint16_t type = DTG_ACKNOWLEDGMENT;
+    uint16_t type = htons(DTG_ACKNOWLEDGMENT);
 
     bzero(*packet, packet_size);
 

@@ -22,7 +22,7 @@ void check_number_of_args_(int argc, char **argv) {
 int main(int argc, char* argv[]) {
     char packet[MAX_PACKET_SIZE];
     struct sockaddr_in cliaddr;
-    uint16_t* packet_type;
+    uint16_t packet_type;
     int packet_size;
     int cliaddr_len;
 
@@ -48,17 +48,17 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        packet_type = (uint16_t*) packet;
-        if (*packet_type == DTG_READ_REQUEST) {
+        packet_type = ntohs(*(uint16_t*) packet);
+        if (packet_type == DTG_READ_REQUEST) {
             handle_read_request_packet(packet, cliaddr, cliaddr_len);
 
-        } else if (*packet_type == DTG_WRITE_REQUEST) {
+        } else if (packet_type == DTG_WRITE_REQUEST) {
             handle_write_request_packet(packet, cliaddr, cliaddr_len);
 
-        } else if (*packet_type == DTG_DATA) {
+        } else if (packet_type == DTG_DATA) {
             handle_data_packet(packet, packet_size, cliaddr, cliaddr_len);
 
-        } else if (*packet_type == DTG_ACKNOWLEDGMENT) {
+        } else if (packet_type == DTG_ACKNOWLEDGMENT) {
             handle_acknowledgment_packet(packet, cliaddr, cliaddr_len);
         }
 

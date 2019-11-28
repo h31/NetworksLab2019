@@ -21,7 +21,7 @@ int handle_error_packet_(char* packet, int packet_number, FILE** file) {
 
 
 int handle_data_packet(char* packet, int packet_size, FILE** dst_file, char* dst_file_path, char* src_file_path) {
-    uint16_t* packet_number = (uint16_t*) (packet + sizeof(uint16_t));
+    uint16_t packet_number = ntohs(*(uint16_t*) (packet + sizeof(uint16_t)));
 
     //создание файла
     if (*dst_file == NULL) {
@@ -35,7 +35,7 @@ int handle_data_packet(char* packet, int packet_size, FILE** dst_file, char* dst
            *dst_file);
 
     //подтверждение пакета
-    send_acknowledgment_packet(*packet_number);
+    send_acknowledgment_packet(packet_number);
 
     //если пришёл неполный пакет
     if (packet_size < MAX_PACKET_SIZE) {
@@ -51,8 +51,8 @@ int handle_data_packet(char* packet, int packet_size, FILE** dst_file, char* dst
 void download_file(char* file_path, char* dst_path) {
     char packet[MAX_PACKET_SIZE];
     struct sockaddr_in addr;
-    uint16_t* packet_number;
-    uint16_t* packet_type;
+    uint16_t packet_number;
+    uint16_t packet_type;
     FILE* file = NULL;
     int packet_size;
     int addr_len;
@@ -65,12 +65,12 @@ void download_file(char* file_path, char* dst_path) {
 
     // получение пакетов с данными
     while ((packet_size = receive_packet(packet, &addr, &addr_len)) > 0) {
-        packet_number = (uint16_t*) (packet + sizeof(uint16_t));
-        packet_type = (uint16_t*) packet;
+        packet_number = ntohs(*(uint16_t*) (packet + sizeof(uint16_t)));
+        packet_type = ntohs(*(uint16_t*) packet);
 
         // проверка полученного пакета
-        if ( (*packet_type == DTG_DATA && handle_data_packet(packet, packet_size, &file, dst_path, file_path) == -1) ||
-                (*packet_type == DTG_ERROR && handle_error_packet_(packet, *packet_number, &file) == 0) ) {
+        if ( (packet_type == DTG_DATA && handle_data_packet(packet, packet_size, &file, dst_path, file_path) == -1) ||
+                (packet_type == DTG_ERROR && handle_error_packet_(packet, packet_number, &file) == 0) ) {
             return;
         }
 
