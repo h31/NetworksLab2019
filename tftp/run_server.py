@@ -30,5 +30,5 @@ if __name__ == '__main__':
         raise Exception("-p Port was't passed")
 
     # ---------------------------- running server ----------------------------
-    tftpServer = Server(os.path.abspath('server_dir'), localPort, verbose)
+    tftpServer = Server(os.path.abspath(localDir), localPort, verbose)
     tftpServer.run()

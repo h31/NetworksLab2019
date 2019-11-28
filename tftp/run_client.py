@@ -1,5 +1,6 @@
 import argparse
 from tftp_client import Client
+import os
 
 
 def get_req_from_cmd():
@@ -38,19 +39,26 @@ if __name__ == '__main__':
     parser.add_argument("-i", "--ip", type=str, action='store',
                         help="ip")
 
+    parser.add_argument("-d", "--dir", type=str, action='store',
+                        help="direcotry with data")
+
     args = parser.parse_args()
 
     serverPort = args.port
 
     serverIp = args.ip
 
+    clientDir = args.dir
+
     if serverPort is None:
         raise Exception("-p Port was't passed")
     if serverIp is None:
         raise Exception("-i IP was't passed")
+    if clientDir is None:
+        raise Exception("-d Dir was't passed")
 
     # ---------------------------- running client ----------------------------
-    tftpClient = Client(serverIp, serverPort, "client_dir")
+    tftpClient = Client(serverIp, serverPort, os.path.abspath(clientDir))
     while True:
         request, fileName, targetFileName = get_req_from_cmd()
 
