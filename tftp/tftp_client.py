@@ -29,8 +29,8 @@ class Client:
         self.fileName = fileName
 
         if os.path.isfile(self.localFilePath):
-            print(self.fileName + ' is alredy exist. Can not start.')
-            return None
+            print(self.localFilePath.split("/")[-1] + ' is alredy exist. Replacing.')
+            os.remove(self.localFilePath)
 
         # --------------------- Send read request to server -------------------------
         ##Opcode 1 [ Read request ]
