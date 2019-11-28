@@ -97,6 +97,7 @@ class PacketProcess:
 
                 self.sendPacket = struct.pack(b'!2H', 3, self.countBlock) \
                                   + dataChunk
+                self.server.verbose_print("first packet = '%s'" % self.sendPacket)
                 self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
 
                 if len(dataChunk) < self._chunkSize:
