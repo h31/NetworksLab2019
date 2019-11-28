@@ -6,7 +6,6 @@ int eq(Client *cli1, Client *cli2) {
 }
 
 void free_space(Node *node) {
-    free(node->client->name);
     free(node->client);
     free(node);
 }

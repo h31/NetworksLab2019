@@ -1,19 +1,23 @@
 #include "headers/fsm.h"
 #include "headers/errors.h"
 
-State on_next(State state) {
+State next(State state) {
     switch (state) {
-        case FHEADER_SIZE:
-            return FHEADER;
+        case ST_NAME_HEADER:
+            return ST_NAME;
             break;
-        case FHEADER:
-            return FMSG_SIZE;
+        case ST_NAME:
+            return ST_MESSAGE_HEADER;
             break;
-        case FMSG_SIZE:
-            return FMSG;
+        case ST_MESSAGE_HEADER:
+            return ST_MESSAGE;
+            break;
+        case ST_MESSAGE:
+            return ST_MESSAGE_HEADER;
             break;
         default:
             raise_error(SHOULD_NOT_BE);
+            return ST_NAME_HEADER;
     }
 }
 

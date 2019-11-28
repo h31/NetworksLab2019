@@ -25,23 +25,25 @@ uint16_t exclude_cliport(int argc, char *argv[]) {
     return exclude(argc, 3, argv, 2);
 }
 
-Client *new_client(int *id, char *name) {
+Client *empty_client(int *fd) {
     Client *client = (Client *) malloc(sizeof(Client));
-    client->id = *id;
-    client->name = name;
+    client->state = ST_NAME_HEADER;
+    client->id = *fd;
+
+    History *history = (History *) malloc(sizeof(History));
+    history->name = allocate_char_buffer(CLIENT_NAME_SIZE);
+    history->message = allocate_char_buffer(MESSAGE_SIZE);
     return client;
 }
 
-Client *empty_client(int *fd) {
-    Client *client = (Client *) malloc(sizeof(Client));
-    client->state = FHEADER_SIZE;
-    client->id = *fd;
-    client->name = allocate_char_buffer(EMPTY);
-    return client;
+void freeHistory(History *history) {
+    free(history->message);
+    free(history->name);
+    free(history);
 }
 
 void free_client(Client *client) {
-    free(client->name);
+    freeHistory(client->history);
     free(client);
 }
 

@@ -15,8 +15,6 @@ Reader *read_clientname(int fd);
 
 void send_message(int fd, char *message);
 
-Reader *read_message(Client *client);
-
 void free_reader(Reader *reader);
 
 #endif //SERVER_READER_H

@@ -44,10 +44,6 @@ Reader *read_clientname(int fd) {
     return reader;
 }
 
-Reader *read_message(Client *client) {
-    return read_shared(client);
-}
-
 void send_message(int fd, char *message) {
     size_t info_size = strlen(message) + 1;
     ssize_t n;

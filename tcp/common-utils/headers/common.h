@@ -14,10 +14,21 @@
 
 #define EMPTY 1
 
-typedef struct Client {
+#define TRUE 1
+#define FALSE 0
+
+typedef struct History {
+    size_t name_size;
     char *name;
+    size_t message_size;
+    char *message;
+} History;
+
+typedef struct Client {
     int id; // id stores unique socketfd
     State state;
+    int enough_data;
+    History *history;
 } Client;
 
 typedef struct Env {

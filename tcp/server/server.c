@@ -6,87 +6,58 @@
 #include "../common-utils/headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/list.h"
+#include "../common-utils/headers/async_io.h"
 
 #define MAX_QUEUED_CLIENTS 7
 #define TIMEOUT -1
 
-#define JOIN " joined to the chat!"
 #define COLON " : "
 
-// https://www.ibm.com/support/knowledgecenter/en/ssw_ibm_i_71/rzab6/poll.htm
+// https://www.ibm.com/support/knowledgecenter/en/ssw_ibm_i_71/rzab6/poll.html
 
 List *cache = NULL;
 
-void start_communication(Client *client) {
-    while (!client->is_disconnected) {
-        Reader *reader = read_message(client);
-        if (reader->exit_code == SUCCESS) {
-            char *message = allocate_char_buffer(strlen(client->name) + strlen(COLON) + strlen(reader->value));
-            /* insert client name, colon and message */
-            strcpy(message, client->name);
-            strcat(message, COLON);
-            strcat(message, reader->value);
+void send_message_to_clients(Client *sender) {
+    char *message = allocate_char_buffer(
+            strlen(sender->history->name) + strlen(COLON) + strlen(sender->history->message));
+    /* insert client name, colon and message */
+    strcpy(message, sender->history->name);
+    strcat(message, COLON);
+    strcat(message, sender->history->message);
 
-            foreach(&send_message, message, cache);
-            free(message);
-        }
-        free_reader(reader);
-    }
-    printf("<logger>: client left the chat, name: %s\n", client->name);
-    delete(cache, client);
-}
+    foreach(&send_message, message, cache);
 
-void start_client_scenario(void *args) {
-    int *client_id = (int *) args;
-
-    Reader *reader = read_clientname(*client_id);
-    if (reader->exit_code == FAILURE) {
-        free_reader(reader);
-        raise_error(SOCKET_READ_ERROR);
-    }
-
-    /* copying client_name is necessary for reader deallocating */
-    size_t len = strlen(reader->value);
-    char *client_name = allocate_char_buffer(len);
-    strcpy(client_name, reader->value);
-    Client *client = new_client(client_id, client_name);
-
-    free_reader(reader);
-
-    /* apply client to cache */
-    push(cache, client);
-
-    char *welcome_msg = allocate_char_buffer(strlen(client->name) + strlen(JOIN));
-    /* insert client name and join literal */
-    strcpy(welcome_msg, client_name);
-    strcat(welcome_msg, JOIN);
-
-    printf("<logger>: %s\n", welcome_msg);
-
-    foreach(&send_message, welcome_msg, cache);
-    free(welcome_msg);
-    start_communication(client);
+    // TODO ??? SHOULD WE FREE SENDER HISTORY???
 }
 
 void which_client_scenario(Client *client) {
-    switch (client->state){
-        case FHEADER_SIZE:
-
+    switch (client->state) {
+        case ST_NAME_HEADER:
+            read_header(client);
+            break;
+        case ST_MESSAGE_HEADER:
+            read_header(client);
+            break;
+        case ST_NAME:
+            read_message(client);
+            break;
+        case ST_MESSAGE:
+            read_message(client);
+            send_message_to_clients(client);
+            break;
     }
 }
 
-void accept_new_cients(Poll_vector *vector) {
+void accept_new_cient(Poll_vector *vector) {
     int new_socketfd = 0;
-    while (new_socketfd != -1) {
-        new_socketfd = accept(vector->descriptors[0].fd, NULL, NULL);
-        if (new_socketfd < 0 && errno != EWOULDBLOCK) raise_error(INTERNAL_ERROR);
-        else { // Add the new incoming connection
-            vector->descriptors[vector->length].fd = new_socketfd;
-            vector->descriptors[vector->length].events = POLL_IN;
-            vector->length++;
+    new_socketfd = accept(vector->descriptors[0].fd, NULL, NULL);
+    if (new_socketfd < 0 && errno != EWOULDBLOCK) raise_error(INTERNAL_ERROR);
+    else { // Add the new incoming connection
+        vector->descriptors[vector->length].fd = new_socketfd;
+        vector->descriptors[vector->length].events = POLL_IN;
+        vector->length++;
 
-            push(cache, empty_client(&new_socketfd));
-        }
+        push(cache, empty_client(&new_socketfd));
     }
 }
 
@@ -97,10 +68,12 @@ void start_event_loop(Poll_vector *vector) {
 
     for (int i = 0; i < (int) vector->length; ++i) {
         poll_descriptor current = vector->descriptors[i];
-        if (current.revents == 0) continue;
+        if (current.revents == 0) continue; // TODO ???
         if (current.revents != POLL_IN) raise_error(POLL_ERROR);
-        if (current.fd == vector->descriptors[0].fd) accept_new_cients(vector);
+        /* listening socket */
+        if (current.fd == vector->descriptors[0].fd) accept_new_cient(vector);
         else {
+            /* readable connection */
             Client *current_client = get_by_id(cache, current.fd);
             which_client_scenario(current_client);
         }
