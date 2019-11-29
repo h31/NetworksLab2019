@@ -9,7 +9,8 @@
 
 int create_request_packet(void** packet, __uint16_t type, char* file_path, int file_path_size) {
     char zero_sym = '\0';
-    int packet_size = PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym);
+    char* mode = "octet";
+    int packet_size = PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym) + strlen(mode) + sizeof(zero_sym);
     *packet = realloc(*packet, packet_size);
     bzero(*packet, packet_size);
 
@@ -19,6 +20,10 @@ int create_request_packet(void** packet, __uint16_t type, char* file_path, int f
     memcpy(*packet + PACKET_TYPE_SIZE, (void*) file_path, file_path_size);
     //add '\0'
     memcpy(*packet + PACKET_TYPE_SIZE + file_path_size, &zero_sym, sizeof(zero_sym));
+    //add mode
+    memcpy(*packet + PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym), mode, strlen(mode));
+    //add '\0'
+    memcpy(*packet + PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym) + strlen(mode), &zero_sym, sizeof(zero_sym));
 
     return packet_size;
 }
