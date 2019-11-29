@@ -14,7 +14,7 @@ void send_data_packet(void* data, int data_size, int block_number, struct sockad
 
 void send_acknowledgment_packet(int block_number, struct sockaddr_in cliaddr, int len);
 
-void send_error_packet(char* error_message, struct sockaddr_in cliaddr, int len);
+void send_error_packet(int err_code, char* error_message, struct sockaddr_in cliaddr, int len);
 
 void handle_read_request_packet(void* packet, struct sockaddr_in cliaddr, int len);
 

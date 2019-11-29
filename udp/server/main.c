@@ -9,6 +9,7 @@
 #include "./list_of_clients/list_of_clients.h"
 #include "./packet_creator/packet_creator.h"
 #include "./packet_handler/packet_handler.h"
+#include "./packet_handler/error_codes.h"
 
 
 void check_number_of_args_(int argc, char **argv) {
@@ -60,6 +61,8 @@ int main(int argc, char* argv[]) {
 
         } else if (packet_type == DTG_ACKNOWLEDGMENT) {
             handle_acknowledgment_packet(packet, cliaddr, cliaddr_len);
+        } else {
+            send_error_packet(ILLEGAL_TFTP_OPERATION, "illegal tftp  operation", cliaddr, cliaddr_len);
         }
 
     }
