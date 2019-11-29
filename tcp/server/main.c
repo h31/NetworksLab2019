@@ -53,12 +53,14 @@ int main() {
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
 
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int) {1}, sizeof(int)) < 0) {
+        perror("setsockopt(SO_REUSEADDR) failed");
+        exit(1);
+    }
     //привязка сокета к адресу и проверка(+переиспользование адреса для сокета)
     if (bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-        if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int) {1}, sizeof(int)) < 0) {
-            perror("setsockopt(SO_REUSEADDR) failed");
-            exit(1);
-        }
+        perror("ERROR on binding");
+        exit(1);
     }
     printf("Сервер запущен\n");
 
