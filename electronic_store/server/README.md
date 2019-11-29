@@ -26,7 +26,7 @@
   
   |length| type | error message| \0 |
   |:----:|:----:|:------------:|:--:|
-  |  2b  |  2b  |    string    | 1b |
+  |  4b  |  2b  |    string    | 1b |
 
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
@@ -40,7 +40,7 @@
 
   | length | type | cost | count | name | \0 |...| cost | count | name | \0 |
   |:------:|:----:|:----:|:-----:|:----:|:--:|:-:|:----:|:-----:|:----:|:--:|
-  |   2b   |  2b  |  2b  |   2b  |string| 1b |...|  2b  |   2b  |string| 1b |
+  |   4b   |  2b  |  4b  |   4b  |string| 1b |...|  4b  |   4b  |string| 1b |
 
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
@@ -58,7 +58,7 @@
   
   | length | type |count|price| name |\0 | 
   |:------:|:----:|:---:|:---:|:----:|:-:|
-  |   2b   |  2b  |  2b |  2b |string| 1b|
+  |   4b   |  2b  |  4b |  4b |string| 1b|
 
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
@@ -76,7 +76,7 @@
   
   | length | type | count | name | \0 | 
   |:------:|:----:|:-----:|:----:|:--:|
-  |   2b   |  2b  |   2b  |string| 1b |
+  |   4b   |  2b  |   4b  |string| 1b |
 
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
@@ -91,7 +91,7 @@
   
   | length | type | ack. type | count |
   |:------:|:----:|:---------:|:-----:|
-  |   2b   |  2b  |     2b    |   2b  |
+  |   4b   |  2b  |     2b    |   4b  |
   
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
@@ -107,7 +107,7 @@
   
   | length | type |
   |:------:|:----:|
-  |   2b   |  2b  |
+  |   4b   |  2b  |
   
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
