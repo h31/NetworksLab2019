@@ -108,12 +108,22 @@ static int check_file_path_(const char* file_path, const int file_path_size) {
 
 void handle_read_request_packet(void* packet, struct sockaddr_in cliaddr, int len) {
 
-    print_request_log(RECEIVE_READ_REQUEST, cliaddr.sin_addr.s_addr, cliaddr.sin_port, (char*) (packet + PACKET_TYPE_SIZE));
+    print_request_log(
+            RECEIVE_READ_REQUEST,
+            cliaddr.sin_addr.s_addr,
+            cliaddr.sin_port,
+            (char*) (packet + PACKET_TYPE_SIZE)
+            );
 
     //проверка существования клиента
     if (list_of_clients__client_exists(cliaddr) == 1) {
         send_error_packet(ACCESS_VIOLATION,"this user performs another operation", cliaddr, len);
-        print_error_log(ACCESS_VIOLATION, "this user performs another operation", cliaddr.sin_addr.s_addr, cliaddr.sin_port);
+        print_error_log(
+                ACCESS_VIOLATION,
+                "this user performs another operation",
+                cliaddr.sin_addr.s_addr,
+                cliaddr.sin_port
+                );
         return;
     }
 
@@ -155,12 +165,22 @@ void handle_read_request_packet(void* packet, struct sockaddr_in cliaddr, int le
 
 void handle_write_request_packet(void* packet, struct sockaddr_in cliaddr, int len) {
 
-    print_request_log(RECEIVE_WRITE_REQUEST, cliaddr.sin_addr.s_addr, cliaddr.sin_port, (char*) (packet + PACKET_TYPE_SIZE));
+    print_request_log(
+            RECEIVE_WRITE_REQUEST,
+            cliaddr.sin_addr.s_addr,
+            cliaddr.sin_port,
+            (char*) (packet + PACKET_TYPE_SIZE)
+            );
 
     //проверка существования клиента
     if (list_of_clients__client_exists(cliaddr) == 1) {
         send_error_packet(ACCESS_VIOLATION, "this user performs another operation", cliaddr, len);
-        print_error_log(ACCESS_VIOLATION, "this user performs another operation", cliaddr.sin_addr.s_addr, cliaddr.sin_port);
+        print_error_log(
+                ACCESS_VIOLATION,
+                "this user performs another operation",
+                cliaddr.sin_addr.s_addr,
+                cliaddr.sin_port
+                );
         return;
     }
 
@@ -197,7 +217,12 @@ void handle_write_request_packet(void* packet, struct sockaddr_in cliaddr, int l
 
 void handle_data_packet(void* packet, int packet_size, struct sockaddr_in cliaddr, int len) {
 
-    print_data_packet_log(RECEIVE_DATA_PACKET, cliaddr.sin_addr.s_addr, cliaddr.sin_port, ntohs( *(uint16_t*) (packet + PACKET_TYPE_SIZE)), packet_size);
+    print_data_packet_log(
+            RECEIVE_DATA_PACKET,
+            cliaddr.sin_addr.s_addr,
+            cliaddr.sin_port,
+            ntohs( *(uint16_t*) (packet + PACKET_TYPE_SIZE)), packet_size
+            );
 
     //проверка существования клиента
     if (list_of_clients__client_exists(cliaddr) != 1) {
@@ -209,7 +234,12 @@ void handle_data_packet(void* packet, int packet_size, struct sockaddr_in cliadd
     //проверка режима работы с пользователем
     if (list_of_clients__get_mode(cliaddr) != UMODE_WAIT_FOR_DATA) {
         send_error_packet(ACCESS_VIOLATION, "this user performs another operation", cliaddr, len);
-        print_error_log(ACCESS_VIOLATION, "this user performs another operation", cliaddr.sin_addr.s_addr, cliaddr.sin_port);
+        print_error_log(
+                ACCESS_VIOLATION,
+                "this user performs another operation",
+                cliaddr.sin_addr.s_addr,
+                cliaddr.sin_port
+                );
         return;
     }
 
@@ -234,7 +264,12 @@ void handle_data_packet(void* packet, int packet_size, struct sockaddr_in cliadd
     //проверка записи
     if (number_written != data_size) {
         send_error_packet(DISK_FULL_OR_ALLOCATION_EXCEEDED, "not all data is recorded", cliaddr, len);
-        print_error_log(DISK_FULL_OR_ALLOCATION_EXCEEDED, "not all data is recorded", cliaddr.sin_addr.s_addr, cliaddr.sin_port);
+        print_error_log(
+                DISK_FULL_OR_ALLOCATION_EXCEEDED,
+                "not all data is recorded",
+                cliaddr.sin_addr.s_addr,
+                cliaddr.sin_port
+                );
         //удаление клиента
         list_of_clients__remove_client(cliaddr);
         //закрытие файла
@@ -259,7 +294,12 @@ void handle_data_packet(void* packet, int packet_size, struct sockaddr_in cliadd
 
 void handle_acknowledgment_packet(void* packet, struct sockaddr_in cliaddr, int len) {
 
-    print_acknowledgment_log(RECEIVE_ACKNOWLEDGMENT_PACKET, cliaddr.sin_addr.s_addr, cliaddr.sin_port, ntohs( *(uint16_t*) (packet + PACKET_TYPE_SIZE)));
+    print_acknowledgment_log(
+            RECEIVE_ACKNOWLEDGMENT_PACKET,
+            cliaddr.sin_addr.s_addr,
+            cliaddr.sin_port,
+            ntohs( *(uint16_t*) (packet + PACKET_TYPE_SIZE))
+            );
 
     //проверка существования клиента
     if (list_of_clients__client_exists(cliaddr) != 1) {
@@ -269,7 +309,12 @@ void handle_acknowledgment_packet(void* packet, struct sockaddr_in cliaddr, int 
     //проверка режима работы с клиентом
     if (list_of_clients__get_mode(cliaddr) != UMODE_WAIT_FOR_ACKNOWLEDGMENT) {
         send_error_packet(ACCESS_VIOLATION, "this user performs another operation", cliaddr, len);
-        print_error_log(ACCESS_VIOLATION, "this user performs another operation", cliaddr.sin_addr.s_addr, cliaddr.sin_port);
+        print_error_log(
+                ACCESS_VIOLATION,
+                "this user performs another operation",
+                cliaddr.sin_addr.s_addr,
+                cliaddr.sin_port
+                );
         return;
     }
 

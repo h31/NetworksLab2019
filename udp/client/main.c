@@ -2,12 +2,12 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 
-#include "constants.h"
-#include "./console_handler/user_choice.h"
-#include "./console_handler/console_handler.h"
-#include "./upload_file_handler/upload_handler.h"
-#include "./packet_handler/packet_handler.h"
 #include "./download_file_handler/download_handler.h"
+#include "./upload_file_handler/upload_handler.h"
+#include "./console_handler/console_handler.h"
+#include "./packet_handler/packet_handler.h"
+#include "./console_handler/user_choice.h"
+#include "constants.h"
 
 
 void check_number_of_args(int argc, char* argv[]) {

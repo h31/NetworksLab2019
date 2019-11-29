@@ -1,13 +1,13 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <netdb.h>
+#include <stdio.h>
 
-#include "../constants.h"
 #include "../packet_creator/packet_creator.h"
+#include "../constants.h"
 
 
 int sockfd;
@@ -58,7 +58,8 @@ int receive_packet(void* buffer, struct sockaddr_in* addr, int* addr_len) {
 
 void send_request_packet(uint16_t request_type, char* file_path) {
     void* request_packet = NULL;
-    int request_packet_size = create_request_packet(&request_packet, htons(request_type), file_path, strnlen(file_path, MAX_FILE_PATH_SIZE));
+    int request_packet_size =create_request_packet(&request_packet, htons(request_type), file_path,
+            strnlen(file_path, MAX_FILE_PATH_SIZE));
     send_packet(request_packet, request_packet_size);
     free(request_packet);
 }

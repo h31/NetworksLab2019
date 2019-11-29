@@ -4,8 +4,8 @@
 
 #include "../console_handler/console_handler.h"
 #include "../packet_creator/packet_creator.h"
-#include "../packet_creator/packet_types.h"
 #include "../packet_handler/packet_handler.h"
+#include "../packet_creator/packet_types.h"
 #include "../constants.h"
 
 
@@ -36,7 +36,8 @@ int upload_file_(FILE* file, struct sockaddr_in addr, int addr_len) {
 
     bzero(buffer, MAX_PACKET_SIZE - PACKET_TYPE_SIZE - PACKET_BLOCK_NUMBER_SIZE);
 
-    while ((number_read = (int) fread(buffer, 1, MAX_PACKET_SIZE - PACKET_TYPE_SIZE - PACKET_BLOCK_NUMBER_SIZE, file)) != 0) {
+    while ((number_read =
+            (int) fread(buffer,1,MAX_PACKET_SIZE - PACKET_TYPE_SIZE - PACKET_BLOCK_NUMBER_SIZE, file)) != 0) {
         block_number++;
 
         // создание и отпрака пакета данных

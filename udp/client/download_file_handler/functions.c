@@ -3,11 +3,11 @@
 #include <netinet/in.h>
 #include <bits/types/FILE.h>
 
-#include "../packet_creator/packet_creator.h"
-#include "../packet_creator/packet_types.h"
-#include "../packet_handler/packet_handler.h"
-#include "../constants.h"
 #include "../console_handler/console_handler.h"
+#include "../packet_creator/packet_creator.h"
+#include "../packet_handler/packet_handler.h"
+#include "../packet_creator/packet_types.h"
+#include "../constants.h"
 
 
 int handle_error_packet_(char* packet, int packet_number, FILE** file) {

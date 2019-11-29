@@ -1,7 +1,7 @@
+#include <netinet/in.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <netinet/in.h>
 
 #include "packet_types.h"
 #include "../constants.h"
@@ -23,7 +23,9 @@ int create_request_packet(void** packet, __uint16_t type, char* file_path, int f
     //add mode
     memcpy(*packet + PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym), mode, strlen(mode));
     //add '\0'
-    memcpy(*packet + PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym) + strlen(mode), &zero_sym, sizeof(zero_sym));
+    memcpy(*packet + PACKET_TYPE_SIZE + file_path_size + sizeof(zero_sym) + strlen(mode),
+            &zero_sym,
+            sizeof(zero_sym));
 
     return packet_size;
 }

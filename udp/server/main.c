@@ -62,7 +62,7 @@ int main(int argc, char* argv[]) {
         } else if (packet_type == DTG_ACKNOWLEDGMENT) {
             handle_acknowledgment_packet(packet, cliaddr, cliaddr_len);
         } else {
-            send_error_packet(ILLEGAL_TFTP_OPERATION, "illegal tftp  operation", cliaddr, cliaddr_len);
+            send_error_packet(ILLEGAL_TFTP_OPERATION,"illegal tftp  operation", cliaddr, cliaddr_len);
         }
 
     }
