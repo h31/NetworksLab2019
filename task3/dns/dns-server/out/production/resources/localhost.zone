@@ -1,0 +1,2 @@
+localhost.movie.edu.   0 IN A 127.0.0.1
+lh.movie.edu.    1200 IN CNAME localhost.movie.edu

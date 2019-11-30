@@ -1,0 +1,6 @@
+ext.args4j_version = '2.33'
+
+dependencies {
+    implementation project(':dns-packet-utils')
+    implementation "args4j:args4j:$args4j_version"
+}

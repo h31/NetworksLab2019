@@ -1,0 +1,42 @@
+buildscript {
+	ext.kotlin_version = '1.3.50'
+	ext.jvm_version = '1.8'
+
+	repositories {
+        mavenCentral()
+    	jcenter()
+    }
+	
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+    	jcenter()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'kotlin'
+
+	group 'Polytech'
+    version = '1.0'
+
+    sourceCompatibility = jvm_version
+
+	compileKotlin {
+    	kotlinOptions.jvmTarget = jvm_version
+	}
+	compileTestKotlin {
+	    kotlinOptions.jvmTarget = jvm_version
+	}
+
+    dependencies {
+        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+        testImplementation group: 'junit', name: 'junit', version: '4.12'
+    }
+}

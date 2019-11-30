@@ -1,0 +1,3 @@
+rootProject.name = 'dns'
+
+include ':dns-server', ':hookup', ':dns-packet-utils'
