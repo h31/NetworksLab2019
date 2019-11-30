@@ -1,6 +1,13 @@
 ext.args4j_version = '2.33'
 
 dependencies {
-    implementation project(':dns-packet-utils')
-    implementation "args4j:args4j:$args4j_version"
+    compile project(':dns-packet-utils')
+    compile "args4j:args4j:$args4j_version"
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'MainKt'
+    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }

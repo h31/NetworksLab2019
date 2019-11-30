@@ -1,12 +1,19 @@
 ext.koin_version = '2.0.1'
 
 dependencies {
-    implementation project(':dns-packet-utils')
+    compile project(':dns-packet-utils')
     
     // Koin for Kotlin
-    implementation "org.koin:koin-core:$koin_version"
+    compile "org.koin:koin-core:$koin_version"
     // Koin extended & experimental features
-    implementation "org.koin:koin-core-ext:$koin_version"
+    compile "org.koin:koin-core-ext:$koin_version"
     // Koin for Unit tests
     testImplementation "org.koin:koin-test:$koin_version"
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'MainKt'
+    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
 }
