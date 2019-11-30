@@ -41,6 +41,7 @@ class ServerImpl : Server {
                 // Ready to async handler
                 handleQuery(clientAddr, copiedReceivedData)
             } catch (t: Throwable) {
+                buffer.flip()
                 logger.error(t.localizedMessage)
                 continue
             }
