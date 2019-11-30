@@ -1,8 +1,7 @@
 import koin.myModule
 import org.koin.core.context.startKoin
-import utils.DNSPacketCompressor
-
-// nslookup example.com. localhost
+import services.Server
+import utils.inject
 
 fun main() {
     startKoin {
@@ -10,5 +9,6 @@ fun main() {
         fileProperties()
         modules(myModule)
     }
-    Server().start()
+    val server by inject<Server>()
+    server.start()
 }

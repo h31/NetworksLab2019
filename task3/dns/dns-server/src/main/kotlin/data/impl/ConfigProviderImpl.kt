@@ -19,6 +19,7 @@ class ConfigProviderImpl(
         private const val NAME_INDEX = 0
         private const val TTL_INDEX = 1
         private const val KLASS_INDEX = 2
+        private const val TYPE_INDEX = 3
     }
 
     private val zoneInfoFile = File(ClassLoader.getSystemResource(path).toURI())
@@ -33,14 +34,14 @@ class ConfigProviderImpl(
             }
         }
 
-    @Throws
+    @Throws(exceptionClasses = [IllegalStateException::class, NumberFormatException::class, IllegalArgumentException::class])
     private fun parseResourceRecord(record: String): DNSResourceRecord {
         val tokens = record.split(delimiter)
         check(tokens.size in MIN_TOKENS_SIZE..MAX_TOKENS_SIZE) { "Illegal resource record: $record" }
         val name = tokens[NAME_INDEX]
         val ttl = tokens[TTL_INDEX].toInt()
         val klass: DNSKlass = DNSKlass.valueOf(tokens[KLASS_INDEX])
-        val type = DNSQueryType.valueOf(tokens[tokens.lastIndex - 1])
+        val type = DNSQueryType.valueOf(tokens[TYPE_INDEX])
         val data = parseDNSRRData(tokens.drop(MIN_TOKENS_SIZE - 1), type)
         return DNSResourceRecord(
             name = createDNSName(name),
@@ -52,7 +53,7 @@ class ConfigProviderImpl(
         )
     }
 
-    @Throws
+    @Throws(exceptionClasses = [NumberFormatException::class, IllegalArgumentException::class])
     private fun parseDNSRRData(data: List<String>, type: DNSQueryType): DNSRRData = when (type) {
         DNSQueryType.A -> DNSRRData.A(IP.stringIPv4ToInt(data.first()))
         DNSQueryType.NS -> DNSRRData.NS(data.first())
@@ -62,7 +63,7 @@ class ConfigProviderImpl(
         else -> DNSRRData.Undefined
     }
 
-    @Throws
+    @Throws(exceptionClasses = [IllegalStateException::class])
     private fun createDNSName(name: String): DNSName {
         val nameBuilder = DNSName.Builder()
         name.split(".").forEach(nameBuilder::addMark)
