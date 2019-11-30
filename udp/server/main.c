@@ -63,7 +63,6 @@ int main(int argc, char *argv[]) {
 
     //ждем новых клиентов
     while (1) {
-        printf("Жду сообщения\n");
         n = recvfrom(sockfd, (char *) buffer, MAX_SIZE,
                      MSG_WAITALL, (struct sockaddr *) &cli_addr,
                      &len);

@@ -10,17 +10,24 @@
 
 
 #define MAXSIZE 516
-void sigHandlerOut(int sig);
 
+void sigHandlerOut(int sig);
 void closeClient();
+void sendFile();
+void receiveFile();
+void enterFileName();
 
 int sockfd;
+char fileName[50];
 
 int main(int argc, char *argv[]) {
     uint16_t portno;
     struct sockaddr_in serv_addr;
     struct hostent *server;
     char buffer[MAXSIZE];
+    char option[3];
+    int optionInt;
+
     //int n, len;
 
     //проверка, что все аргументы введены
@@ -39,7 +46,7 @@ int main(int argc, char *argv[]) {
     }
 
     //обработчик закрытия клиента
-    //signal(SIGINT, sigHandlerOut);
+    signal(SIGINT, sigHandlerOut);
 
     //нахожу мой сервер и проверяю
     server = gethostbyname(argv[1]);
@@ -55,14 +62,38 @@ int main(int argc, char *argv[]) {
     serv_addr.sin_port = htons(portno);
 
     bzero(buffer, MAXSIZE);
-    fgets(buffer,MAXSIZE,stdin);
-    sendto(sockfd, (const char *)buffer, strlen(buffer),
+    while (1) {
+        printf("Выберите опцию:\n1 - Скачать файл\n2 - Загрузить файл\n");
+        fgets(option, 3,stdin);
+        optionInt = atoi(option);
+        if (optionInt == 1) {
+            enterFileName();
+            receiveFile();
+        } else if (optionInt == 2) {
+            enterFileName();
+            sendFile();
+        } else {
+            printf("Неверная опция\n");
+        }
+    }
+    sendto(sockfd, (const char *) buffer, strlen(buffer),
            MSG_CONFIRM, (const struct sockaddr *) &serv_addr,
            sizeof(serv_addr));
-    printf("отправил %s\n",buffer);
-    return 0;
 }
 
+void enterFileName(){
+    memset(&fileName, 0, sizeof(fileName));
+    printf("Введите имя файла\n");
+    fgets(fileName,49,stdin);
+}
+
+void sendFile(){
+    
+}
+
+void receiveFile(){
+
+}
 //обработчик закрытия клиента
 void sigHandlerOut(int sig) {
     if (sig != SIGINT) return;
