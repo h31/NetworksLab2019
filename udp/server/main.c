@@ -11,39 +11,55 @@
 #define MAX_CLIENTS 100
 #define MAX_SIZE 516
 
+typedef struct {
+    struct sockaddr_in addr;
+    FILE *f;
+    int blockNumber;
+} clientInfo;
+
 void sigHandler(int sig);
 
-int newsockfd[MAX_CLIENTS];
+void receivePacket();
+
+void checkOpcode();
+
+clientInfo clients[MAX_CLIENTS];
 int sockfd;
+char packet[MAX_SIZE];
+char response[MAX_SIZE];
+int len, n;
+struct sockaddr_in cli_addr;
+uint16_t opcode, blockNumber;
+char *data;
 
 int main(int argc, char *argv[]) {
     //инициализация
     uint16_t port;
-    struct sockaddr_in serv_addr, cli_addr;
-    int len, n;
-    char buffer[MAX_SIZE];
+    struct sockaddr_in serv_addr;
 
     if (argc < 2) {
-        printf("Введите номер порта");
+        printf("Введите номер порта\n");
         exit(1);
     }
 
+    //отлавливаем закрытие сервера
+    signal(SIGINT, sigHandler);
 
-    //создание сокета и проверка
-    ;
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         perror("ERROR opening socket");
         exit(1);
     }
 
-    //инициализация структуры сокета
-    memset(&serv_addr, 0, sizeof(serv_addr));//
+    memset(&serv_addr, 0, sizeof(serv_addr));
     memset(&cli_addr, 0, sizeof(cli_addr));
+
+    //инициализация структуры сокета
     port = (uint16_t) atoi(argv[1]);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(port);
 
+    //переиспользование адреса
     if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int) {1}, sizeof(int)) < 0) {
         perror("setsockopt(SO_REUSEADDR) failed");
         exit(1);
@@ -54,29 +70,68 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    printf("Сервер запущен\n");
     //обнуление массива для хранения клиентов
-    //memset(&newsockfd, 0, sizeof(newsockfd));
+    for (int i = 0; i < MAX_CLIENTS; ++i) {
+        bzero(&clients[i].addr, sizeof(clients[i].addr));
+    }
+    printf("Сервер запущен\n");
 
-    //отлавливаем закрытие сервера
-    signal(SIGINT, sigHandler);
-
-    //ждем новых клиентов
     while (1) {
-        n = recvfrom(sockfd, (char *) buffer, MAX_SIZE,
-                     MSG_WAITALL, (struct sockaddr *) &cli_addr,
-                     &len);
-        buffer[n]='\0';
-        printf("Client: %s \n",buffer);
+        receivePacket();
     }
 }
+
+void sendPacket() {
+    sendto(sockfd, (const char *) packet, 516,
+           MSG_CONFIRM, (const struct sockaddr *) &cli_addr,
+           sizeof(cli_addr));
+}
+
+void formAndSendFirstResponse() {
+    bzero(packet, MAX_SIZE);
+    memcpy(packet, &opcode, 2);
+    memcpy(packet + 2, &blockNumber, 2);
+    sendPacket();
+}
+
+
+void receivePacket() {
+    n = recvfrom(sockfd, (char *) response, MAX_SIZE,
+                 MSG_WAITALL, (struct sockaddr *) &cli_addr,
+                 &len);
+    opcode = ntohs(*(uint16_t *) response);
+    checkOpcode();
+}
+
+void checkOpcode() {
+    if (opcode == 1 || opcode == 2) {
+        int i = 0;
+        while (clients[i].addr.sin_addr.s_addr != 0) {
+            i++;
+        }
+        clients[i].addr = cli_addr;
+        if (opcode == 1) {
+            opcode = htons(3);
+            blockNumber = htons(1);
+            printf("Начинаю посылать данные\n");
+        } else if (opcode == 2) {
+            opcode = htons(4);
+            blockNumber = htons(0);
+            printf("Отвечаю и разрешаю присылать мне\n");
+        }
+        formAndSendFirstResponse();
+    } else {
+        printf("Что-то не так\n");
+    }
+}
+
+
 
 //обработчик закрытия сервера
 void sigHandler(int sig) {
     if (sig != SIGINT) return;
     else {
         printf("\nСервер остановлен\n");
-        //закрываем главный сокет
         shutdown(sockfd, SHUT_RDWR);
         close(sockfd);
         exit(1);
