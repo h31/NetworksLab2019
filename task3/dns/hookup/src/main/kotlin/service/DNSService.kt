@@ -6,6 +6,6 @@ import domain.model.enums.DNSQueryType
 
 interface DNSService {
 
-    fun makeRequest(type: DNSQueryType, dnsServerAddress: String, dnsName: DNSName): DNSResult
+    fun makeRequest(type: DNSQueryType, dnsServerAddress: String, dnsName: DNSName, onResult: (DNSResult) -> Unit)
 
 }
