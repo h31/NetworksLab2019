@@ -25,7 +25,7 @@ object DNSPacketPrinter {
     private fun printNoError(packet: DNSPacket) = packet.answers.joinToString("\n", transform = ::getDNSResourceRecordString)
 
     private fun getDNSResourceRecordString(rr: DNSResourceRecord) = "type: ${rr.type}\n\t" + when (rr.data) {
-        is DNSRRData.A -> "ip: ${IP.intIPv6toString((rr.data as DNSRRData.A).address)}"
+        is DNSRRData.A -> "ip: ${IP.intIPv4toString((rr.data as DNSRRData.A).address)}"
         is DNSRRData.CName -> (rr.data as DNSRRData.CName).name
         is DNSRRData.NS -> (rr.data as DNSRRData.NS).name
         is DNSRRData.MX -> (rr.data as DNSRRData.MX).let { "${it.preference}\t${it.exchange}" }

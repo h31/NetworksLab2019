@@ -8,7 +8,7 @@ import org.koin.dsl.module
 import services.Server
 import services.impl.ServerImpl
 
-val myModule = module {
+val appModule = module {
     single<ConfigProvider> { ConfigProviderImpl(getProperty("zones_path")) }
     single<Server> { ServerImpl() }
     single<Logger> { PrintLogger() }

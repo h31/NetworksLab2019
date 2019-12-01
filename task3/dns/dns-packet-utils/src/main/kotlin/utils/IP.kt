@@ -15,7 +15,7 @@ object IP {
                 acc.or(i.shl(index * Byte.SIZE_BITS))
             }
 
-    fun intIPv6toString(ip: Int) = List(Int.SIZE_BYTES) { index -> ip.ushr(index * Byte.SIZE_BITS).and(mask) }
+    fun intIPv4toString(ip: Int) = List(Int.SIZE_BYTES) { index -> ip.ushr(index * Byte.SIZE_BITS).and(mask) }
             .reversed()
             .joinToString(separator = ".")
 
