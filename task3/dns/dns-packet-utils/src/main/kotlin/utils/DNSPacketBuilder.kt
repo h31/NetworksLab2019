@@ -45,7 +45,7 @@ object DNSPacketBuilder {
     }
 
     internal fun buildFlags(value: Short) = DNSFlags(
-            qr = DNSMessageType.of(value.and(QR_MASK).toInt() != 0),
+            qr = DNSMessageType.of(value.and(QR_MASK).toInt() == 0),
             opCode = DNSOpCode.of(value.and(OP_CODE_MASK).toInt().shr(OP_CODE_OFFSET).toByte()),
             aa = value.and(AA_MASK).toInt() != 0,
             tc = value.and(TC_MASK).toInt() != 0,
