@@ -16,7 +16,6 @@ void add(int fd) {
 void add_acceptor(int fd) {
     descriptors[ACCEPTOR_POS].fd = fd;
     descriptors[ACCEPTOR_POS].events = POLL_IN;
-    size++;
 }
 
 poll_descriptor get_acceptor() {

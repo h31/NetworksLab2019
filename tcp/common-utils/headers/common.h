@@ -6,7 +6,6 @@
 #include <pthread.h>
 #include "inet_utils.h"
 #include "fsm.h"
-#include "list.h"
 
 #define MESSAGE_SIZE 1024
 #define CLIENT_NAME_SIZE 16
@@ -14,9 +13,6 @@
 #define MAX_CLIENTS 256
 
 #define EMPTY 1
-
-#define TRUE 1
-#define FALSE 0
 
 typedef struct History {
     size_t *name_header;
@@ -31,10 +27,6 @@ typedef struct Client {
     State state;
     History *history;
 } Client;
-
-List *list();
-
-Client *new_client(int *id, char *name);
 
 Client *empty_client(int *fd);
 

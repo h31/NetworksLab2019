@@ -38,6 +38,8 @@ History *empty_history() {
     history->bytes_left = (size_t *) malloc(HEADER_SIZE);
 
     *history->bytes_left = HEADER_SIZE;
+    *history->name_header = 0;
+    *history->message_header = 0;
     return history;
 }
 
@@ -53,7 +55,7 @@ void freeHistory(History *history) {
     free(history->message_header);
     free(history->name_header);
     free(history->message_body);
-    free(history->name_body)
+    free(history->name_body);
     free(history->bytes_left);
     free(history);
 }

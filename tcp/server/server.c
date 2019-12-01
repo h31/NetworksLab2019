@@ -18,6 +18,8 @@
 
 List *cache = NULL;
 
+List *list();
+
 void send_message_to_clients(Client *sender) {
     char *message = allocate_char_buffer(
             strlen(sender->history->name_body) + strlen(COLON) + strlen(sender->history->message_body));
@@ -40,10 +42,10 @@ void which_client_scenario(Client *client) {
             read_message_header(client);
             break;
         case ST_NAME:
-
+            read_name_body(client);
             break;
         case ST_MESSAGE:
-            read_message(client);
+            read_message_body(client);
             send_message_to_clients(client);
             break;
     }
@@ -67,7 +69,7 @@ void start_event_loop() {
     if (acceptor.revents & POLL_IN) accept_new_cient();
     if (acceptor.revents < 0) raise_error(POLL_ERROR); // TODO RESOURCE LEAK
 
-    for (int i = 0; i < get_size(); ++i) {
+    for (int i = 1; i < get_size(); ++i) {
         poll_descriptor current = getn(i);
         if (current.revents & POLL_IN) {
             /* readable connection */
@@ -97,6 +99,7 @@ void start_server(const uint16_t *port) {
 
     /* initialize server environment */
     cache = list();
+    add_acceptor(sockfd);
 
     for (;;) { start_event_loop(); }
 }
