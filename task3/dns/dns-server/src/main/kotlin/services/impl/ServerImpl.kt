@@ -54,29 +54,25 @@ class ServerImpl : Server {
     }
 
     private fun sendInternalError(clientAddr: SocketAddress?, receivedData: ByteArray?) =
-        GlobalScope.launch(Dispatchers.IO) {
-            try {
-                val id = parseReceivedPacket(receivedData!!).header.id
-                val packet = buildInternalServerError(id)
-                DatagramChannel.open().use { channel ->
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    val id = parseReceivedPacket(receivedData!!).header.id
+                    val packet = buildInternalServerError(id)
                     channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
+                } catch (t: Throwable) {
+                    logger.error("Error on sending internal error event")
                 }
-            } catch (t: Throwable) {
-                logger.error("Error on sending internal error event")
             }
-        }
 
     private fun copyReceivedData() = buffer.array().copyOfRange(0, buffer.position())
 
     private fun handleQuery(clientAddr: SocketAddress, receivedData: ByteArray) =
-        GlobalScope.launch(Dispatchers.IO) {
-            val receivedPacket = parseReceivedPacket(receivedData)
-            logger.info("Received queries (id: ${receivedPacket.header.id}): ${receivedPacket.queries}")
-            val packet = buildAnswers(receivedPacket)
-            DatagramChannel.open().use { channel ->
+            GlobalScope.launch(Dispatchers.IO) {
+                val receivedPacket = parseReceivedPacket(receivedData)
+                logger.info("Received queries (id: ${receivedPacket.header.id}): ${receivedPacket.queries}")
+                val packet = buildAnswers(receivedPacket)
                 channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
             }
-        }
 
     private fun parseReceivedPacket(receivedData: ByteArray) = DNSPacketBuilder.build(ByteBuffer.wrap(receivedData))
 
@@ -109,26 +105,26 @@ class ServerImpl : Server {
     private fun buildInternalServerError(id: Short) = wrap(id, emptyList(), DNSRCode.INTERNAL_ERROR)
 
     private fun wrap(id: Short, resourceRecordList: List<DNSResourceRecord>, rCode: DNSRCode) = DNSPacket(
-        header = DNSHeader(
-            id = id,
-            flags = DNSFlags(
-                qr = DNSMessageType.ANSWER,
-                opCode = DNSOpCode.STANDARD,
-                aa = true,
-                tc = false,
-                ra = false,
-                rd = false,
-                rCode = rCode
+            header = DNSHeader(
+                    id = id,
+                    flags = DNSFlags(
+                            qr = DNSMessageType.ANSWER,
+                            opCode = DNSOpCode.STANDARD,
+                            aa = true,
+                            tc = false,
+                            ra = false,
+                            rd = false,
+                            rCode = rCode
+                    ),
+                    numOfAnswers = resourceRecordList.size.toShort(),
+                    numOfQueries = 0,
+                    numOfAdditionalAnswers = 0,
+                    numOfAuthorityAnswers = 0
             ),
-            numOfAnswers = resourceRecordList.size.toShort(),
-            numOfQueries = 0,
-            numOfAdditionalAnswers = 0,
-            numOfAuthorityAnswers = 0
-        ),
-        queries = emptyList(),
-        answers = resourceRecordList,
-        additionalAnswers = emptyList(),
-        authorityAnswers = emptyList()
+            queries = emptyList(),
+            answers = resourceRecordList,
+            additionalAnswers = emptyList(),
+            authorityAnswers = emptyList()
     )
 
 }
