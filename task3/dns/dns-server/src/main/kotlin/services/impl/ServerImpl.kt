@@ -34,28 +34,45 @@ class ServerImpl : Server {
 
     override fun start() {
         while (true) {
+            var clientAddr: SocketAddress? = null
+            var receivedData: ByteArray? = null
             try {
-                val clientAddr = channel.receive(buffer)
-                val copiedReceivedData = copyReceivedData()
-                buffer.flip()
+                clientAddr = channel.receive(buffer)
+                receivedData = copyReceivedData()
+                buffer.rewind()
                 // Ready to async handler
-                handleQuery(clientAddr, copiedReceivedData)
+                handleQuery(clientAddr, receivedData)
             } catch (t: Throwable) {
-                buffer.flip()
+                buffer.rewind()
+                sendInternalError(clientAddr, receivedData)
                 logger.error(t.localizedMessage)
                 continue
             }
         }
     }
 
+    private fun sendInternalError(clientAddr: SocketAddress?, receivedData: ByteArray?) {
+        try {
+            val id = parseRecievedPacket(receivedData!!).header.id
+            val packet = buildInternalServerError(id)
+            DatagramChannel.open().use { channel ->
+                channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
+            }
+        } catch (t: Throwable) {
+            logger.error("Error on sending internal error event")
+        }
+    }
+
     private fun copyReceivedData() = buffer.array().copyOfRange(0, buffer.position())
 
     private fun handleQuery(clientAddr: SocketAddress, receivedData: ByteArray) {
-        val receivedPacket = DNSPacketBuilder.build(ByteBuffer.wrap(receivedData))
+        val receivedPacket = parseRecievedPacket(receivedData)
         logger.info("Received queries (id: ${receivedPacket.header.id}): ${receivedPacket.queries}")
         val packet = buildAnswers(receivedPacket)
-        channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
+        DatagramChannel.open().send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
     }
+
+    private fun parseRecievedPacket(receivedData: ByteArray) = DNSPacketBuilder.build(ByteBuffer.wrap(receivedData))
 
     private fun buildAnswers(dnsQueryPacket: DNSPacket): DNSPacket {
         val id = dnsQueryPacket.header.id
