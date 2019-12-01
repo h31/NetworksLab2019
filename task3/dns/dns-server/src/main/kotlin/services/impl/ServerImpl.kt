@@ -9,6 +9,9 @@ import domain.model.enums.DNSMessageType
 import domain.model.enums.DNSOpCode
 import domain.model.enums.DNSQueryType
 import domain.model.enums.DNSRCode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.koin.core.logger.Logger
 import services.Server
 import utils.DNSPacketBuilder
@@ -39,40 +42,43 @@ class ServerImpl : Server {
             try {
                 clientAddr = channel.receive(buffer)
                 receivedData = copyReceivedData()
-                buffer.rewind()
-                // Ready to async handler
                 handleQuery(clientAddr, receivedData)
             } catch (t: Throwable) {
-                buffer.rewind()
                 sendInternalError(clientAddr, receivedData)
                 logger.error(t.localizedMessage)
                 continue
+            } finally {
+                buffer.rewind()
             }
         }
     }
 
-    private fun sendInternalError(clientAddr: SocketAddress?, receivedData: ByteArray?) {
-        try {
-            val id = parseRecievedPacket(receivedData!!).header.id
-            val packet = buildInternalServerError(id)
-            DatagramChannel.open().use { channel ->
-                channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
+    private fun sendInternalError(clientAddr: SocketAddress?, receivedData: ByteArray?) =
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                val id = parseReceivedPacket(receivedData!!).header.id
+                val packet = buildInternalServerError(id)
+                DatagramChannel.open().use { channel ->
+                    channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
+                }
+            } catch (t: Throwable) {
+                logger.error("Error on sending internal error event")
             }
-        } catch (t: Throwable) {
-            logger.error("Error on sending internal error event")
         }
-    }
 
     private fun copyReceivedData() = buffer.array().copyOfRange(0, buffer.position())
 
-    private fun handleQuery(clientAddr: SocketAddress, receivedData: ByteArray) {
-        val receivedPacket = parseRecievedPacket(receivedData)
-        logger.info("Received queries (id: ${receivedPacket.header.id}): ${receivedPacket.queries}")
-        val packet = buildAnswers(receivedPacket)
-        DatagramChannel.open().send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
-    }
+    private fun handleQuery(clientAddr: SocketAddress, receivedData: ByteArray) =
+        GlobalScope.launch(Dispatchers.IO) {
+            val receivedPacket = parseReceivedPacket(receivedData)
+            logger.info("Received queries (id: ${receivedPacket.header.id}): ${receivedPacket.queries}")
+            val packet = buildAnswers(receivedPacket)
+            DatagramChannel.open().use { channel ->
+                channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), clientAddr)
+            }
+        }
 
-    private fun parseRecievedPacket(receivedData: ByteArray) = DNSPacketBuilder.build(ByteBuffer.wrap(receivedData))
+    private fun parseReceivedPacket(receivedData: ByteArray) = DNSPacketBuilder.build(ByteBuffer.wrap(receivedData))
 
     private fun buildAnswers(dnsQueryPacket: DNSPacket): DNSPacket {
         val id = dnsQueryPacket.header.id

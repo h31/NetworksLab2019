@@ -23,18 +23,19 @@ class DNSServiceImpl : DNSService {
     private val buffer = ByteBuffer.allocate(65_512)
 
     override fun makeRequest(type: DNSQueryType, dnsServerAddress: String, dnsName: DNSName): DNSResult {
-        try {
+        val channel = DatagramChannel.open()
+        return try {
             val inetAddress = InetAddressResolver.resolve(dnsServerAddress)
-            val channel = DatagramChannel.open()
             val id = Random.nextInt().toShort()
             val packet = DNSQueryPacketBuilder.buildDNSQueryPacket(id, type, dnsName)
             channel.send(ByteBuffer.wrap(DNSPacketCompressor.compress(packet)), InetSocketAddress(inetAddress, 53))
             channel.receive(buffer)
             val receivedData = buffer.array().copyOfRange(0, buffer.position())
-            channel.close()
-            return DNSResult.Data(DNSPacketBuilder.build(ByteBuffer.wrap(receivedData)))
+            DNSResult.Data(DNSPacketBuilder.build(ByteBuffer.wrap(receivedData)))
         } catch (e: IllegalArgumentException) {
-            return DNSResult.Error(e.message ?: "")
+            DNSResult.Error(e.message ?: "")
+        } finally {
+            channel.close()
         }
     }
 
