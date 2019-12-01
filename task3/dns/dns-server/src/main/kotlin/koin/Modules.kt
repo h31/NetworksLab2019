@@ -9,7 +9,7 @@ import services.Server
 import services.impl.ServerImpl
 
 val appModule = module {
-    single<ConfigProvider> { ConfigProviderImpl(getProperty("zones_path")) }
+    single<ConfigProvider> { ConfigProviderImpl(getProperty("zones_path", "localhost.zone")) }
     single<Server> { ServerImpl() }
     single<Logger> { PrintLogger() }
 }

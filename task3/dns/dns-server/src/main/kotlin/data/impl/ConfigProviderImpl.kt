@@ -6,11 +6,13 @@ import domain.model.DNSRRData
 import domain.model.DNSResourceRecord
 import domain.model.enums.DNSKlass
 import domain.model.enums.DNSQueryType
+import org.koin.core.logger.Logger
 import utils.IP
-import java.io.File
+import utils.inject
+import java.io.BufferedInputStream
 
 class ConfigProviderImpl(
-    path: String
+    private val path: String
 ) : ConfigProvider {
 
     companion object {
@@ -22,17 +24,37 @@ class ConfigProviderImpl(
         private const val TYPE_INDEX = 3
     }
 
-    private val zoneInfoFile = File(ClassLoader.getSystemResource(path).toURI())
+    private val logger: Logger by inject()
+
+    private val zoneInfoFile = try {
+        logger.info("Trying to read zone info from: $path")
+        BufferedInputStream(ClassLoader.getSystemResourceAsStream(path)).bufferedReader()
+    } catch (t: Throwable) {
+        logger.error("Error on loading zones info from $path. Cause: ${t.localizedMessage}")
+        null
+    }
+
     private val delimiter = Regex("[\t| ]+")
 
     override fun provideZoneInfo(): List<DNSResourceRecord> =
-        zoneInfoFile.readLines().mapNotNull {
+        getBufferedReaderLines().mapNotNull {
             try {
                 parseResourceRecord(it)
             } catch (e: Throwable) {
+                logger.error("Error on parsing line: $it")
                 null
             }
+        }.also {
+            logger.info("Parsed ${it.size} records from $path")
         }
+
+
+    private fun getBufferedReaderLines(): List<String> = try {
+        zoneInfoFile?.readLines() ?: emptyList()
+    } catch (t: Throwable) {
+        logger.error("Error on getting lines from $path")
+        emptyList()
+    }
 
     @Throws(exceptionClasses = [IllegalStateException::class, NumberFormatException::class, IllegalArgumentException::class])
     private fun parseResourceRecord(record: String): DNSResourceRecord {
