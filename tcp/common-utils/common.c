@@ -25,20 +25,36 @@ uint16_t exclude_cliport(int argc, char *argv[]) {
     return exclude(argc, 3, argv, 2);
 }
 
+History *empty_history() {
+    History *history = (History *) malloc(sizeof(History));
+
+    /* for each part of the msg we will allocate new buffer */
+    history->name_body = allocate_char_buffer(EMPTY);
+    history->message_body = allocate_char_buffer(EMPTY);
+
+    /* header must be exactly HEADER_SIZE bytes */
+    history->message_header = (size_t *) malloc(HEADER_SIZE);
+    history->name_header = (size_t *) malloc(HEADER_SIZE);
+    history->bytes_left = (size_t *) malloc(HEADER_SIZE);
+
+    *history->bytes_left = HEADER_SIZE;
+    return history;
+}
+
 Client *empty_client(int *fd) {
     Client *client = (Client *) malloc(sizeof(Client));
     client->state = ST_NAME_HEADER;
     client->id = *fd;
-
-    History *history = (History *) malloc(sizeof(History));
-    history->name = allocate_char_buffer(CLIENT_NAME_SIZE);
-    history->message = allocate_char_buffer(MESSAGE_SIZE);
+    client->history = empty_history();
     return client;
 }
 
 void freeHistory(History *history) {
-    free(history->message);
-    free(history->name);
+    free(history->message_header);
+    free(history->name_header);
+    free(history->message_body);
+    free(history->name_body)
+    free(history->bytes_left);
     free(history);
 }
 
@@ -47,22 +63,10 @@ void free_client(Client *client) {
     free(client);
 }
 
-Env *init_env(int sockfd) {
+List *list() {
     List *cache = (List *) malloc(sizeof(List));
     *cache = (struct List) {0, NULL};
-
-    /* set up the initial listening socket */
-    poll_descriptor *descriptors = (poll_descriptor *) malloc(MAX_CLIENTS * sizeof(poll_descriptor));
-    descriptors[0].fd = sockfd;
-    descriptors[0].events = POLLIN;
-
-    Poll_vector *vector = (Poll_vector *) malloc(sizeof(Poll_vector));
-    vector->length = 1;
-    vector->descriptors = descriptors;
-
-    Env *init_structure = (Env *) malloc(sizeof(Env));
-    *init_structure = (struct Env) {cache, vector};
-    return init_structure;
+    return cache;
 }
 
 char *allocate_char_buffer(size_t size) {

@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include "inet_utils.h"
 #include "fsm.h"
+#include "list.h"
 
 #define MESSAGE_SIZE 1024
 #define CLIENT_NAME_SIZE 16
@@ -18,25 +19,20 @@
 #define FALSE 0
 
 typedef struct History {
-    size_t name_size;
-    char *name;
-    size_t message_size;
-    char *message;
+    size_t *name_header;
+    char *name_body;
+    size_t *message_header;
+    char *message_body;
+    size_t *bytes_left;
 } History;
 
 typedef struct Client {
     int id; // id stores unique socketfd
     State state;
-    int enough_data;
     History *history;
 } Client;
 
-typedef struct Env {
-    void *cache;
-    Poll_vector *vector;
-} Env;
-
-Env *init_env(int sockfd);
+List *list();
 
 Client *new_client(int *id, char *name);
 

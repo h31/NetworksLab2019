@@ -6,7 +6,8 @@
 #include "../common-utils/headers/inet_utils.h"
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/list.h"
-#include "../common-utils/headers/async_io.h"
+#include "../common-utils/headers/poll_ops.h"
+#include "../common-utils/headers/event_io.h"
 
 #define MAX_QUEUED_CLIENTS 7
 #define TIMEOUT -1
@@ -19,11 +20,11 @@ List *cache = NULL;
 
 void send_message_to_clients(Client *sender) {
     char *message = allocate_char_buffer(
-            strlen(sender->history->name) + strlen(COLON) + strlen(sender->history->message));
+            strlen(sender->history->name_body) + strlen(COLON) + strlen(sender->history->message_body));
     /* insert client name, colon and message */
-    strcpy(message, sender->history->name);
+    strcpy(message, sender->history->name_body);
     strcat(message, COLON);
-    strcat(message, sender->history->message);
+    strcat(message, sender->history->message_body);
 
     foreach(&send_message, message, cache);
 
@@ -33,13 +34,13 @@ void send_message_to_clients(Client *sender) {
 void which_client_scenario(Client *client) {
     switch (client->state) {
         case ST_NAME_HEADER:
-            read_header(client);
+            read_name_header(client);
             break;
         case ST_MESSAGE_HEADER:
-            read_header(client);
+            read_message_header(client);
             break;
         case ST_NAME:
-            read_message(client);
+
             break;
         case ST_MESSAGE:
             read_message(client);
@@ -48,34 +49,32 @@ void which_client_scenario(Client *client) {
     }
 }
 
-void accept_new_cient(Poll_vector *vector) {
+void accept_new_cient() {
     int new_socketfd = 0;
-    new_socketfd = accept(vector->descriptors[0].fd, NULL, NULL);
-    if (new_socketfd < 0 && errno != EWOULDBLOCK) raise_error(INTERNAL_ERROR);
+    new_socketfd = accept_();
+    if (new_socketfd < 0) raise_error(INTERNAL_ERROR); // TODO RESOURCE LEAK
     else { // Add the new incoming connection
-        vector->descriptors[vector->length].fd = new_socketfd;
-        vector->descriptors[vector->length].events = POLL_IN;
-        vector->length++;
-
+        add(new_socketfd);
         push(cache, empty_client(&new_socketfd));
     }
 }
 
+void start_event_loop() {
+    int rc = poll_();
+    if (rc < 0) raise_error(POLL_ERROR); // TODO RESOURCE LEAK
 
-void start_event_loop(Poll_vector *vector) {
-    int rc = poll(vector->descriptors, vector->length, TIMEOUT);
-    if (rc < 0) raise_error(POLL_ERROR);
+    poll_descriptor acceptor = get_acceptor();
+    if (acceptor.revents & POLL_IN) accept_new_cient();
+    if (acceptor.revents < 0) raise_error(POLL_ERROR); // TODO RESOURCE LEAK
 
-    for (int i = 0; i < (int) vector->length; ++i) {
-        poll_descriptor current = vector->descriptors[i];
-        if (current.revents == 0) continue; // TODO ???
-        if (current.revents != POLL_IN) raise_error(POLL_ERROR);
-        /* listening socket */
-        if (current.fd == vector->descriptors[0].fd) accept_new_cient(vector);
-        else {
+    for (int i = 0; i < get_size(); ++i) {
+        poll_descriptor current = getn(i);
+        if (current.revents & POLL_IN) {
             /* readable connection */
             Client *current_client = get_by_id(cache, current.fd);
             which_client_scenario(current_client);
+        } else if (current.revents != 0) {
+            /* client is disconnected */
         }
     }
 }
@@ -97,9 +96,7 @@ void start_server(const uint16_t *port) {
     }
 
     /* initialize server environment */
-    Env *env = init_env(sockfd);
-    cache = env->cache;
-    Poll_vector *vector = env->vector;
+    cache = list();
 
-    for (;;) { start_event_loop(vector); }
+    for (;;) { start_event_loop(); }
 }
