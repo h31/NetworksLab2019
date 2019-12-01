@@ -82,9 +82,13 @@ int main(int argc, char *argv[]) {
 }
 
 void sendPacket() {
-    sendto(sockfd, (const char *) packet, 516,
+     int m = sendto(sockfd, (const char *) packet, 516,
            MSG_CONFIRM, (const struct sockaddr *) &cli_addr,
            sizeof(cli_addr));
+     if(m<0){
+         printf("Падаю\n");
+         exit(1);
+     }
 }
 
 void formAndSendFirstResponse() {

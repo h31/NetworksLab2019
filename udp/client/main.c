@@ -12,6 +12,12 @@
 #define MAX_SIZE 516
 #define FILE_SIZE 50
 #define DATA_SIZE 512
+#define DATA_SIZE 512
+#define READ_OPCODE 1
+#define WRITE_OPCODE 2
+#define DATA_OPCODE 3
+#define ACK_OPCODE 4
+#define ERROROPCODE 5
 
 void sigHandlerOut(int sig);
 
@@ -107,12 +113,12 @@ void enterFileName() {
 void formRequest() {
     bzero(packet, MAX_SIZE);
     memcpy(packet, &opcode, 2);
-    memcpy(packet + 2, fileName, strlen(fileName));
-    memcpy(packet + 2 + strlen(fileName), MODE, strlen(MODE));
+    memcpy(packet + 2, fileName, strlen(fileName)+1);
+    memcpy(packet + 2 + strlen(fileName)+1, MODE, strlen(MODE)+1);
 }
 
 void sendPacket() {
-    sendto(sockfd, (const char *) packet, 516,
+    sendto(sockfd, (const char *) packet, MAX_SIZE,
            MSG_CONFIRM, (const struct sockaddr *) &serv_addr,
            sizeof(serv_addr));
 }
@@ -128,11 +134,11 @@ void getResponse() {
 }
 
 void sendFile() {
-    opcode = htons(2);
+    opcode = htons(WRITE_OPCODE);
     formRequest();
     sendPacket();
     getResponse();
-    if (opcode == 4 && blockNumber == 0) {
+    if (opcode == ACK_OPCODE && blockNumber == 0) {
         printf("всё хорошо, можно начинать отсылать\n");
     } else {
         printf("Ошибка, запись невозможна\n");
@@ -141,11 +147,11 @@ void sendFile() {
 }
 
 void receiveFile() {
-    opcode = htons(1);
+    opcode = htons(READ_OPCODE);
     formRequest();
     sendPacket();
     getResponse();
-    if (opcode == 3 && blockNumber == 1) {
+    if (opcode == DATA_OPCODE && blockNumber == 1) {
         printf("всё хорошо, можно начинать принимать\n");
     } else {
         printf("Ошибка, чтение невозможно\n");
