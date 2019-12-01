@@ -14,7 +14,7 @@ class DNSFlagsTest {
     @Test
     fun build() {
         val dnsFlags1 = DNSPacketBuilder.buildFlags(0b1000_0000_0000_0000.toShort())
-        assertEquals(DNSMessageType.QUERY, dnsFlags1.qr)
+        assertEquals(DNSMessageType.ANSWER, dnsFlags1.qr)
         assertEquals(DNSOpCode.STANDARD, dnsFlags1.opCode)
         assertFalse(dnsFlags1.aa)
         assertFalse(dnsFlags1.tc)
@@ -23,7 +23,7 @@ class DNSFlagsTest {
         assertEquals(DNSRCode.NO_ERROR, dnsFlags1.rCode)
 
         val dnsFlags2 = DNSPacketBuilder.buildFlags(0b0000_0111_1000_0011.toShort())
-        assertEquals(DNSMessageType.ANSWER, dnsFlags2.qr)
+        assertEquals(DNSMessageType.QUERY, dnsFlags2.qr)
         assertEquals(DNSOpCode.STANDARD, dnsFlags2.opCode)
         assertTrue(dnsFlags2.aa)
         assertTrue(dnsFlags2.tc)
