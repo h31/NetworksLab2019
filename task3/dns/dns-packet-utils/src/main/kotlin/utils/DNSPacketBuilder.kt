@@ -33,12 +33,19 @@ object DNSPacketBuilder {
     private const val RA_MASK = 0x0080.toShort()
     private const val R_CODE_MASK = 0x000F.toShort()
 
+    private const val NAME_PTR_MASK = 0xC0.toByte()
+    private const val NAME_PTR_REVERSED_MASK = 0x3F.toByte()
+    private const val RESERVED_MARK_MASK1 = 0x80.toByte()
+    private const val RESERVED_MARK_MASK2 = 0x40.toByte()
+
     fun build(byteBuffer: ByteBuffer): DNSPacket {
         val header = buildHeader(byteBuffer)
+        val queries = List(header.numOfQueries.toInt()) { buildQuery(byteBuffer) }
+        val answers = List(header.numOfAnswers.toInt()) { buildResourceRecord(byteBuffer) }
         return DNSPacket(
                 header = header,
-                queries = List(header.numOfQueries.toInt()) { buildQuery(byteBuffer) },
-                answers = List(header.numOfAnswers.toInt()) { buildResourceRecord(byteBuffer) },
+                queries = queries,
+                answers = answers,
                 authorityAnswers = List(header.numOfAuthorityAnswers.toInt()) { buildResourceRecord(byteBuffer) },
                 additionalAnswers = List(header.numOfAdditionalAnswers.toInt()) { buildResourceRecord(byteBuffer) }
         )
@@ -63,13 +70,13 @@ object DNSPacketBuilder {
             numOfAdditionalAnswers = byteBuffer.consumeShort()
     )
 
-    internal fun buildQuery(byteBuffer: ByteBuffer) = DNSQuery(
+    private fun buildQuery(byteBuffer: ByteBuffer) = DNSQuery(
             name = buildName(byteBuffer),
             type = DNSQueryType.of(byteBuffer.consumeShort()),
             klass = DNSKlass.of(byteBuffer.consumeShort())
     )
 
-    internal fun buildResourceRecord(byteBuffer: ByteBuffer): DNSResourceRecord {
+    private fun buildResourceRecord(byteBuffer: ByteBuffer): DNSResourceRecord {
         val name = buildName(byteBuffer)
         val type = byteBuffer.consumeShort()
         val klass = DNSKlass.of(byteBuffer.consumeShort())
@@ -85,7 +92,7 @@ object DNSPacketBuilder {
         )
     }
 
-    internal fun buildData(byteBuffer: ByteBuffer, dataLength: Short, type: DNSQueryType) = when (type) {
+    private fun buildData(byteBuffer: ByteBuffer, dataLength: Short, type: DNSQueryType) = when (type) {
         DNSQueryType.A -> DNSRRData.A(byteBuffer.consumeInt())
         DNSQueryType.CNAME -> DNSRRData.CName(String(byteBuffer.consume(dataLength)))
         DNSQueryType.H_INFO -> DNSRRData.HInfo(String(byteBuffer.consume(dataLength)))
@@ -97,14 +104,32 @@ object DNSPacketBuilder {
         else -> DNSRRData.Undefined
     }
 
-    internal fun buildName(byteBuffer: ByteBuffer): DNSName {
-        val builder = DNSName.Builder()
+    private fun buildName(byteBuffer: ByteBuffer): DNSName {
         var markSize = byteBuffer.consumeByte()
+        if (markSize.and(NAME_PTR_MASK) != 0.toByte()) {
+            return findNameByPtr(markSize, byteBuffer.consumeByte(), byteBuffer)
+        }
+        if (markSize.and(RESERVED_MARK_MASK1) != 0.toByte() || markSize.and(RESERVED_MARK_MASK2) != 0.toByte()) {
+            throw IllegalArgumentException("Found reserved mark combination 10 or 01")
+        }
+        val builder = DNSName.Builder()
         while (markSize.toInt() != 0) {
             builder.addMark(String(byteBuffer.consume(markSize.toShort())))
             markSize = byteBuffer.consumeByte()
         }
         builder.addMark("")
+        return builder.build()
+    }
+
+    private fun findNameByPtr(firstOctet: Byte, secondOctet: Byte, byteBuffer: ByteBuffer): DNSName {
+        var markPosition = (firstOctet and NAME_PTR_REVERSED_MASK).toInt().shl(Byte.SIZE_BITS) + secondOctet.toInt()
+        val builder = DNSName.Builder()
+        var markSize = byteBuffer.get(markPosition)
+        while (markSize.toInt() != 0) {
+            builder.addMark(String(byteBuffer.array().copyOfRange(markPosition, markPosition + markSize + 1)))
+            markPosition += markSize + 1
+            markSize = byteBuffer.get(markPosition)
+        }
         return builder.build()
     }
 
