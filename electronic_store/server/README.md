@@ -97,7 +97,7 @@
   
   * Length - длина пакета
   * Type - тип пакета ([error](#a_error), [list of products](#a_list_of_products), [add product](#a_add_product), [buy product](#a_buy_product), [acknowledgment](#a_acknowledgment), [get list of products](#a_get_list_of_products))
-  * Acknowledgment type - тип подтверждения (товар куплен, товар добавлен)
+  * Acknowledgment type - тип подтверждения (товар куплен (01), товар добавлен (02) )
   * Count - количество данного товара
   
 * <a name="a_get_list_of_products">**Get list of products**</a>
