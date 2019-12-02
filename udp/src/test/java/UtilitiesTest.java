@@ -1,5 +1,4 @@
-package igorlo.dns;
-
+import igorlo.dns.Utilities;
 import org.junit.jupiter.api.Test;
 
 class UtilitiesTest {
