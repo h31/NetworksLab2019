@@ -1,3 +1,5 @@
+from time import sleep
+
 from errPackages import *
 
 import socket
@@ -57,7 +59,7 @@ class Client:
 
         while True:
 
-            while errCount < 3:
+            while errCount < 4:
                 try:
                     data, remoteSocket = self.clientSocket.recvfrom(4096)
                     Opcode = struct.unpack('!H', data[0:2])[0]
@@ -67,6 +69,7 @@ class Client:
                     self.clientSocket.sendto(self.sendPacket, (self.serverIP, self.serverPort))
                     Opcode = 'Timeout'
                     errCount += 1
+                    sleep(1)
 
             # --------------------- Get new block of file from server -------------------------
             ##Opcode 3 [ Data ]
@@ -81,9 +84,9 @@ class Client:
                 blockNo = struct.unpack('!H', data[2:4])[0]
                 if blockNo != countBlock:
                     self.clientSocket.sendto(errBlockNo, remoteSocket)
-                    print('Receive wrong block. Session closed.')
-                    getFile.close()
-                    break
+                    print('Receive wrong block. Continue')
+                    # getFile.close()
+                    continue
 
                 countBlock += 1
                 if countBlock == 65536:
@@ -170,7 +173,7 @@ class Client:
         try:
             putFile = open(self.localFilePath, 'rb')
         except:
-            print(self.fileName + ' can not open.')
+            print(self.localFilePath + ' can not open.')
             return None
 
         endFlag = False

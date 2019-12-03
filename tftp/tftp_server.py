@@ -63,6 +63,7 @@ class PacketProcess:
         self.server = server
         self.watchdog = Watchdog(self.remoteSocket, self.server)
         self._chunkSize = 512
+        self.countBlock = 1
 
     def runProc(self, data):
         self.watchdog.countReset()
@@ -93,7 +94,6 @@ class PacketProcess:
 
                 dataChunk = self.sendFile.read(self._chunkSize)
                 self.totalDatalen = len(dataChunk)
-                self.countBlock = 1
 
                 self.sendPacket = struct.pack(b'!2H', 3, self.countBlock) \
                                   + dataChunk
@@ -140,7 +140,6 @@ class PacketProcess:
                     return None
 
                 self.totalDatalen = 0
-                self.countBlock = 1
 
                 self.sendPacket = struct.pack(b'!2H', 4, 0)
                 self.server.serverLocalSocket.sendto(self.sendPacket, self.remoteSocket)
@@ -203,7 +202,9 @@ class PacketProcess:
 
             else:
                 blockNo = struct.unpack('!H', data[2:4])[0]
-
+                if not hasattr(self, "countBlock"):
+                    print("NO COUNTBLOCK, EXCUSE ME WHAT THE FUCK")
+                    self.countBlock = 1
                 if blockNo == self.countBlock:
                     try:
                         dataChunk = self.sendFile.read(self._chunkSize)
