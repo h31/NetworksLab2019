@@ -72,5 +72,7 @@ List *list() {
 }
 
 char *allocate_char_buffer(size_t size) {
-    return (char *) malloc(sizeof(char) * (size + 1));
+    char *buffer = (char *) malloc(sizeof(char) * (size + 1));
+    memset(buffer, '\0', size + 1);
+    return buffer;
 }

@@ -29,8 +29,6 @@ void send_message_to_clients(Client *sender) {
     strcat(message, sender->history->message_body);
 
     foreach(&send_message, message, cache);
-
-    // TODO ??? SHOULD WE FREE SENDER HISTORY???
 }
 
 void which_client_scenario(Client *client) {
@@ -56,7 +54,7 @@ void accept_new_cient() {
     new_socketfd = accept_();
     if (new_socketfd < 0) raise_error(INTERNAL_ERROR); // TODO RESOURCE LEAK
     else { // Add the new incoming connection
-        add(new_socketfd);
+        add_to_descriptors(new_socketfd);
         push(cache, empty_client(&new_socketfd));
     }
 }
@@ -70,11 +68,12 @@ void start_event_loop() {
     if (acceptor.revents < 0) raise_error(POLL_ERROR); // TODO RESOURCE LEAK
 
     for (int i = 1; i < get_size(); ++i) {
-        poll_descriptor current = getn(i);
+        poll_descriptor current = getn_from_descriptor(i);
         if (current.revents & POLL_IN) {
             /* readable connection */
             Client *current_client = get_by_id(cache, current.fd);
             which_client_scenario(current_client);
+            zero_revents(i);
         } else if (current.revents != 0) {
             /* client is disconnected */
         }
@@ -99,7 +98,7 @@ void start_server(const uint16_t *port) {
 
     /* initialize server environment */
     cache = list();
-    add_acceptor(sockfd);
+    add_acceptor_to_descriptors(sockfd);
 
     for (;;) { start_event_loop(); }
 }
