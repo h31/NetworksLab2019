@@ -3,12 +3,13 @@ package igorlo.ind1
 import igorlo.TextColors
 import igorlo.util.Exchange.readMessage
 import igorlo.util.Exchange.sendMessage
+import igorlo.util.Utilities
+import igorlo.util.Utilities.colorPrint
 import org.apache.log4j.BasicConfigurator
 import java.net.*
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.util.*
 import org.apache.log4j.Logger
+import igorlo.util.Utilities.Command
 
 class Client {
     private val logger: Logger
@@ -118,10 +119,6 @@ class Client {
         colorPrint("\n-".padEnd(CONSOLE_WIDTH, '-'), TextColors.ANSI_WHITE)
     }
 
-    private fun colorPrint(text: String, color: String) {
-        print("${color}$text${TextColors.ANSI_RESET}")
-    }
-
     private fun parseInput(command: String): Action {
         when (command.toLowerCase()) {
             "info" -> return Action.INFO
@@ -137,8 +134,6 @@ class Client {
         logger.info("Завершаю работу")
     }
 }
-
-data class Command(val mnemonic: String, val description: String)
 
 enum class Action {
     TO_SERVER, HELP, EXIT, INFO
