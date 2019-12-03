@@ -37,7 +37,7 @@ object Exchange {
         logger.info("Массив длины: \n${Arrays.toString(lengthArray)}")
         logger.info("Длина массива длины: ${lengthArray.size}")
         if (msg.length != textArray.size) {
-            logger.warn("Длина сообщения не равна кол-ву байт сообщения!")
+            logger.info("Длина сообщения не равна кол-ву байт сообщения!")
         }
         logger.info("Отправляю длину сообщения")
         socket.getOutputStream().write(lengthArray)

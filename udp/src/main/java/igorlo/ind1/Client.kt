@@ -3,7 +3,6 @@ package igorlo.ind1
 import igorlo.TextColors
 import igorlo.util.Exchange.readMessage
 import igorlo.util.Exchange.sendMessage
-import igorlo.util.Utilities
 import igorlo.util.Utilities.colorPrint
 import org.apache.log4j.BasicConfigurator
 import java.net.*
@@ -19,6 +18,7 @@ class Client {
     companion object {
         private const val PORT = 8888
         private const val CONSOLE_WIDTH = 100
+        private const val WAIT_TIME = 200L
         private const val INFO = "\tЭто клиентское приложение для индивидуального задания\n" +
                 "\tпо курсу \"Основы компьютерных сетей\".\n\n" +
                 "\tАвтор - Игорь Лопатинский"
@@ -79,7 +79,7 @@ class Client {
         logger.info("Сканер консоли инициализирован")
         var command: String
         loop@ while (true) {
-            Thread.sleep(100)
+            Thread.sleep(WAIT_TIME)
             colorPrint("\nВведите команду: \n", TextColors.ANSI_CYAN)
             command = scanner.nextLine()
             when (parseInput(command)) {
@@ -97,7 +97,6 @@ class Client {
                     break@loop
                 }
             }
-
         }
         close()
     }
@@ -108,11 +107,11 @@ class Client {
 
     private fun printHelp() {
         colorPrint("\n-".padEnd(CONSOLE_WIDTH, '-'), TextColors.ANSI_WHITE)
-        colorPrint("\nСписок команд".padStart(CONSOLE_WIDTH/2 - 6), TextColors.ANSI_WHITE)
+        colorPrint("\nСписок команд".padStart(CONSOLE_WIDTH / 2 - 6), TextColors.ANSI_WHITE)
         colorPrint("\n-".padEnd(CONSOLE_WIDTH, '-'), TextColors.ANSI_WHITE)
-        for (command in COMMAND_LIST){
+        for (command in COMMAND_LIST) {
             colorPrint(
-                    "\n${command.mnemonic.padEnd(CONSOLE_WIDTH/2 - 2)}| ${command.description}",
+                    "\n${command.mnemonic.padEnd(CONSOLE_WIDTH / 2 - 2)}| ${command.description}",
                     TextColors.ANSI_BLUE
             )
         }
