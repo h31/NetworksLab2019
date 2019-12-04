@@ -16,4 +16,7 @@ public interface DnsFlags {
 
     int getResponseCode();
 
+    byte getFirst();
+
+    byte getSecond();
 }

@@ -58,6 +58,16 @@ public class DnsFlagsClass implements DnsFlags {
     }
 
     @Override
+    public byte getFirst() {
+        return first;
+    }
+
+    @Override
+    public byte getSecond() {
+        return second;
+    }
+
+    @Override
     public String toString() {
         return "DnsFlagsClass {\n" +
                 "isRequest = " + isRequest() +
