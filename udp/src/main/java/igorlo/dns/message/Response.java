@@ -1,6 +1,6 @@
 package igorlo.dns.message;
 
-class Response {
+public class Response {
 
     private final String address;
     private final int type;

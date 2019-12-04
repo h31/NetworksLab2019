@@ -3,9 +3,10 @@ package igorlo.dns.message;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 
-import static igorlo.dns.Utilities.convertListOfArraysToArrayOfBytes;
-import static igorlo.dns.Utilities.shortToBytes;
+import static igorlo.dns.message.MessageUtils.convertListOfArraysToArrayOfBytes;
+import static igorlo.dns.message.MessageUtils.shortToBytes;
 import static igorlo.dns.message.Constants.*;
 
 public class DnsMessageBuilder {
@@ -89,6 +90,11 @@ public class DnsMessageBuilder {
         }
         numberOfResponses++;
         responses.add(response);
+        return this;
+    }
+
+    public DnsMessageBuilder setRandomId() {
+        id = (short) new Random().nextInt();
         return this;
     }
 

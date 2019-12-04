@@ -1,14 +1,14 @@
-package igorlo.dns;
+package igorlo.dns.message;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class Utilities {
+public final class MessageUtils {
 
     //Do not use
-    private Utilities() {
+    private MessageUtils() {
     }
 
     public static boolean isBitSet(final byte origin,

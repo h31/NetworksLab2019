@@ -1,7 +1,7 @@
 package igorlo.dns.message;
 
-import static igorlo.dns.Utilities.getBitsFromTo;
-import static igorlo.dns.Utilities.isBitSet;
+import static igorlo.dns.message.MessageUtils.getBitsFromTo;
+import static igorlo.dns.message.MessageUtils.isBitSet;
 
 public class DnsFlagsClass implements DnsFlags {
 

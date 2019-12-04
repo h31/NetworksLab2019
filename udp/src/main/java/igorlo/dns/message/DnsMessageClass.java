@@ -1,21 +1,24 @@
 package igorlo.dns.message;
 
+import kotlin.text.Charsets;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 
-import static igorlo.dns.Utilities.intFromTwoBytes;
-import static igorlo.dns.Utilities.shortFromTwoBytes;
+import static igorlo.dns.message.MessageUtils.intFromTwoBytes;
+import static igorlo.dns.message.MessageUtils.shortFromTwoBytes;
 
 public class DnsMessageClass implements DnsMessage {
+
+    private static int ADDERSS_OFFSET = 192;
 
     private final byte[] fullMessage;
     private final DnsFlags flags;
     private Collection<Request> requests = null;
     private Collection<Response> responses = null;
-    private Integer responsesePointer = null;
+    private Integer responsePointer = null;
     private Integer nameServersPointer = null;
 
     public DnsMessageClass(byte[] rawMessage) {
@@ -70,18 +73,21 @@ public class DnsMessageClass implements DnsMessage {
             short requestClass = shortFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             requests.add(new Request(currentName, requestType, requestClass));
         }
-        responsesePointer = pointer;
+        responsePointer = pointer;
         return requests;
     }
 
     private String getDomainNameFromPointer(int fromPointer) {
         int pointer = fromPointer;
         StringBuilder currentName = new StringBuilder();
-        byte numberOfSymbols = fullMessage[pointer++];
+        int numberOfSymbols = fullMessage[pointer++];
         while (numberOfSymbols != 0) {
+            byte[] byteChunk = new byte[numberOfSymbols];
             for (int i = 0; i < numberOfSymbols; i++) {
-                currentName.append((char) fullMessage[pointer++]);
+//                currentName.append((char) fullMessage[pointer++]);
+                byteChunk[i] = fullMessage[pointer++];
             }
+            currentName.append(new String(byteChunk, Charsets.US_ASCII));
             currentName.append('.');
             numberOfSymbols = fullMessage[pointer++];
         }
@@ -90,17 +96,17 @@ public class DnsMessageClass implements DnsMessage {
 
     @Override
     public Collection<Response> getResponses() {
-        if (responses != null) {
-            return responses;
-        }
+//        if (responses != null) {
+//            return responses;
+//        }
         responses = new ArrayList();
-        if (responsesePointer == null) {
+        if (responsePointer == null) {
             getRequests();
         }
-        int pointer = responsesePointer;
+        int pointer = responsePointer;
         for (int i = 0; i < getResponseQuantity(); i++) {
             String currentName = getDomainNameFromPointer(
-                    intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++])
+                    intFromTwoBytes((byte) (fullMessage[pointer++] - ADDERSS_OFFSET), fullMessage[pointer++])
             );
             int responseType = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             int responseClass = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
@@ -143,7 +149,21 @@ public class DnsMessageClass implements DnsMessage {
             stringBuilder.append(", rLength = ");
             stringBuilder.append(r.getRLength());
             stringBuilder.append(", rData = ");
-            stringBuilder.append(Arrays.toString(r.getRData()));
+            if (r.getType() == 1) {
+                byte[] ipAddress = Arrays.copyOfRange(r.getRData(), 0, 5);
+                stringBuilder
+                        .append("IP[")
+                        .append(ipAddress[0] & 0xff)
+                        .append(".")
+                        .append(ipAddress[1] & 0xff)
+                        .append(".")
+                        .append(ipAddress[2] & 0xff)
+                        .append(".")
+                        .append(ipAddress[3] & 0xff)
+                        .append("]");
+            } else {
+                stringBuilder.append(Arrays.toString(r.getRData()));
+            }
             stringBuilder.append("]\n");
         }
         return stringBuilder.toString();

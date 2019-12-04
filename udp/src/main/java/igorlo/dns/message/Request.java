@@ -1,11 +1,9 @@
 package igorlo.dns.message;
 
-import igorlo.dns.Utilities;
-
 import java.util.ArrayList;
 import java.util.List;
 
-import static igorlo.dns.Utilities.shortToBytes;
+import static igorlo.dns.message.MessageUtils.shortToBytes;
 
 class Request {
 
@@ -40,7 +38,7 @@ class Request {
         bytes.add(addressToBytes());
         bytes.add(shortToBytes(type));
         bytes.add(shortToBytes(rClass));
-        return Utilities.convertListOfArraysToArrayOfBytes(bytes);
+        return MessageUtils.convertListOfArraysToArrayOfBytes(bytes);
     }
 
     private byte[] addressToBytes() {
@@ -53,7 +51,7 @@ class Request {
             }
         }
         bytes.add((byte) 0);
-        return Utilities.convertListToByteArray(bytes);
+        return MessageUtils.convertListToByteArray(bytes);
     }
 
 }
