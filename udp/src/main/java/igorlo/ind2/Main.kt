@@ -8,7 +8,7 @@ object Main {
 
     @JvmStatic
     fun main(args: Array<String>) {
-        Exchange.setLoggingLevel(Level.WARN)
+        Exchange.setLoggingLevel(Level.INFO)
         Thread(Runnable {
             Server().run()
         }).start()

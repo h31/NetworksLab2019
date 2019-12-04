@@ -9,6 +9,7 @@ import java.net.*
 import java.util.*
 import org.apache.log4j.Logger
 import igorlo.util.Utilities.Command
+import java.lang.NumberFormatException
 
 class Client {
     private val logger: Logger
@@ -71,6 +72,97 @@ class Client {
         }, "Reader")
     }
 
+    private fun validate(command: String): Boolean {
+        if (command.isEmpty()) {
+            validationError("Пустая команда")
+            return false
+        }
+        val sliced: List<String> = command.split(' ')
+        when (sliced[0]) {
+            "a" -> {
+                if (sliced.size != 5) {
+                    validationError("Неверное число аргументов")
+                    return false
+                }
+                if (!validateInt(sliced[1])) {
+                    validationError("Второй аргумент не является целым числом")
+                    return false
+                }
+                if (!validateDouble(sliced[4])) {
+                    validationError("Четвёртый аргумент не является числом")
+                    return false
+                }
+                return true
+            }
+            "d" -> {
+                if (sliced.size != 2) {
+                    validationError("Неверное число аргументов")
+                    return false
+                }
+                if (!validateInt(sliced[1])) {
+                    validationError("Второй аргумент не является целым числом")
+                    return false
+                }
+                return true
+            }
+            "r" -> {
+                if (sliced.size != 1) {
+                    validationError("Неверное число аргументов")
+                    return false
+                }
+                return true
+            }
+            "c" -> {
+                if (sliced.size != 3) {
+                    validationError("Неверное число аргументов")
+                    return false
+                }
+                if (!validateInt(sliced[1])) {
+                    validationError("Второй аргумент не является целым числом")
+                    return false
+                }
+                if (!validateDouble(sliced[2])) {
+                    validationError("Четвёртый аргумент не является числом")
+                    return false
+                }
+                return true
+            }
+            "h" -> {
+                if (sliced.size != 2) {
+                    validationError("Неверное число аргументов")
+                    return false
+                }
+                if (!validateInt(sliced[1])) {
+                    validationError("Второй аргумент не является целым числом")
+                    return false
+                }
+                return true
+            }
+            else -> {
+                validationError("Не удалось распознать комманду")
+                return false
+            }
+        }
+    }
+
+    private fun validateDouble(possibleDouble: String): Boolean {
+        try {
+            possibleDouble.toDouble()
+            return true
+        } catch (e: NumberFormatException) {
+            return false
+        }
+    }
+
+    private fun validateInt(possibleInt: String): Boolean {
+        try {
+            possibleInt.toInt()
+            return true
+        } catch (e: NumberFormatException) {
+            return false
+        }
+    }
+
     fun run() {
         logger.info("Начало работы клиента")
         readingThread.start()
@@ -81,10 +173,12 @@ class Client {
         loop@ while (true) {
             Thread.sleep(WAIT_TIME)
             colorPrint("\nВведите команду: \n", TextColors.ANSI_CYAN)
-            command = scanner.nextLine()
+            command = scanner.nextLine().trim().toLowerCase()
             when (parseInput(command)) {
                 Action.TO_SERVER -> {
-                    sendMessage(socket, command)
+                    if (validate(command)) {
+                        sendMessage(socket, command)
+                    }
                 }
                 Action.HELP -> {
                     printHelp()
@@ -99,6 +193,11 @@ class Client {
             }
         }
         close()
+    }
+
+
+    private fun validationError(error: String) {
+        colorPrint("Ошибка валидации\n$error", TextColors.ANSI_RED)
     }
 
     private fun printInfo() {

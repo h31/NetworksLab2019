@@ -3,10 +3,13 @@ package igorlo.util
 import igorlo.TextColors
 import java.lang.NumberFormatException
 import java.math.BigDecimal
+import java.util.*
 import javax.script.ScriptEngineManager
 import javax.script.ScriptException
 
 object Utilities {
+
+    private val factorialResults: MutableMap<Long, String> = HashMap()
 
     val SUPPORTED_OPERATIONS = listOf(
             "abs",
@@ -52,14 +55,20 @@ object Utilities {
 
     fun calculateFactorial(factorial: String): String {
         try {
-            var bigNumber = BigDecimal.ONE
             val bigFactorial = factorial.toLong()
+            if (factorialResults.containsKey(bigFactorial)){
+                if (factorialResults[bigFactorial] != null){
+                    return factorialResults[bigFactorial]!!
+                }
+            }
+            var bigNumber = BigDecimal.ONE
             if (bigFactorial == 0L) {
                 return "0"
             }
             for (i in 1..bigFactorial) {
                 bigNumber = bigNumber.multiply(BigDecimal(i))
             }
+            factorialResults.put(bigFactorial, bigNumber.toString())
             return bigNumber.toString()
         } catch (e: NumberFormatException) {
             return "ERROR" //TODO
