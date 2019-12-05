@@ -35,29 +35,30 @@ void send_message_to_clients(Client *sender) {
     sender->history->message_body = allocate_char_buffer(EMPTY);
 }
 
-void which_client_scenario(Client *client) {
+bool which_client_scenario(Client *client) {
     switch (client->state) {
         case ST_NAME_HEADER:
-            read_name_header(client);
-            break;
+            return read_name_header(client);
         case ST_MESSAGE_HEADER:
-            read_message_header(client);
-            break;
+            return read_message_header(client);
         case ST_NAME:
-            read_name_body(client);
-            break;
+            return read_name_body(client);
         case ST_MESSAGE:
-            read_message_body(client);
-            send_message_to_clients(client);
-            break;
+            if (read_message_body(client)) {
+                send_message_to_clients(client);
+                return true;
+            } else return false;
     }
+    return false;
 }
 
 void accept_new_cient() {
     int new_socketfd = 0;
     new_socketfd = accept_();
-    if (new_socketfd < 0) raise_error(INTERNAL_ERROR); // TODO RESOURCE LEAK
-    else { // Add the new incoming connection
+    if (new_socketfd < 0) {
+        close_();
+        raise_error(INTERNAL_ERROR);
+    } else { // Add the new incoming connection
         add_to_descriptors(new_socketfd);
         push(cache, empty_client(&new_socketfd));
     }
@@ -65,21 +66,33 @@ void accept_new_cient() {
 
 void start_event_loop() {
     int rc = poll_();
-    if (rc < 0) raise_error(POLL_ERROR); // TODO RESOURCE LEAK
+    if (rc < 0) {
+        close_();
+        raise_error(POLL_ERROR);
+    }
 
     poll_descriptor acceptor = get_acceptor();
     if (acceptor.revents & POLL_IN) accept_new_cient();
-    if (acceptor.revents < 0) raise_error(POLL_ERROR); // TODO RESOURCE LEAK
+    if (acceptor.revents < 0) {
+        close_();
+        raise_error(POLL_ERROR);
+    }
 
     for (int i = 1; i < get_size(); ++i) {
         poll_descriptor current = getn_from_descriptor(i);
         if (current.revents & POLL_IN) {
             /* readable connection */
             Client *current_client = get_by_id(cache, current.fd);
-            which_client_scenario(current_client);
+            bool res = which_client_scenario(current_client);
+            if (!res) {
+                close_n(current.fd);
+                delete(cache, get_by_id(cache, current.fd));
+            }
             zero_revents(i);
         } else if (current.revents != 0) {
             /* client is disconnected */
+            close_n(current.fd);
+            delete(cache, get_by_id(cache, current.fd));
         }
     }
 }

@@ -19,4 +19,8 @@ poll_descriptor getn_from_descriptor(int n);
 
 int accept_();
 
+void close_();
+
+void close_n(int n);
+
 #endif //SERVER_POLL_OPS_H
