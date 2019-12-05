@@ -51,7 +51,7 @@ bool read_name_header(Client *client) {
     return res;
 }
 
-Helper *read_message(Client *client) {
+Helper *read_message_event(Client *client) {
     ssize_t n;
     char *received_message = allocate_char_buffer(*client->history->bytes_left);
 
@@ -71,7 +71,7 @@ Helper *read_message(Client *client) {
 }
 
 bool read_message_body(Client *client) {
-    Helper *helper = read_message(client);
+    Helper *helper = read_message_event(client);
     if (helper->exit_code) {
         char *received_message = helper->message;
         if (*client->history->bytes_left == HEADER_SIZE) {
@@ -95,7 +95,7 @@ bool read_message_body(Client *client) {
 }
 
 bool read_name_body(Client *client) {
-    Helper *helper = read_message(client);
+    Helper *helper = read_message_event(client);
     if (helper->exit_code) {
         char *received_message = helper->message;
         if (*client->history->bytes_left == HEADER_SIZE) {

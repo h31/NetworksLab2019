@@ -13,6 +13,8 @@ typedef struct Reader {
 
 Reader *read_clientname(int fd);
 
+Reader *read_message(Client *client);
+
 void send_message(int fd, char *message);
 
 void free_reader(Reader *reader);

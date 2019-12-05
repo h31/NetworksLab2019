@@ -37,6 +37,10 @@ Reader *read_shared(Client *client) {
     }
 }
 
+Reader *read_message(Client *client) {
+    return read_shared(client);
+}
+
 Reader *read_clientname(int fd) {
     Client *client = empty_client(&fd);
     Reader *reader = read_shared(client);
