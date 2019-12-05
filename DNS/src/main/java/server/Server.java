@@ -1,5 +1,11 @@
 package server;
 
+import dnsPackage.enams.RRClass;
+import dnsPackage.parts.Answer;
+import dnsPackage.parts.Header;
+import dnsPackage.utilits.PackageBuilder;
+import dnsPackage.utilits.PackageReader;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -34,20 +40,18 @@ public class Server extends Thread {
             e.printStackTrace();
         }
 
-        //make dns query string
-        /*buf = packet.getData();
-        StringBuilder queryPackage = new StringBuilder();
-        for (byte b : buf) {
-            queryPackage.append(HexConvert.byteToHex(b)).append(" ");
-        }*/
-
-
-        String received
-                = new String(packet.getData(), 0, packet.getLength());
-        System.out.println("package received");
+        PackageReader packageReader = new PackageReader();
+        packageReader.read(packet.getData());
 
         InetAddress address = packet.getAddress();
         int port = packet.getPort();
+
+        PackageBuilder packageBuilder = new PackageBuilder()
+                .addHeader(new Header())
+                .addQuery(packageReader.getQuery())
+                .addAnswer(new Answer().makeATypeAnswer(12, 123, RRClass.IN,"228.228.14.88"))
+                .build();
+        buf = packageBuilder.getBytes();
         packet = new DatagramPacket(buf, buf.length, address, port);
 
         try {

@@ -16,16 +16,10 @@ public enum OpCode {
     }
 
     public static OpCode getOpCode(int code) {
-        switch (code) {
-            case 0:
-                return OpCode.QUERY;
-            case 1:
-                return OpCode.IQUERY;
-            case 2:
-                return OpCode.STATUS;
-            default:
-                return OpCode.QUERY;
+        for(OpCode o: OpCode.values()){
+            return o;
         }
+        return OpCode.QUERY;
     }
 
 }

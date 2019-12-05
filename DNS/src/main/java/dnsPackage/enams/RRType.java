@@ -12,4 +12,13 @@ public enum RRType {
     public int getCode() {
         return code;
     }
+
+    public static RRType getRRType(int code) {
+        switch (code) {
+            case 1:
+                return RRType.A;
+            default:
+                return RRType.A;
+        }
+    }
 }

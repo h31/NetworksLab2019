@@ -15,14 +15,7 @@ public class Flags {
     private boolean ra; //рекурсия доступна
     private RCode rCode; //код ошибки
 
-    public Flags() {
-        this.qr = false;
-        this.opCode = OpCode.QUERY;
-        this.aa = false;
-        this.tc = false;
-        this.rd = false;
-        this.ra = false;
-        this.rCode = RCode.NO_ERR;
+    public Flags(){
     }
 
     public Flags(boolean qr, OpCode opCode, boolean aa, boolean tc, boolean rd, boolean ra, RCode rCode) {
@@ -45,7 +38,7 @@ public class Flags {
         this.rCode = RCode.getRCode((bytes[1] & 0b1111));
     }
 
-    public static Flags getDefaultQueryFlags() {
+    public Flags getDefaultQueryFlags() {
         return new Flags(false, OpCode.QUERY, false, false, true, false, RCode.NO_ERR);
     }
 
@@ -79,40 +72,18 @@ public class Flags {
         return ((b & (byte) Math.pow(2, digit)) != 0);
     }
 
-    public void setQr(boolean qr) {
-        this.qr = qr;
-    }
-
-    public void setAa(boolean aa) {
-        this.aa = aa;
-    }
-
-    public void setTc(boolean tc) {
-        this.tc = tc;
-    }
-
-    public void setRd(boolean rd) {
-        this.rd = rd;
-    }
-
-    public void setRa(boolean ra) {
-        this.ra = ra;
-    }
-
-    public void setrCode(RCode rCode) {
-        this.rCode = rCode;
+    public RCode getRCode() {
+        return  this.rCode;
     }
 
     @Override
     public String toString() {
-        return "Flags{" +
-                "qr=" + qr +
-                ", opCode=" + opCode +
-                ", aa=" + aa +
-                ", tc=" + tc +
-                ", rd=" + rd +
-                ", ra=" + ra +
-                ", rCode=" + rCode +
-                '}';
+        return  "QR: " + qr + "\n" +
+                "OpCode: " + opCode + "\n" +
+                "AA: " + aa + "\n" +
+                "TC: " + tc + "\n" +
+                "RD: " + rd + "\n" +
+                "RA: " + ra + "\n" +
+                "RCode: " + rCode;
     }
 }

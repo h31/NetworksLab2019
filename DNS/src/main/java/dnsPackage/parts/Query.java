@@ -25,6 +25,15 @@ public class Query {
         this.rrClass = rrClass;
     }
 
+    public Query(byte[] bytes){
+        int position;
+        qName = new int[bytes.length - 4];
+        for (position = 0; position < bytes.length - 4; position++){
+            qName[position] = Utils.byteToUnsignedInt(bytes[position]);
+        }
+        rrType = RRType.getRRType(Utils.getIntFromTwoBytes(bytes[position++], bytes[position++]));
+        rrClass = RRClass.getRRClass(Utils.getIntFromTwoBytes(bytes[position++], bytes[position]));
+    }
 
     private void domainToQName(String domainName) {
         String[] domainNameArray = domainName.split("\\.");
@@ -68,10 +77,10 @@ public class Query {
 
     @Override
     public String toString() {
-        return "Query{" +
-                "qName=" + Arrays.toString(qName) +
-                ", rrType=" + rrType +
-                ", rrClass=" + rrClass +
+        return "Query: {" +
+                "qName: " + Arrays.toString(qName) +
+                "; rrType: " + rrType +
+                "; rrClass: " + rrClass +
                 '}';
     }
 }

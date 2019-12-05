@@ -12,4 +12,11 @@ public enum RRClass {
     public int getCode() {
         return code;
     }
+
+    public static RRClass getRRClass(int code) {
+        for (RRClass r: RRClass.values()){
+            return r;
+        }
+        return RRClass.IN;
+    }
 }

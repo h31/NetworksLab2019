@@ -2,6 +2,7 @@ package dnsPackage.parts;
 
 import dnsPackage.utilits.Utils;
 
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -14,20 +15,22 @@ public class Header {
     private int nsCount; //число RR-записей серверов имен в разделе авторитета
     private int arCount; //число RR-записей в разделе дополнительных записей
 
-    public Header(int id, Flags flags, int qdCount, int adCount, int nsCount, int arCount) {
-        this.id = id;
-        this.flags = flags;
-        this.qdCount = qdCount;
-        this.adCount = adCount;
-        this.nsCount = nsCount;
-        this.arCount = arCount;
+    public Header() {
     }
 
-    public static Header getDefaultQueryHeader() {
+    public Header(Flags flags) {
         Random random = new Random();
-        return new Header(random.nextInt(Integer.parseInt("FFFF", 16)),
-                Flags.getDefaultQueryFlags(),
-                1, 0, 0, 0);
+        this.id = random.nextInt(Integer.parseInt("FFFF", 16));
+        this.flags = flags;
+        this.qdCount = 0;
+        this.adCount = 0;
+        this.nsCount = 0;
+        this.arCount = 0;
+    }
+
+    public Header setDefQueryFlags() {
+        this.flags = new Flags().getDefaultQueryFlags();
+        return this;
     }
 
     public Header(byte[] bytes) {
@@ -51,15 +54,38 @@ public class Header {
         return headerBytes;
     }
 
+    public Flags getFlags() {
+        return flags;
+    }
+
+    public int getQdCount() {
+        return qdCount;
+    }
+
+    public int getAdCount() {
+        return adCount;
+    }
+
+    public void setFlags(Flags flags) {
+        this.flags = flags;
+    }
+
+    public void setQdCount(int qdCount) {
+        this.qdCount = qdCount;
+    }
+
+    public void setAdCount(int adCount) {
+        this.adCount = adCount;
+    }
+
     @Override
     public String toString() {
-        return "Header{" +
-                "id=" + id +
-                ", flags=" + flags.toString() +
-                ", qdCount=" + qdCount +
-                ", adCount=" + adCount +
-                ", nsCount=" + nsCount +
-                ", arCount=" + arCount +
-                '}';
+        return "Header:" + "\n" +
+                "id " + id + "\n" +
+                flags.toString() + "\n" +
+                "QdCount " + qdCount + "\n" +
+                "AdCount " + adCount + "\n" +
+                "NsCount " + nsCount + "\n" +
+                "ArCount " + arCount;
     }
 }
