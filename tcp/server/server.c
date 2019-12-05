@@ -29,6 +29,10 @@ void send_message_to_clients(Client *sender) {
     strcat(message, sender->history->message_body);
 
     foreach(&send_message, message, cache);
+    free(message);
+
+    free(sender->history->message_body);
+    sender->history->message_body = allocate_char_buffer(EMPTY);
 }
 
 void which_client_scenario(Client *client) {

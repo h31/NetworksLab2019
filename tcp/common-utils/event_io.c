@@ -44,6 +44,9 @@ char *read_message(Client *client) {
 
 void read_message_body(Client *client) {
     char *received_message = read_message(client);
+    if (*client->history->bytes_left == HEADER_SIZE) {
+        *client->history->message_header = 0;
+    }
     char *message = client->history->message_body;
 
     char *new_message = allocate_char_buffer(strlen(message) + strlen(received_message));
@@ -53,10 +56,14 @@ void read_message_body(Client *client) {
     free(client->history->message_body);
 
     client->history->message_body = new_message;
+    free(received_message);
 }
 
 void read_name_body(Client *client) {
     char *received_message = read_message(client);
+    if (*client->history->bytes_left == HEADER_SIZE) {
+        *client->history->name_header = 0;
+    }
     char *message = client->history->name_body;
 
     char *new_message = allocate_char_buffer(strlen(message) + strlen(received_message));
@@ -66,4 +73,5 @@ void read_name_body(Client *client) {
     free(client->history->name_body);
 
     client->history->name_body = new_message;
+    free(received_message);
 }
