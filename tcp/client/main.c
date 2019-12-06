@@ -11,6 +11,9 @@
 #include "../common-utils/headers/errors.h"
 #include "../common-utils/headers/io.h"
 
+#define INPUT_PROMT "message\n"
+#define INPUT_PROMT_SIZE 9
+
 void replace(char *buff, size_t size) {
     for (size_t i = 0; i < size; ++i) {
         if (buff[i] == '\n') buff[i] = '\0';
@@ -28,7 +31,12 @@ void sendm(int id, size_t size) {
 void *terminal(void *args) {
     int *client_id = (int *) args;
     for (;;) {
-        sendm(*client_id, MESSAGE_SIZE);
+        char message[INPUT_PROMT_SIZE];
+        fgets(message, INPUT_PROMT_SIZE, stdin);
+        if (!strcmp(INPUT_PROMT, message)) {
+            replace(message, 9);
+            sendm(*client_id, MESSAGE_SIZE);
+        }
     }
 }
 
@@ -55,6 +63,8 @@ void start_client(int argc, char *argv[]) {
 
     /* firstly send client name */
     sendm(sockfd, CLIENT_NAME_SIZE);
+
+    printf("Thank you. If you want to send a message type `message` \n");
 
     Client *this = empty_client(&sockfd);
 
