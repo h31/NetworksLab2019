@@ -68,7 +68,8 @@ void send_request_packet(uint16_t request_type, char* file_path) {
 void send_data_packet(int block_number, void* data, int data_size, struct sockaddr_in* addr, int addr_len) {
     void* data_packet = NULL;
     int data_packet_size = create_data_packet(&data_packet, htons(block_number), data, data_size);
-    send_packet(data_packet, data_packet_size, addr == NULL ? &servaddr : addr, addr == NULL ? (int) sizeof(servaddr) : addr_len);
+    send_packet(data_packet, data_packet_size, addr == NULL ? &servaddr : addr,
+            addr == NULL ? (int) sizeof(servaddr) : addr_len);
     free(data_packet);
 }
 
@@ -76,6 +77,7 @@ void send_data_packet(int block_number, void* data, int data_size, struct sockad
 void send_acknowledgment_packet(uint16_t block_number, struct sockaddr_in* addr, int addr_len) {
     void *acknowledgment_packet = NULL;
     int ack_packet_size = create_acknowledgment_packet(&acknowledgment_packet, htons(block_number) );
-    send_packet(acknowledgment_packet, ack_packet_size, addr == NULL ? &servaddr : addr, addr == NULL ? (int) sizeof(addr_len) : addr_len);
+    send_packet(acknowledgment_packet, ack_packet_size, addr == NULL ? &servaddr : addr,
+            addr == NULL ? (int) sizeof(addr_len) : addr_len);
     free(acknowledgment_packet);
 }
