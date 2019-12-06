@@ -47,7 +47,7 @@ bool which_client_scenario(Client *client) {
             if (read_message_body(client)) {
                 send_message_to_clients(client);
                 return true;
-            } else return false;
+            }
     }
     return false;
 }
@@ -83,12 +83,11 @@ void start_event_loop() {
         if (current.revents & POLL_IN) {
             /* readable connection */
             Client *current_client = get_by_id(cache, current.fd);
-            bool res = which_client_scenario(current_client);
-            if (!res) {
+            bool result = which_client_scenario(current_client);
+            if (!result) {
                 close_n(current.fd);
                 delete(cache, get_by_id(cache, current.fd));
-            }
-            zero_revents(i);
+            } else zero_revents(i);
         } else if (current.revents != 0) {
             /* client is disconnected */
             close_n(current.fd);

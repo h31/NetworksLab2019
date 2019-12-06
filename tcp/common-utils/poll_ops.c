@@ -51,20 +51,21 @@ int find_n(int index) {
     return -1;
 }
 
+void zero_all(int index) {
+    descriptors[index].fd = 0;
+    zero_revents(index);
+    descriptors[index].events = 0;
+}
+
 void close_n(int n) {
     int idx = find_n(n);
 
     close(descriptors[idx].fd);
-
-    descriptors[idx].fd = 0;
-    descriptors[idx].revents = 0;
-    descriptors[idx].events = 0;
+    zero_all(idx);
 
     if ((int) (size - 1) != idx) {
         memcpy(&descriptors[idx], &descriptors[size - 1], sizeof(poll_descriptor));
-        descriptors[idx + 1].fd = 0;
-        descriptors[idx + 1].revents = 0;
-        descriptors[idx + 1].events = 0;
+        zero_all(idx + 1);
     }
     size--;
 }
