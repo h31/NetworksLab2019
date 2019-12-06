@@ -20,7 +20,7 @@ int handle_error_packet_(char* packet, int packet_number, FILE** file) {
 }
 
 
-int handle_data_packet(char* packet, int packet_size, FILE** dst_file, char* dst_file_path, char* src_file_path) {
+int handle_data_packet(char* packet, int packet_size, FILE** dst_file, char* dst_file_path, char* src_file_path, struct sockaddr_in* addr, int addr_len) {
     uint16_t packet_number = ntohs(*(uint16_t*) (packet + sizeof(uint16_t)));
 
     //создание файла
@@ -35,7 +35,7 @@ int handle_data_packet(char* packet, int packet_size, FILE** dst_file, char* dst
            *dst_file);
 
     //подтверждение пакета
-    send_acknowledgment_packet(packet_number);
+    send_acknowledgment_packet(packet_number, addr, addr_len);
 
     //если пришёл неполный пакет
     if (packet_size < MAX_PACKET_SIZE) {
@@ -69,7 +69,7 @@ void download_file(char* file_path, char* dst_path) {
         packet_type = ntohs(*(uint16_t*) packet);
 
         // проверка полученного пакета
-        if ( (packet_type == DTG_DATA && handle_data_packet(packet, packet_size, &file, dst_path, file_path) == -1) ||
+        if ( (packet_type == DTG_DATA && handle_data_packet(packet, packet_size, &file, dst_path, file_path, &addr, addr_len) == -1) ||
                 (packet_type == DTG_ERROR && handle_error_packet_(packet, packet_number, &file) == 0) ) {
             return;
         }

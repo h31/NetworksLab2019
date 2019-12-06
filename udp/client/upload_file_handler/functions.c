@@ -41,7 +41,7 @@ int upload_file_(FILE* file, struct sockaddr_in addr, int addr_len) {
         block_number++;
 
         // создание и отпрака пакета данных
-        send_data_packet(block_number, buffer, number_read);
+        send_data_packet(block_number, buffer, number_read, &addr, addr_len);
 
         //ждём подтверждение
         receive_packet(received_packet, &addr, &addr_len);
