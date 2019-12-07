@@ -1,6 +1,8 @@
 package dnsPackage.utilits;
 
+import dnsPackage.enams.RCode;
 import dnsPackage.parts.Answer;
+import dnsPackage.parts.Flags;
 import dnsPackage.parts.Header;
 import dnsPackage.parts.Query;
 
@@ -11,11 +13,15 @@ public class PackageBuilder {
     private Header header;
     private List<Query> query;
     private List<Answer> answer;
+    private List<Answer> authoritative;
+    private List<Answer> additional;
     byte[] bytes;
 
     public PackageBuilder(){
         query = new ArrayList<>();
         answer = new ArrayList<>();
+        authoritative = new ArrayList<>();
+        additional = new ArrayList<>();
     }
 
     public PackageBuilder addHeader(Header header) {
@@ -43,9 +49,21 @@ public class PackageBuilder {
         return this;
     }
 
+    public PackageBuilder addAuthoritative(List<Answer> answer) {
+        this.authoritative.addAll(answer);
+        return this;
+    }
+
+    public PackageBuilder addAdditional(List<Answer> answer) {
+        this.additional.addAll(answer);
+        return this;
+    }
+
     public PackageBuilder build() {
         header.setQdCount(query.size());
-        header.setAdCount(answer.size());
+        header.setAnCount(answer.size());
+        header.setNsCount(authoritative.size());
+        header.setArCount(additional.size());
         List<Byte> queryPackageList = new ArrayList<>();
         queryPackageList.addAll(header.getBytesList());
         for (Query q: query) {
@@ -67,7 +85,7 @@ public class PackageBuilder {
         if (header.getQdCount() > 0) {
             for (Query q : query) stringBuilder.append(q.toString() + "\n");
         }
-        if (header.getAdCount() > 0) {
+        if (header.getAnCount() > 0) {
             for (Answer a : answer) stringBuilder.append(a.toString() + "\n");
         }
         return stringBuilder.toString();

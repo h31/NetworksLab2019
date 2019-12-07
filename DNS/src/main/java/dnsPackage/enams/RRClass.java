@@ -1,7 +1,8 @@
 package dnsPackage.enams;
 
 public enum RRClass {
-    IN(1); //Internet
+    IN(1), //Internet
+    NOT(0);
 
     private int code;
 
@@ -17,6 +18,6 @@ public enum RRClass {
         for (RRClass r: RRClass.values()){
             return r;
         }
-        return RRClass.IN;
+        return RRClass.NOT;
     }
 }

@@ -25,10 +25,10 @@ public class Query {
         this.rrClass = rrClass;
     }
 
-    public Query(byte[] bytes){
+    public Query(byte[] bytes) {
         int position;
         qName = new int[bytes.length - 4];
-        for (position = 0; position < bytes.length - 4; position++){
+        for (position = 0; position < bytes.length - 4; position++) {
             qName[position] = Utils.byteToUnsignedInt(bytes[position]);
         }
         rrType = RRType.getRRType(Utils.getIntFromTwoBytes(bytes[position++], bytes[position++]));
@@ -55,14 +55,27 @@ public class Query {
     public String getDomainName() {
         StringBuilder domainName = new StringBuilder();
         int position = 0;
-        while (position < qName.length - 1){
+        while (position < qName.length - 1) {
             int len = qName[position];
             position++;
             for (int j = position; j < position + len; j++) domainName.append((char) qName[j]);
             domainName.append(".");
             position += len;
         }
+        domainName.setLength(domainName.length() - 1);
         return domainName.toString();
+    }
+
+    public int length() {
+        return qName.length + 4;
+    }
+
+    public RRType getRrType() {
+        return rrType;
+    }
+
+    public RRClass getRrClass() {
+        return rrClass;
     }
 
     public List<Byte> getBytesList() {
@@ -77,10 +90,14 @@ public class Query {
 
     @Override
     public String toString() {
-        return "Query: {" +
-                "qName: " + Arrays.toString(qName) +
-                "; rrType: " + rrType +
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Query: {" +
+                "qName: [");
+        for (int i : qName) stringBuilder.append(Integer.toHexString(i).toUpperCase()).append(", ");
+        stringBuilder.setLength(stringBuilder.length() - 2);
+        stringBuilder.append("]; rrType: " + rrType +
                 "; rrClass: " + rrClass +
-                '}';
+                '}');
+        return stringBuilder.toString();
     }
 }

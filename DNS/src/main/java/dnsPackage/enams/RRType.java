@@ -1,7 +1,10 @@
 package dnsPackage.enams;
 
 public enum RRType {
-    A(1); //address
+    A(1), //address IPv4
+    AAAA(28), //address IPv6
+    NS(2), //name server
+    NOT(0);
 
     private int code;
 
@@ -14,11 +17,9 @@ public enum RRType {
     }
 
     public static RRType getRRType(int code) {
-        switch (code) {
-            case 1:
-                return RRType.A;
-            default:
-                return RRType.A;
+        for (RRType r: RRType.values()) {
+            if(r.getCode() == code) return r;
         }
+        return RRType.NOT;
     }
 }

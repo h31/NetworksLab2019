@@ -7,16 +7,15 @@ import dnsPackage.parts.Query;
 import dnsPackage.utilits.PackageBuilder;
 import dnsPackage.utilits.PackageReader;
 
-import javax.crypto.interfaces.PBEKey;
 import java.io.IOException;
 import java.net.*;
+import java.util.Arrays;
 import java.util.Scanner;
 
 public class Client {
     private DatagramSocket socket;
     private InetAddress address;
-    private int port = 53;
-    private byte[] googleDnsServ = {8, 8, 8, 8};
+    private int port;
 
     public Client() {
     }
@@ -36,8 +35,40 @@ public class Client {
         return this;
     }
 
-    public void send(byte[] buf) {
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, address, port);
+    public void run() {
+        PackageReader packageReader = new PackageReader();
+        PackageBuilder packageBuilder = new PackageBuilder();
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.println("Enter:");
+            String input = scanner.nextLine();
+            switch (input) {
+                case "\\end":
+                    close();
+                    return;
+                case "\\print":
+                    System.out.println("Send package: \n" + packageBuilder.toString());
+                    System.out.println("Receive package: \n" + packageReader.toString());
+                    continue;
+                default: {
+                    packageBuilder = new PackageBuilder()
+                            .addHeader(new Header().setDefQueryFlags())
+                            .addQuery(new Query(input))
+                            .build();
+                    break;
+                }
+            }
+            send(packageBuilder.getBytes());
+            byte[] bytes = receive();
+            packageReader.read(bytes);
+            if (packageReader.getHeader().getFlags().getRCode() == RCode.NO_ERR) {
+                System.out.println(packageReader.getAnswerData());
+            }
+        }
+    }
+
+    private void send(byte[] bytes) {
+        DatagramPacket packet = new DatagramPacket(bytes, bytes.length, address, port);
         try {
             socket.send(packet);
         } catch (IOException e) {
@@ -45,9 +76,9 @@ public class Client {
         }
     }
 
-    public byte[] receive() {
-        byte[] buf = new byte[512];
-        DatagramPacket packet = new DatagramPacket(buf, buf.length);
+    private byte[] receive() {
+        byte[] bytes = new byte[512];
+        DatagramPacket packet = new DatagramPacket(bytes, bytes.length);
         try {
             socket.receive(packet);
         } catch (IOException e) {
@@ -61,50 +92,21 @@ public class Client {
     }
 
     private String packageToString(byte[] bytes) {
-        StringBuilder address = new StringBuilder();
-        for (int i = 0; i < bytes.length; i++) {
-            address.append((bytes[i])).append(" \n");
-        }
-        return address.toString();
+        StringBuilder bytesString = new StringBuilder();
+        bytesString.append("Bytes: ");
+        bytesString.append(Arrays.toString(bytes));
+        return bytesString.toString();
     }
 
     public static void main(String[] args) {
-        PackageReader packageReader = new PackageReader();
-        PackageBuilder packageBuilder = new PackageBuilder();
-
-        Scanner scanner = new Scanner(System.in);
+        /*Scanner scanner = new Scanner(System.in);
         System.out.println("Input dns server ip: ");
         String address = scanner.nextLine();
         System.out.println("Input port: ");
-        int port = scanner.nextInt();
+        int port = scanner.nextInt();*/
 
         Client client = new Client()
-                .init(address, port);
-        scanner.nextLine();
-        while (true) {
-            System.out.println("Enter message:");
-            String input = scanner.nextLine();
-            switch (input) {
-                case "\\end":
-                    client.close();
-                    return;
-                case "\\print":
-                    System.out.println("Send package: \n" + packageBuilder.toString());
-                    System.out.println("Recive package: \n" + packageReader.toString());
-                default: {
-                    packageBuilder = new PackageBuilder()
-                            .addHeader(new Header().setDefQueryFlags())
-                            .addQuery(new Query(input))
-                            .build();
-                    break;
-                }
-            }
-            client.send(packageBuilder.getBytes());
-            byte[] bytes = client.receive();
-            packageReader.read(bytes);
-            if (packageReader.getHeader().getFlags().getRCode() == RCode.NO_ERR) {
-                System.out.println(packageReader.getAnswerData());
-            }
-        }
+                .init("127.0.0.1", 4445);
+        client.run();
     }
 }

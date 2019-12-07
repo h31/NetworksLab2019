@@ -5,7 +5,6 @@ import dnsPackage.enams.RRType;
 import dnsPackage.utilits.Utils;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class Answer {
@@ -16,7 +15,10 @@ public class Answer {
     private int rdLength;
     private int[] rData;
 
-    public Answer(){
+    private String nameString;
+    private String rDataString;
+
+    public Answer() {
 
     }
 
@@ -31,22 +33,54 @@ public class Answer {
         for (int i = 0; i < rData.length; i++) {
             rData[i] = Utils.byteToUnsignedInt(bytes[position++]);
         }
+        rDataString = "";
+        nameString = "";
     }
 
-    public Answer makeATypeAnswer(int shift, int ttl,  RRClass rrClass, String data) {
+    public Answer setName(int shift) {
         int mask = 0b1100000000000000;
         this.name = shift | mask;
-        this.rrType = RRType.A;
+        return this;
+    }
+
+    public Answer setRRType(RRType rrType) {
+        this.rrType = rrType;
+        return this;
+    }
+
+    public Answer setRRClass(RRClass rrClass) {
         this.rrClass = rrClass;
+        return this;
+    }
+
+    public Answer setTtl(int ttl) {
         this.ttl = ttl;
-        this.rdLength = 4;
+        return this;
+    }
+
+    public Answer makeAnswer(String data) {
+        switch (rrType) {
+            case A:
+                setATypeData(data);
+        }
+        return this;
+    }
+
+    private void setATypeData(String data) {
         String[] address = data.split("\\.");
         rData = new int[4];
         int i = 0;
-        for (String s: address) {
+        for (String s : address) {
             rData[i++] = Integer.parseInt(s);
         }
-        return this;
+        this.rdLength = rData.length;
+    }
+
+    public String getATypeData() {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i: rData) stringBuilder.append(i).append(".");
+        stringBuilder.setLength(stringBuilder.length() - 1);
+        return stringBuilder.toString();
     }
 
     public List<Byte> getBytesList() {
@@ -56,32 +90,70 @@ public class Answer {
         answerBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rrClass.getCode())));
         answerBytesList.addAll(Utils.getByteList(Utils.getFourBytesFromInt(ttl)));
         answerBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rdLength)));
-        for (int i: rData) {
+        for (int i : rData) {
             answerBytesList.add((byte) i);
         }
         return answerBytesList;
     }
 
     public String getData() {
-        if(this.rrType == RRType.A) {
-            StringBuilder stringBuilder = new StringBuilder();
-            for (int i: rData) {
-                stringBuilder.append(i).append(".");
-            }
-            return stringBuilder.toString();
+        StringBuilder stringBuilder = new StringBuilder();
+        switch (rrType) {
+            case A:
+                for (int i : rData) stringBuilder.append(i).append(".");
+                stringBuilder.setLength(stringBuilder.length() - 1);
+                return stringBuilder.toString();
+            case NS:
+                for (int i : rData) stringBuilder.append((char) i);
+                return stringBuilder.toString();
         }
-        return "not A type answer";
+        return "Do not support this RRType";
+    }
+
+    public int length() {
+        return rData.length + 12;
+    }
+
+    public RRType getRrType() {
+        return rrType;
+    }
+
+    public int getRdLength() {
+        return rdLength;
+    }
+
+    public String getNameString() {
+        return nameString;
+    }
+
+    public void setNameString(String nameString) {
+        this.nameString = nameString;
+    }
+
+    public String getrDataString() {
+        return rDataString;
+    }
+
+    public void setrDataString(String rDataString) {
+        this.rDataString = rDataString;
     }
 
     @Override
     public String toString() {
-        return "Answer: {" +
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Answer: {" +
                 "name: " + Integer.toHexString(name).toUpperCase() +
+                "; stringName: " + nameString +
                 "; rrType: " + rrType +
                 "; rrClass: " + rrClass +
                 "; ttl: " + ttl +
                 "; rdLength: " + rdLength +
-                "; rData: " + Arrays.toString(rData) +
-                '}';
+                "; rData: [");
+        for (int i : rData) stringBuilder.append(Integer.toHexString(i).toUpperCase()).append(", ");
+        stringBuilder.setLength(stringBuilder.length() - 2);
+        stringBuilder.append("]; " +
+                "; stringData: " + rDataString +
+                "}");
+        return stringBuilder.toString();
     }
 }

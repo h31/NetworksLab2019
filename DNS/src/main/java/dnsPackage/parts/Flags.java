@@ -39,7 +39,14 @@ public class Flags {
     }
 
     public Flags getDefaultQueryFlags() {
-        return new Flags(false, OpCode.QUERY, false, false, true, false, RCode.NO_ERR);
+        this.qr = false;
+        this.opCode = OpCode.QUERY;
+        this.aa = false;
+        this.tc = false;
+        this.rd = true;
+        this.ra = false;
+        this.rCode = RCode.NO_ERR;
+        return this;
     }
 
     public List<Byte> getBytesList() {
@@ -74,6 +81,15 @@ public class Flags {
 
     public RCode getRCode() {
         return  this.rCode;
+    }
+
+    public void setRd(boolean rd) {
+        this.rd = rd;
+    }
+
+    public Flags setRCode(RCode rCode) {
+        this.rCode = rCode;
+        return this;
     }
 
     @Override

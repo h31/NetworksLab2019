@@ -1,5 +1,6 @@
 package dnsPackage.utilits;
 
+import dnsPackage.enams.RRType;
 import dnsPackage.parts.Answer;
 import dnsPackage.parts.Header;
 import dnsPackage.parts.Query;
@@ -9,60 +10,104 @@ import java.util.Arrays;
 import java.util.List;
 
 public class PackageReader {
+    static final int HEADER_LEN = 12;
     private Header header;
-    private List<Query> query;
-    private List<Answer> answer;
+    private List<Query> queries;
+    private List<Answer> answers;
+    private List<Answer> authoritative;
+    private List<Answer> additional;
+    private byte[] bytes;
 
     public PackageReader() {
+        queries = new ArrayList<>();
+        answers = new ArrayList<>();
+        authoritative = new ArrayList<>();
+        additional = new ArrayList<>();
     }
 
     public void read(byte[] bytes) {
+        this.bytes = bytes;
         int position = 0;
         position += readHeader(bytes);
         if (header.getQdCount() > 0) {
             position += readQuery(Arrays.copyOfRange(bytes, position, bytes.length));
         }
-        if (header.getAdCount() > 0) {
-            position += readAnswer(Arrays.copyOfRange(bytes, position, bytes.length));
+        if (header.getAnCount() > 0) {
+            answers = readAnswer(bytes, position, header.getAnCount());
+            position += getAnswersSize(answers);
         }
+        if (header.getNsCount() > 0) {
+            authoritative = readAnswer(bytes, position, header.getNsCount());
+            position += getAnswersSize(authoritative);
 
+        }
+        if (header.getArCount() > 0) {
+            additional = readAnswer(bytes, position, header.getArCount());
+            position += getAnswersSize(additional);
+        }
     }
 
-    public int readHeader(byte[] bytes) {
+    private int readHeader(byte[] bytes) {
         int position = 0;
         this.header = new Header(Arrays.copyOfRange(bytes, position, position + 12));
         return position + 12;
     }
 
-    public int readQuery(byte[] bytes) {
-        query = new ArrayList<>();
+    private int readQuery(byte[] bytes) {
+        queries = new ArrayList<>();
         int start = 0, end;
         for (int i = 0; i < header.getQdCount(); i++) {
             end = start;
             while (bytes[end] != 0) end++;
             end += 5;
-            query.add(new Query(Arrays.copyOfRange(bytes, start, end)));
+            queries.add(new Query(Arrays.copyOfRange(bytes, start, end)));
             start = end;
         }
         return start;
     }
 
-    public int readAnswer(byte[] bytes) {
-        answer = new ArrayList<>();
-        int start = 0, end;
-        for (int i = 0; i < header.getAdCount(); i++) {
-            end = start + 12 + Utils.getIntFromTwoBytes(bytes[start + 10], bytes[start + 11]);
-            answer.add(new Answer(Arrays.copyOfRange(bytes, start, end)));
-            start = end;
+    private List<Answer> readAnswer(byte[] bytes, int position, int number) {
+        List<Answer> answers = new ArrayList<>();
+        int end;
+        for (int i = 0; i < number; i++) {
+            end = position + HEADER_LEN + Utils.getIntFromTwoBytes(bytes[position + 10], bytes[position + 11]);
+            Answer answer = new Answer(Arrays.copyOfRange(bytes, position, end));
+            answer.setNameString(getStringName(position, bytes));
+            if (answer.getRrType() == RRType.NS) answer.setrDataString(getStringName(position + 12, bytes));
+            answers.add(answer);
+            position = end;
         }
-        return start;
+        return answers;
+    }
+
+    private int getAnswersSize(List<Answer> answers) {
+        int size = 0;
+        for (Answer a : answers) size += a.length();
+        return size;
     }
 
     public String getAnswerData() {
         StringBuilder stringBuilder = new StringBuilder();
-        for (Answer a: answer) {
+        for (Answer a : answers) {
             stringBuilder.append(a.getData()).append("\n");
         }
+        return stringBuilder.toString();
+    }
+
+    private String getStringName(int position, byte[] bytes) {
+        StringBuilder stringBuilder = new StringBuilder();
+        while (bytes[position] != 0) {
+            if (Utils.byteToUnsignedInt(bytes[position]) == 0xC0) {
+                position = Utils.byteToUnsignedInt(bytes[position + 1]);
+                continue;
+            }
+            int len = bytes[position];
+            position++;
+            for (int j = position; j < position + len; j++) stringBuilder.append((char) bytes[j]);
+            stringBuilder.append(".");
+            position += len;
+        }
+        if (stringBuilder.length() > 0) stringBuilder.setLength(stringBuilder.length() - 1);
         return stringBuilder.toString();
     }
 
@@ -70,24 +115,43 @@ public class PackageReader {
         return header;
     }
 
-    public List<Query> getQuery() {
-        return query;
+    public List<Query> getQueries() {
+        return queries;
     }
 
-    public Answer getAnswer() {
-        return null;
+    public List<Answer> getAnswers() {
+        return answers;
+    }
+
+    public List<Answer> getAuthoritative() {
+        return authoritative;
+    }
+
+    public List<Answer> getAdditional() {
+        return additional;
     }
 
     @Override
     public String toString() {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("PackageRead: \n" + header.toString() + "\n");
+        stringBuilder.append("PackageRead: \n").append(header.toString()).append("\n");
         if (header.getQdCount() > 0) {
-            for (Query q : query) stringBuilder.append(q.toString() + "\n");
+            for (Query q : queries) stringBuilder.append(q.toString()).append("\n");
         }
-        if (header.getAdCount() > 0) {
-            for (Answer a : answer) stringBuilder.append(a.toString() + "\n");
+        if (header.getAnCount() > 0) {
+            stringBuilder.append("\nAnswers:\n");
+            for (Answer a : answers) stringBuilder.append(a.toString()).append("\n");
         }
+        if (header.getNsCount() > 0) {
+            stringBuilder.append("\nAuthoritative:\n");
+            for (Answer a : authoritative) stringBuilder.append(a.toString()).append("\n");
+        }
+        if (header.getArCount() > 0) {
+            stringBuilder.append("\nAdditional:\n");
+            for (Answer a : additional) stringBuilder.append(a.toString()).append("\n");
+        }
+
         return stringBuilder.toString();
     }
+
 }

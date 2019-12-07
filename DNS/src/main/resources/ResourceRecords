@@ -1,0 +1,4 @@
+example.com         128    IN  A   1.1.1.1
+example.com         128    IN  A   1.1.1.2
+example.com         128    IN  A   1.1.2.2
+example.edu.com     256    IN  A   2.2.2.2
