@@ -30,13 +30,15 @@ void send_acknowledgment_packet(int client_sockfd, uint16_t ack_type, uint32_t c
 
 
 void send_error_packet(int client_sockfd, char* msg, ulong msg_size) {
-    uint32_t packet_length = SIZE_OF_PACKET_LENGTH + SIZE_OF_PACKET_TYPE + msg_size;
+    uint32_t packet_length = SIZE_OF_PACKET_LENGTH + SIZE_OF_PACKET_TYPE + msg_size + SIZE_OF_ZERO_CHAR;
     uint16_t packet_type = ERROR_PACKET;
     void* packet = malloc(packet_length);
+    char zero_char = '\0';
 
     memcpy(packet, &packet_length, SIZE_OF_PACKET_LENGTH);
     memcpy(packet + SIZE_OF_PACKET_LENGTH, &packet_type, SIZE_OF_PACKET_TYPE);
     memcpy(packet+SIZE_OF_PACKET_LENGTH+SIZE_OF_PACKET_TYPE, msg, msg_size);
+    memcpy(packet+SIZE_OF_PACKET_LENGTH+SIZE_OF_PACKET_TYPE + msg_size, &zero_char, SIZE_OF_ZERO_CHAR);
 
     if (write(client_sockfd, packet, packet_length) < packet_length ) {
         printf("ERROR sending error packet to client. Client socket number: %d.\n", client_sockfd);
@@ -62,7 +64,7 @@ void handle_add_product_packet(int client_sockfd, void* packet) {
 
 void handle_buy_product_packet(int client_sockfd, void* packet) {
     char* name = (char*) packet + SIZE_OF_PACKET_TYPE + SIZE_OF_PACKET_COUNT;
-    uint32_t count = *(uint32_t*) packet + SIZE_OF_PACKET_TYPE;
+    uint32_t count = *(uint32_t*) (packet + SIZE_OF_PACKET_TYPE);
     int number_removed;
 
     if ( (number_removed = list_of_products_remove(name, count)) == -1) {

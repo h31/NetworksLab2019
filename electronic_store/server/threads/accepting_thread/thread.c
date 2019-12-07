@@ -19,9 +19,9 @@ static void make_socket_reusable_(int sockfd) {
 }
 
 
+// инициализация структуры initial_socket
 void fill_server_info_(struct sockaddr_in* serv_addr, int port_number) {
-    // инициализация структуры initial_socket
-    bzero((char *) serv_addr, sizeof(&serv_addr));
+    bzero((char *) serv_addr, sizeof(*serv_addr));
     serv_addr -> sin_port = htons(port_number);
     serv_addr -> sin_addr.s_addr = INADDR_ANY;
     serv_addr -> sin_family = AF_INET;
@@ -29,8 +29,7 @@ void fill_server_info_(struct sockaddr_in* serv_addr, int port_number) {
 
 
 static void bind_socket_(int sockfd, struct sockaddr_in* serv_addr) {
-    // привязать адрес хоста используя bind()
-    if (bind(sockfd, (struct sockaddr *) serv_addr, sizeof(&serv_addr)) < 0) {
+    if (bind(sockfd, (struct sockaddr *) serv_addr, sizeof(*serv_addr)) < 0) {
         perror("ERROR on binding\n");
         shutdown(sockfd, SHUT_RDWR);
         close(sockfd);
@@ -39,21 +38,15 @@ static void bind_socket_(int sockfd, struct sockaddr_in* serv_addr) {
 }
 
 
-static void make_socket_nonblocking_(int sockfd) {
-    if (fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0 ) | O_NONBLOCK ) < 0) {
-        printf("error in fcntl errno=%i\n", errno);
-    }
-}
-
-
 void* accepting_thread(void* arg) {
     struct sockaddr_in serv_addr, cli_addr;
     int initial_socket, newsockfd;
     unsigned int clilen;
-
+    int port;
 
     // открытие начального сокета
     initial_socket = ((Accepting_thread_input*)arg)->initial_sockfd;
+    port = ((Accepting_thread_input*) arg) -> port_number;
 
     if (initial_socket < 0) {
         fprintf(stderr, "ERROR opening init socket\n");
@@ -63,12 +56,10 @@ void* accepting_thread(void* arg) {
     make_socket_reusable_(initial_socket);
 
     // инициализация структуры initial_socket
-    fill_server_info_(&serv_addr, ((Accepting_thread_input*) arg) -> port_number);
+    fill_server_info_(&serv_addr, port);
 
     // привязать адрес хоста используя bind()
     bind_socket_(initial_socket, &serv_addr);
-
-    make_socket_nonblocking_(initial_socket);
 
     listen(initial_socket, 5);
     clilen = sizeof(cli_addr);
@@ -76,7 +67,7 @@ void* accepting_thread(void* arg) {
     while(1) {
         newsockfd = accept(initial_socket, (struct sockaddr *) &cli_addr, &clilen);
 
-        if (errno != EWOULDBLOCK) {
+        if (newsockfd == -1) {
             free(arg);
             fprintf(stdout,"Accepting thread: exit.\n");
             pthread_exit(0);

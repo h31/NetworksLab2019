@@ -1,13 +1,14 @@
 
-#include <sys/types.h>
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <bits/types/FILE.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <pthread.h>
 #include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "./list_of_clients.h"
+#include "../logger/logger.h"
 
 static pthread_mutex_t list_of_clients_mutex_;
 static User_info* head_element = NULL;
@@ -40,6 +41,7 @@ void list_of_clients_add(User_info* new_element) {
     }
 
     pthread_mutex_unlock(&list_of_clients_mutex_);
+    log_client_action("CLIENT", new_element->sockfd, "client connected");
 }
 
 
@@ -61,14 +63,15 @@ int list_of_clients_remove(int sockfd) {
         }
 
         if (prev == NULL) {
-            User_info* old_head = head_element;
-            head_element = head_element -> next;
-
             shutdown(head_element -> sockfd, SHUT_RDWR);
             close(head_element -> sockfd);
+
+            User_info* old_head = head_element;
+            head_element = head_element -> next;
             free(old_head);
 
             pthread_mutex_unlock(&list_of_clients_mutex_);
+            log_client_action("CLIENT", sockfd, "client disconnected");
             return 1;
         }
 
@@ -76,16 +79,25 @@ int list_of_clients_remove(int sockfd) {
         shutdown(iterator -> sockfd, SHUT_RDWR);
         close(iterator -> sockfd);
         free(iterator);
+
+        pthread_mutex_unlock(&list_of_clients_mutex_);
+        log_client_action("CLIENT", sockfd, "client disconnected");
+        return 1;
     }
 
     pthread_mutex_unlock(&list_of_clients_mutex_);
-    return 1;
+    return -1;
 }
 
 
 void list_of_clients_export(FILE* dst_fd) {
     pthread_mutex_lock(&list_of_clients_mutex_);
 
+    if (head_element == NULL) {
+        fprintf(dst_fd, "No clients.\n");
+        pthread_mutex_unlock(&list_of_clients_mutex_);
+        return;
+    }
     User_info* iterator = head_element;
     int index = 1;
 
@@ -109,6 +121,7 @@ void list_of_clients_remove_all() {
 
         shutdown(iterator -> sockfd, SHUT_RDWR);
         close(iterator -> sockfd);
+        log_client_action("CLIENT", iterator->sockfd, "client disconnected");
         free(iterator);
 
         iterator = iterator_next;

@@ -25,11 +25,9 @@ void* console_listening_thread(void* arg) {
             scanf("%d", &sockfd);
             if (list_of_clients_remove(sockfd) == -1) {
                 printf("Error: no such user socket number.\n");
-            } else {
-                printf("User was successfully disconnected.\n");
             }
 
-        } else if (strcmp(command, "quite\n") == 0) {
+        } else if (strcmp(command, "quit\n") == 0) {
             shutdown(*(int*) arg, SHUT_RDWR);
             close(*(int*) arg);
             pthread_exit(0);

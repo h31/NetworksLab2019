@@ -4,7 +4,9 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#include "../logger/actions_with_product.h"
 #include "list_of_products.h"
+#include "../logger/logger.h"
 #include "../packet_types.h"
 #include "../constants.h"
 
@@ -19,8 +21,6 @@ void init_list_of_products_mutex() {
 
 
 int is_product_exists_(char* name, int* cost) {
-    pthread_mutex_lock(&list_of_products_mutex_);
-
     Product_info* iterator = head_element;
 
     while (iterator != NULL && strcmp(iterator->name, name) != 0) {
@@ -33,7 +33,6 @@ int is_product_exists_(char* name, int* cost) {
 
     *cost = iterator->cost;
 
-    pthread_mutex_unlock(&list_of_products_mutex_);
     return 1;
 }
 
@@ -44,7 +43,7 @@ static Product_info* make_new_list_of_product_item_(char* name, int count, int c
     new_item->next = NULL;
     new_item->cost = cost;
     new_item->count = count;
-    new_item->name = name;
+    new_item->name = strdup(name);
 
     return new_item;
 }
@@ -84,6 +83,7 @@ int list_of_products_add(char* name, int count, int cost) {
     }
 
     pthread_mutex_unlock(&list_of_products_mutex_);
+    log_product_action("PRODUCT", ADD_PRODUCT, count, name);
     return 1;
 }
 
@@ -127,6 +127,7 @@ int list_of_products_remove(char* name, int count) {
 
 
     pthread_mutex_unlock(&list_of_products_mutex_);
+    log_product_action("PRODUCT", BUY_PRODUCT, count, name);
     return number_removed;
 }
 
@@ -173,7 +174,7 @@ void list_of_products_send(int client_sockfd) {
     while (iterator != NULL) {
         write(client_sockfd, &(iterator->cost), SIZE_OF_PACKET_PRICE);
         write(client_sockfd, &(iterator->count), SIZE_OF_PACKET_COUNT);
-        write(client_sockfd, &(iterator->name), strlen(iterator->name));
+        write(client_sockfd, iterator->name, strlen(iterator->name));
         write(client_sockfd, &zero_char, SIZE_OF_ZERO_CHAR);
 
         iterator = iterator->next;

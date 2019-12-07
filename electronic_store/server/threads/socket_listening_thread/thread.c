@@ -11,6 +11,7 @@
 #include "../../packet_handler/packet_handler.h"
 #include "../../packet_types.h"
 #include "../../constants.h"
+#include "./thread.h"
 
 
 static int readn_(int sockfd, void* dst, size_t len) {
@@ -37,7 +38,7 @@ static int readn_(int sockfd, void* dst, size_t len) {
 
 
 void* socket_listening_thread(void* arg) {
-    int client_sockfd = *(int*)arg;
+    int client_sockfd = ((Listening_thread_input*)arg)->sockfd;
     uint32_t packet_length;
     uint16_t packet_type;
     int number_read;
@@ -48,8 +49,8 @@ void* socket_listening_thread(void* arg) {
         number_read = readn_(client_sockfd, &packet_length, SIZE_OF_PACKET_LENGTH);
 
         if(number_read < SIZE_OF_PACKET_LENGTH) {
-            printf("ERROR reading packet length. Socket number: %d.\n", client_sockfd);
             list_of_clients_remove(client_sockfd);
+            free(arg);
             pthread_exit(0);
         }
 
@@ -58,8 +59,9 @@ void* socket_listening_thread(void* arg) {
         number_read = readn_(client_sockfd, packet, packet_length - SIZE_OF_PACKET_LENGTH);
 
         if( (uint32_t ) number_read < packet_length-SIZE_OF_PACKET_LENGTH) {
-            printf("ERROR reading packet type. Socket number: %d.\n", client_sockfd);
             list_of_clients_remove(client_sockfd);
+            free(packet);
+            free(arg);
             pthread_exit(0);
         }
 
@@ -79,11 +81,22 @@ void* socket_listening_thread(void* arg) {
 }
 
 
+Listening_thread_input* init_listening_thread_input_structure(int sockfd) {
+    Listening_thread_input* new_input_structure = (Listening_thread_input*) malloc(sizeof(Listening_thread_input));
+
+    new_input_structure->sockfd = sockfd;
+
+    return new_input_structure;
+}
+
+
 // создание потока
 pthread_t create_listening_thread(int sockfd) {
     pthread_t listening_thread;
 
-    if( pthread_create(&listening_thread, NULL, socket_listening_thread, (void *) &sockfd)) {
+    Listening_thread_input* listening_thread_input = init_listening_thread_input_structure(sockfd);
+
+    if( pthread_create(&listening_thread, NULL, socket_listening_thread, listening_thread_input)) {
         return -1;
     }
 
