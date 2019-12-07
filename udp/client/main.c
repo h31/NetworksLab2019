@@ -17,7 +17,7 @@
 #define WRITE_OPCODE 2
 #define DATA_OPCODE 3
 #define ACK_OPCODE 4
-#define ERROROPCODE 5
+#define ERROR_OPCODE 5
 
 void sigHandlerOut(int sig);
 
@@ -35,16 +35,23 @@ void sendPacket();
 
 void getResponse();
 
+void openFileForWrite();
+
+void openFileForRead();
+
 int sockfd;
 char fileName[FILE_SIZE];
 uint16_t opcode, blockNumber;
 char packet[MAX_SIZE];
 char response[MAX_SIZE];
 char *data;
+char dataOut[DATA_SIZE];
 struct sockaddr_in serv_addr;
 static const char MODE[] = "netascii";
-int n;
-socklen_t len;
+int packetLength = MAX_SIZE;
+int readedSymbols = DATA_SIZE;
+socklen_t len = sizeof(serv_addr);
+FILE *file;
 
 int main(int argc, char *argv[]) {
     uint16_t portno;
@@ -52,8 +59,6 @@ int main(int argc, char *argv[]) {
     char buffer[MAX_SIZE];
     char option[3];
     int optionInt;
-
-    //int n, len;
 
     //проверка, что все аргументы введены
     if (argc < 3) {
@@ -91,11 +96,12 @@ int main(int argc, char *argv[]) {
         printf("Выберите опцию:\n1 - Скачать файл\n2 - Загрузить файл\n");
         fgets(option, 3, stdin);
         optionInt = atoi(option);
+        enterFileName();
         if (optionInt == 1) {
-            enterFileName();
+            openFileForWrite();
             receiveFile();
         } else if (optionInt == 2) {
-            enterFileName();
+            openFileForRead();
             sendFile();
         } else {
             printf("Неверная опция\n");
@@ -107,14 +113,14 @@ void enterFileName() {
     memset(&fileName, 0, sizeof(fileName));
     printf("Введите имя файла\n");
     fgets(fileName, FILE_SIZE - 1, stdin);
-    fileName[strlen(fileName)-1]='\0';
+    fileName[strlen(fileName) - 1] = '\0';
 }
 
 void formRequest() {
     bzero(packet, MAX_SIZE);
     memcpy(packet, &opcode, 2);
-    memcpy(packet + 2, fileName, strlen(fileName)+1);
-    memcpy(packet + 2 + strlen(fileName)+1, MODE, strlen(MODE)+1);
+    memcpy(packet + 2, fileName, strlen(fileName) + 1);
+    memcpy(packet + 2 + strlen(fileName) + 1, MODE, strlen(MODE) + 1);
 }
 
 void sendPacket() {
@@ -125,9 +131,9 @@ void sendPacket() {
 
 void getResponse() {
     bzero(response, MAX_SIZE);
-    n = recvfrom(sockfd, (char *) response, MAX_SIZE,
-                 MSG_WAITALL, (struct sockaddr *) &serv_addr,
-                 &len);
+    packetLength = recvfrom(sockfd, (char *) response, MAX_SIZE,
+                            MSG_WAITALL, (struct sockaddr *) &serv_addr,
+                            &len);
     opcode = ntohs(*(uint16_t *) response);
     blockNumber = ntohs(*(uint16_t *) (response + 2));
     data = response + 4;
@@ -137,24 +143,77 @@ void sendFile() {
     opcode = htons(WRITE_OPCODE);
     formRequest();
     sendPacket();
-    getResponse();
-    if (opcode == ACK_OPCODE && blockNumber == 0) {
-        printf("всё хорошо, можно начинать отсылать\n");
-    } else {
-        printf("Ошибка, запись невозможна\n");
+    while (1) {
+        getResponse();
+        if (readedSymbols != DATA_SIZE) break;
+        if (opcode == ACK_OPCODE) {
+            //отправила данные прочитала ответ
+            bzero(dataOut, DATA_SIZE);
+            readedSymbols = fread(dataOut, sizeof(char), DATA_SIZE, file);
+            opcode = htons(DATA_OPCODE);
+            blockNumber = htons(blockNumber + 1);
+            memcpy(packet, &opcode, 2);
+            memcpy(packet + 2, &blockNumber, 2);
+            memcpy(packet + 4, dataOut, DATA_SIZE);
+            sendPacket();
+        } else if (opcode == ERROR_OPCODE) {
+            printf("Error: %s\n", data);
+            break;
+        } else {
+            printf("Ошибка, запись невозможна\n");
+            exit(1);
+        }
+    }
+    readedSymbols = DATA_SIZE;
+    fclose(file);
+    if (opcode != ERROR_OPCODE) {
+        printf("Файл передан\n");
+    }
+}
+
+void receiveFile() { //сервер мне присылает, я у себя записываю
+    opcode = htons(READ_OPCODE);
+    formRequest();
+    printf("Посылаю первый запрос\n");
+    sendPacket();
+    printf("")
+    while (1) {
+        getResponse();
+        if (opcode == DATA_OPCODE) {
+            fwrite(data, sizeof(char), packetLength - 4, file);
+            bzero(packet, MAX_SIZE);
+            opcode = htons(ACK_OPCODE);
+            blockNumber = htons(blockNumber);
+            memcpy(packet, &opcode, 2);
+            memcpy(packet + 2, &blockNumber, 2);
+            sendPacket();
+        } else if (opcode == ERROR_OPCODE) {
+            printf("Error: %s\n", data);
+            break;
+        } else {
+            printf("Ошибка, чтение невозможно\n");
+            exit(1);
+        }
+        if (packetLength != MAX_SIZE) break;
+    }
+    fclose(file);
+    if (opcode != ERROR_OPCODE) {
+        printf("Файл получен\n");
+    }
+}
+
+void openFileForWrite() {
+    file = fopen(fileName, "w");
+    if (file == NULL) {
+        printf("Невозможно записать в файл\n");
         exit(1);
     }
 }
 
-void receiveFile() {
-    opcode = htons(READ_OPCODE);
-    formRequest();
-    sendPacket();
-    getResponse();
-    if (opcode == DATA_OPCODE && blockNumber == 1) {
-        printf("всё хорошо, можно начинать принимать\n");
-    } else {
-        printf("Ошибка, чтение невозможно\n");
+void openFileForRead() {
+    file = fopen(fileName, "r");
+    if (file == NULL) {
+        printf("Файл с таким названием не найден\n");
         exit(1);
     }
 }
