@@ -47,10 +47,11 @@ char response[MAX_SIZE];
 char *data;
 char dataOut[DATA_SIZE];
 struct sockaddr_in serv_addr;
-static const char MODE[] = "netascii";
+static const char MODE[] = "octet";
 int packetLength = MAX_SIZE;
 int readedSymbols = DATA_SIZE;
 socklen_t len = sizeof(serv_addr);
+int lengthToSend = 0;
 FILE *file;
 
 int main(int argc, char *argv[]) {
@@ -117,6 +118,7 @@ void enterFileName() {
 }
 
 void formRequest() {
+    lengthToSend = 4 + strlen(fileName)+1+strlen(MODE)+1;
     bzero(packet, MAX_SIZE);
     memcpy(packet, &opcode, 2);
     memcpy(packet + 2, fileName, strlen(fileName) + 1);
@@ -124,7 +126,7 @@ void formRequest() {
 }
 
 void sendPacket() {
-    sendto(sockfd, (const char *) packet, MAX_SIZE,
+    sendto(sockfd, (const char *) packet, lengthToSend,
            MSG_CONFIRM, (const struct sockaddr *) &serv_addr,
            sizeof(serv_addr));
 }
@@ -150,11 +152,12 @@ void sendFile() {
             //отправила данные прочитала ответ
             bzero(dataOut, DATA_SIZE);
             readedSymbols = fread(dataOut, sizeof(char), DATA_SIZE, file);
+            lengthToSend = readedSymbols+4;
             opcode = htons(DATA_OPCODE);
             blockNumber = htons(blockNumber + 1);
             memcpy(packet, &opcode, 2);
             memcpy(packet + 2, &blockNumber, 2);
-            memcpy(packet + 4, dataOut, DATA_SIZE);
+            memcpy(packet + 4, dataOut, readedSymbols);
             sendPacket();
         } else if (opcode == ERROR_OPCODE) {
             printf("Error: %s\n", data);
@@ -173,10 +176,9 @@ void sendFile() {
 
 void receiveFile() { //сервер мне присылает, я у себя записываю
     opcode = htons(READ_OPCODE);
+    lengthToSend = MAX_SIZE;
     formRequest();
-    printf("Посылаю первый запрос\n");
     sendPacket();
-    printf("")
     while (1) {
         getResponse();
         if (opcode == DATA_OPCODE) {
