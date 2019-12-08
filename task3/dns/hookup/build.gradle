@@ -1,0 +1,14 @@
+ext.args4j_version = '2.33'
+
+dependencies {
+    compile project(':dns-packet-utils')
+    compile "args4j:args4j:$args4j_version"
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.2'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'MainKt'
+    }
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+}

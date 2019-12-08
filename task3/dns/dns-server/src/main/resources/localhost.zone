@@ -1,0 +1,7 @@
+localhost.movie.edu.    0       IN      A       127.0.0.1
+lh.movie.edu.           1200    IN      CNAME   localhost.movie.edu
+localhost.movie.edu.    100     IN      H_INFO   intel/i9 Ubuntu
+movie.edu.              100     IN      MX      0  mail.movie.edu.
+movie.edu.              100     IN      MX      10 mail2.movie.edu.
+movie.edu.              100     IN      MX      30 mail3.movie.edu.
+movie.edu.              200     IN      NS      terminator.movie.edu

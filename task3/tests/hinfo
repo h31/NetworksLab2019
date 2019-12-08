@@ -1,0 +1,2 @@
+#!/bin/bash
+java -jar ../dns/hookup/build/libs/hookup-1.0.jar -t H_INFO localhost.movie.edu. -s localhost
