@@ -79,7 +79,7 @@ class ConfigProviderImpl(
         DNSQueryType.A -> DNSRRData.A(IP.stringIPv4ToInt(data.first()))
         DNSQueryType.NS -> DNSRRData.NS(createDNSName(data.first()))
         DNSQueryType.CNAME -> DNSRRData.CName(createDNSName(data.first()))
-        DNSQueryType.H_INFO -> DNSRRData.HInfo(createDNSName(data.first()))
+        DNSQueryType.H_INFO -> DNSRRData.HInfo(createDNSName(data.first().plus(".").plus(data.last())))
         DNSQueryType.MX -> DNSRRData.MX(data.first().toShort(), createDNSName(data.last()))
         else -> DNSRRData.Undefined
     }
