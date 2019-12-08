@@ -54,13 +54,13 @@ object DNSPacketCompressor {
                 data.address.lowestShort().highestByte(),
                 data.address.lowestShort().lowestByte()
         ).toByteArray()
-        is DNSRRData.NS -> data.name.toByteArray()
-        is DNSRRData.HInfo -> data.cpuAndOs.toByteArray()
-        is DNSRRData.CName -> data.name.toByteArray()
+        is DNSRRData.NS -> compress(data.name)
+        is DNSRRData.HInfo -> compress(data.cpuAndOs)
+        is DNSRRData.CName -> compress(data.name)
         is DNSRRData.MX -> arrayOf(
                 data.preference.highestByte(),
                 data.preference.lowestByte()
-        ).toByteArray() + (" ${data.exchange}").toByteArray()
+        ).toByteArray() + compress(data.exchange)
         is DNSRRData.Undefined -> ByteArray(0)
     }
 

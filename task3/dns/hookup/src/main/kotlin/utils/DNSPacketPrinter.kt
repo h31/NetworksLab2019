@@ -26,11 +26,19 @@ object DNSPacketPrinter {
 
     private fun getDNSResourceRecordString(rr: DNSResourceRecord) = "type: ${rr.type}\n\t" + when (rr.data) {
         is DNSRRData.A -> "ip: ${IP.intIPv4toString((rr.data as DNSRRData.A).address)}"
-        is DNSRRData.CName -> (rr.data as DNSRRData.CName).name
-        is DNSRRData.NS -> (rr.data as DNSRRData.NS).name
-        is DNSRRData.MX -> (rr.data as DNSRRData.MX).let { "${it.preference}\t${it.exchange}" }
-        is DNSRRData.HInfo -> (rr.data as DNSRRData.HInfo).cpuAndOs
+        is DNSRRData.CName,
+        is DNSRRData.NS,
+        is DNSRRData.MX,
+        is DNSRRData.HInfo -> getNameString(rr.data)
         DNSRRData.Undefined -> ""
+    }
+
+    private fun getNameString(rr: DNSRRData): String = when (rr) {
+        is DNSRRData.CName -> rr.name.toString()
+        is DNSRRData.NS -> rr.name.toString()
+        is DNSRRData.MX -> "$rr"
+        is DNSRRData.HInfo -> rr.cpuAndOs.marks.joinToString(" ")
+        else -> ""
     }
 
 }

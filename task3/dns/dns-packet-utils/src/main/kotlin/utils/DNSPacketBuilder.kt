@@ -88,18 +88,18 @@ object DNSPacketBuilder {
                 klass = klass,
                 ttl = ttl,
                 dataLength = dataLength,
-                data = buildData(byteBuffer, dataLength, DNSQueryType.of(type))
+                data = buildData(byteBuffer, DNSQueryType.of(type))
         )
     }
 
-    private fun buildData(byteBuffer: ByteBuffer, dataLength: Short, type: DNSQueryType) = when (type) {
+    private fun buildData(byteBuffer: ByteBuffer, type: DNSQueryType) = when (type) {
         DNSQueryType.A -> DNSRRData.A(byteBuffer.consumeInt())
-        DNSQueryType.CNAME -> DNSRRData.CName(String(byteBuffer.consume(dataLength)))
-        DNSQueryType.H_INFO -> DNSRRData.HInfo(String(byteBuffer.consume(dataLength)))
-        DNSQueryType.NS -> DNSRRData.NS(String(byteBuffer.consume(dataLength)))
+        DNSQueryType.CNAME -> DNSRRData.CName(buildName(byteBuffer))
+        DNSQueryType.H_INFO -> DNSRRData.HInfo(buildName(byteBuffer))
+        DNSQueryType.NS -> DNSRRData.NS(buildName(byteBuffer))
         DNSQueryType.MX -> DNSRRData.MX(
                 byteBuffer.consumeShort(),
-                String(byteBuffer.consume(dataLength - Short.SIZE_BYTES)).trim()
+                buildName(byteBuffer)
         )
         else -> DNSRRData.Undefined
     }

@@ -16,35 +16,35 @@ sealed class DNSRRData {
     }
 
     data class CName(
-            val name: String
+            val name: DNSName
     ) : DNSRRData() {
 
-        override fun getDataLength() = name.length.toShort()
+        override fun getDataLength() = name.getSize()
 
     }
 
     data class HInfo(
-            val cpuAndOs: String
+            val cpuAndOs: DNSName
     ) : DNSRRData() {
 
-        override fun getDataLength() = cpuAndOs.length.toShort()
+        override fun getDataLength() = cpuAndOs.getSize()
 
     }
 
     data class MX(
             val preference: Short,
-            val exchange: String
+            val exchange: DNSName
     ) : DNSRRData() {
 
-        override fun getDataLength() = (Short.SIZE_BYTES + exchange.length + 1).toShort()
+        override fun getDataLength() = (Short.SIZE_BYTES + exchange.getSize()).toShort()
 
     }
 
     data class NS(
-            val name: String
+            val name: DNSName
     ) : DNSRRData() {
 
-        override fun getDataLength() = name.length.toShort()
+        override fun getDataLength() = name.getSize()
 
     }
 

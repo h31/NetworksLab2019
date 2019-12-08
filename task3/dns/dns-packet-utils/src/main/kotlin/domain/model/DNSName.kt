@@ -17,7 +17,7 @@ class DNSName private constructor(val marks: List<String>) {
             marks += mark
         }
 
-        fun build() = DNSName(marks)
+        fun build() = DNSName(if (marks.lastOrNull()?.isEmpty() == true) marks else marks + "") // Пустое элемент - это точка в конце
 
         private fun checkMarks(mark: String) {
             check(mark.length <= MAX_MARK_SIZE) {
@@ -29,6 +29,8 @@ class DNSName private constructor(val marks: List<String>) {
         }
 
     }
+
+    fun getSize() = (marks.size + marks.map(String::length).reduce(Int::plus)).toShort()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

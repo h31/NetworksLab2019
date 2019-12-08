@@ -89,11 +89,11 @@ class DNSPacketBuilderAndCompressorTest {
     }
 
     private fun generateDNSRData(type: DNSQueryType) = when (type) {
-        DNSQueryType.MX -> DNSRRData.MX(Random.nextInt().toShort(), generateRandomDNSName().toString())
+        DNSQueryType.MX -> DNSRRData.MX(Random.nextInt().toShort(), generateRandomDNSName())
         DNSQueryType.A -> DNSRRData.A(Random.nextInt())
-        DNSQueryType.NS -> DNSRRData.NS(generateRandomDNSName().toString())
-        DNSQueryType.CNAME -> DNSRRData.CName(generateRandomDNSName().toString())
-        DNSQueryType.H_INFO -> DNSRRData.HInfo("AMD Ubuntu")
+        DNSQueryType.NS -> DNSRRData.NS(generateRandomDNSName())
+        DNSQueryType.CNAME -> DNSRRData.CName(generateRandomDNSName())
+        DNSQueryType.H_INFO -> DNSRRData.HInfo(DNSName.Builder().apply { addMark("AMD"); addMark("Ubuntu") }.build())
         else -> DNSRRData.A(Random.nextInt())
     }
 

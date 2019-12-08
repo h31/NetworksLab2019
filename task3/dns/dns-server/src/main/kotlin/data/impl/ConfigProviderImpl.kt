@@ -12,7 +12,7 @@ import utils.inject
 import java.io.BufferedInputStream
 
 class ConfigProviderImpl(
-    private val path: String
+        private val path: String
 ) : ConfigProvider {
 
     companion object {
@@ -37,17 +37,16 @@ class ConfigProviderImpl(
     private val delimiter = Regex("[\t| ]+")
 
     override fun provideZoneInfo(): List<DNSResourceRecord> =
-        getBufferedReaderLines().mapNotNull {
-            try {
-                parseResourceRecord(it)
-            } catch (e: Throwable) {
-                logger.error("Error on parsing line: $it")
-                null
+            getBufferedReaderLines().mapNotNull {
+                try {
+                    parseResourceRecord(it)
+                } catch (e: Throwable) {
+                    logger.error("Error on parsing line: $it")
+                    null
+                }
+            }.also {
+                logger.info("Parsed ${it.size} records from $path")
             }
-        }.also {
-            logger.info("Parsed ${it.size} records from $path")
-        }
-
 
     private fun getBufferedReaderLines(): List<String> = try {
         zoneInfoFile?.readLines() ?: emptyList()
@@ -66,22 +65,22 @@ class ConfigProviderImpl(
         val type = DNSQueryType.valueOf(tokens[TYPE_INDEX])
         val data = parseDNSRRData(tokens.drop(MIN_TOKENS_SIZE - 1), type)
         return DNSResourceRecord(
-            name = createDNSName(name),
-            type = DNSQueryType.of(type.value),
-            klass = klass,
-            ttl = ttl,
-            dataLength = data.getDataLength(),
-            data = data
+                name = createDNSName(name),
+                type = DNSQueryType.of(type.value),
+                klass = klass,
+                ttl = ttl,
+                dataLength = data.getDataLength(),
+                data = data
         )
     }
 
     @Throws(exceptionClasses = [NumberFormatException::class, IllegalArgumentException::class])
     private fun parseDNSRRData(data: List<String>, type: DNSQueryType): DNSRRData = when (type) {
         DNSQueryType.A -> DNSRRData.A(IP.stringIPv4ToInt(data.first()))
-        DNSQueryType.NS -> DNSRRData.NS(data.first())
-        DNSQueryType.CNAME -> DNSRRData.CName(data.first())
-        DNSQueryType.H_INFO -> DNSRRData.HInfo(data.first())
-        DNSQueryType.MX -> DNSRRData.MX(data.first().toShort(), data.last())
+        DNSQueryType.NS -> DNSRRData.NS(createDNSName(data.first()))
+        DNSQueryType.CNAME -> DNSRRData.CName(createDNSName(data.first()))
+        DNSQueryType.H_INFO -> DNSRRData.HInfo(createDNSName(data.first()))
+        DNSQueryType.MX -> DNSRRData.MX(data.first().toShort(), createDNSName(data.last()))
         else -> DNSRRData.Undefined
     }
 
