@@ -4,7 +4,7 @@ import igorlo.ind2.server.Server
 import igorlo.util.Exchange
 import org.apache.log4j.Level
 
-object Main {
+object ServerAndClientStarter {
 
     @JvmStatic
     fun main(args: Array<String>) {

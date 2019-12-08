@@ -9,17 +9,22 @@ import java.net.*
 import java.util.*
 import org.apache.log4j.Logger
 import igorlo.util.Utilities.Command
+import org.w3c.dom.Text
+import java.io.IOException
 import java.lang.NumberFormatException
+import kotlin.system.exitProcess
 
 class Client {
     private val logger: Logger
     private val socket: Socket
     private val readingThread: Thread
+    private var lastCommand: String = "x"
 
     companion object {
         private const val PORT = 8888
         private const val CONSOLE_WIDTH = 100
         private const val WAIT_TIME = 200L
+        private const val TABLE_WIDTH = 12
         private const val INFO = "\tЭто клиентское приложение для индивидуального задания\n" +
                 "\tпо курсу \"Основы компьютерных сетей\".\n\n" +
                 "\tАвтор - Игорь Лопатинский"
@@ -63,13 +68,63 @@ class Client {
         BasicConfigurator.configure()
         logger = Logger.getLogger(Client::class.java)
         logger.info("Инициализация клиента")
-        socket = Socket("localhost", PORT)
+        try {
+            socket = Socket("localhost", PORT)
+        } catch (e: IOException){
+            logger.error("Не удалось подключиться к серверу")
+            exitProcess(1)
+        }
         logger.info("Сокет инициализирован")
         readingThread = Thread(Runnable {
             while (true) {
-                colorPrint("\n${readMessage(socket)}\n", TextColors.ANSI_YELLOW)
+                handleReading()
             }
         }, "Reader")
+    }
+
+    private fun handleReading() {
+        val message = readMessage(socket)
+        if (message == "/goodbye"){
+            close()
+        }
+        logger.info("Текст сообщения: $message")
+        when (lastCommand[0]) {
+            'h' -> printHistory(message)
+            'r' -> printTable(message)
+            else -> {
+                colorPrint("\n${message}\n", TextColors.ANSI_YELLOW)
+            }
+        }
+    }
+
+    private fun printTable(message: String) {
+        val lines = message.split("\n")
+        //ID Country Currency Course absCource conCource
+        colorPrint("ID".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
+        colorPrint("Country".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
+        colorPrint("Currency".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
+        colorPrint("Course".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
+        colorPrint("absCourse".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
+        colorPrint("conCourse\n", TextColors.ANSI_BLUE)
+        for (line in lines){
+            val parts = line.split(",")
+            for (part in parts){
+                colorPrint(part.take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_YELLOW)
+            }
+            println()
+        }
+    }
+
+    private fun printHistory(message: String) {
+        if (message.isEmpty()) {
+            return
+        }
+        val splited = lastCommand.split(" ")
+        val history = message.split(",")
+        colorPrint("История валюты с ID = ${splited[1]}:\n", TextColors.ANSI_YELLOW)
+        for (course in history) {
+            colorPrint("$course\n", TextColors.ANSI_YELLOW)
+        }
     }
 
     private fun validate(command: String): Boolean {
@@ -177,6 +232,7 @@ class Client {
             when (parseInput(command)) {
                 Action.TO_SERVER -> {
                     if (validate(command)) {
+                        lastCommand = command
                         sendMessage(socket, command)
                     }
                 }
@@ -230,6 +286,7 @@ class Client {
         logger.info("Закрываю сокет")
         socket.close()
         logger.info("Завершаю работу")
+        exitProcess(1)
     }
 }
 
