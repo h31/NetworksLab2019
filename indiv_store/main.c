@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
         } else if (optionInt == 2) {
             addProduct();
         } else if (optionInt == 3) {
-
+            buyProduct();
         } else if (optionInt == 4) {
             closeClient();
             break;
