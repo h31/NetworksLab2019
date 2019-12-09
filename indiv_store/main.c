@@ -126,7 +126,7 @@ void getListOfProducts() {
     opcode = GET_LIST_OF_PROD_OPCODE;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
-    if (write(sockfd, packet, strlen(packet)) <= 0) {
+    if (write(sockfd, packet, packet_length) <= 0) {
         closeClient();
     }
     answer = readMessage();
@@ -148,7 +148,7 @@ void buyProduct() {
     }
     char *buffer;
     buffer = readMessage();
-    if (*(uint16_t *) buffer == ACK_OPCODE && (int) (buffer + 2) == 2) {
+    if (*(uint16_t *) buffer == ACK_OPCODE && *(uint16_t*) (buffer + 2) == 1) {
         printf("Товар куплен\n");
     } else if (*(uint16_t *) buffer == ERROR_OPCODE) {
         int pointer = 2;
@@ -178,7 +178,7 @@ void addProduct() {
     }
     char *buffer;
     buffer = readMessage();
-    if (*(uint16_t *) buffer == ACK_OPCODE && (int) (buffer + 2) == 1) {
+    if (*(uint16_t *) buffer == ACK_OPCODE && *(uint16_t*) (buffer + 2) == 1) {
         printf("Товар добавлен\n");
     } else if (*(uint16_t *) buffer == ERROR_OPCODE) {
         int pointer = 2;
@@ -202,7 +202,6 @@ void enteringDataForRequest(_Bool add) {
     fgets(prodName, PROD_NAME_SIZE - 1, stdin);
     prodName[strlen(prodName) - 1] = '\0';
     if (add) {
-        printf("Введите стоимость товара\n");
         fgets(costChar, 5, stdin);
         cost = atoi(costChar);
     }
@@ -217,19 +216,23 @@ void printListOfProducts(char const *answer) {
     int pointer = 2;
     opcode = *(uint16_t *) answer;
     if (opcode == LIST_OF_PROD_OPCODE) {
-        printf("Цена товара   |   Количество товара  |  Название товара\n");
-        while (pointer < message_size) {
-            cost = *(int *) answer + pointer;
-            count = *(int *) answer + pointer + 4;
-            printf("Цена товара      Количество товара    Название товара\n");
-            printf("     %d             %d              ", cost, count);
-            pointer += 8;
-            while (*(answer + pointer) != '\0') {
-                printf("%c", *(answer + pointer));
+        if (pointer < message_size) {
+            printf("Цена товара   |   Количество товара  |  Название товара\n");
+            while (pointer < message_size) {
+                cost = *(int *) (answer + pointer);
+                count = *(int *) (answer + pointer + 4);
+                printf("Цена товара      Количество товара    Название товара\n");
+                printf("     %d             %d              ", cost, count);
+                pointer += 8;
+                while (*(answer + pointer) != '\0') {
+                    printf("%c", *(answer + pointer));
+                    pointer++;
+                }
+                printf("\n");
                 pointer++;
             }
-            printf("\n");
-            pointer++;
+        } else {
+            printf("В магазине пока нет товаров...\n");
         }
     } else {
         printf("Ошибка\n");
