@@ -41,10 +41,6 @@ public final class Utils {
         return byteArray;
     }
 
-    public static List<Byte> getByteList(Byte[] bytes) {
-        return new ArrayList<>(Arrays.asList(bytes));
-    }
-
     public static int byteToUnsignedInt(byte b) {
         if (b < 0) return b + 256;
         else return b;

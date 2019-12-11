@@ -83,8 +83,8 @@ public class Query {
         for (int i : qName) {
             querryBytesList.add((byte) i);
         }
-        querryBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rrType.getCode())));
-        querryBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rrClass.getCode())));
+        querryBytesList.addAll(Arrays.asList(Utils.getTwoBytesFromInt(rrType.getCode())));
+        querryBytesList.addAll(Arrays.asList(Utils.getTwoBytesFromInt(rrClass.getCode())));
         return querryBytesList;
     }
 

@@ -5,6 +5,7 @@ import dnsPackage.enams.RRType;
 import dnsPackage.utilits.Utils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Answer {
@@ -85,11 +86,11 @@ public class Answer {
 
     public List<Byte> getBytesList() {
         List<Byte> answerBytesList = new ArrayList<>();
-        answerBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(name)));
-        answerBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rrType.getCode())));
-        answerBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rrClass.getCode())));
-        answerBytesList.addAll(Utils.getByteList(Utils.getFourBytesFromInt(ttl)));
-        answerBytesList.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(rdLength)));
+        answerBytesList.addAll(Arrays.asList(Utils.getTwoBytesFromInt(name)));
+        answerBytesList.addAll(Arrays.asList(Utils.getTwoBytesFromInt(rrType.getCode())));
+        answerBytesList.addAll(Arrays.asList(Utils.getTwoBytesFromInt(rrClass.getCode())));
+        answerBytesList.addAll(Arrays.asList(Utils.getFourBytesFromInt(ttl)));
+        answerBytesList.addAll(Arrays.asList(Utils.getTwoBytesFromInt(rdLength)));
         for (int i : rData) {
             answerBytesList.add((byte) i);
         }

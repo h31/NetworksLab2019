@@ -40,7 +40,7 @@ public class Client {
         PackageBuilder packageBuilder = new PackageBuilder();
         Scanner scanner = new Scanner(System.in);
         while (true) {
-            System.out.println("Enter:");
+            System.out.print("Enter: ");
             String input = scanner.nextLine();
             switch (input) {
                 case "\\end":
@@ -100,13 +100,15 @@ public class Client {
 
     public static void main(String[] args) {
         /*Scanner scanner = new Scanner(System.in);
-        System.out.println("Input dns server ip: ");
+        System.out.print("Input dns server ip: ");
         String address = scanner.nextLine();
-        System.out.println("Input port: ");
+        System.out.print("Input port: ");
         int port = scanner.nextInt();*/
 
         Client client = new Client()
-                .init("127.0.0.1", 4445);
+                //.init(address, port);
+                //.init("8.8.8.8", 53);
+                .init("127.0.0.1", 4444);
         client.run();
     }
 }

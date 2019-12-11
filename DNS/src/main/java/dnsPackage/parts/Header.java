@@ -3,6 +3,7 @@ package dnsPackage.parts;
 import dnsPackage.utilits.Utils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -45,12 +46,12 @@ public class Header {
 
     public List<Byte> getBytesList() {
         List<Byte> headerBytes = new ArrayList<>();
-        headerBytes.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(id)));
+        headerBytes.addAll(Arrays.asList(Utils.getTwoBytesFromInt(id)));
         headerBytes.addAll(flags.getBytesList());
-        headerBytes.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(qdCount)));
-        headerBytes.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(anCount)));
-        headerBytes.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(nsCount)));
-        headerBytes.addAll(Utils.getByteList(Utils.getTwoBytesFromInt(arCount)));
+        headerBytes.addAll(Arrays.asList(Utils.getTwoBytesFromInt(qdCount)));
+        headerBytes.addAll(Arrays.asList(Utils.getTwoBytesFromInt(anCount)));
+        headerBytes.addAll(Arrays.asList(Utils.getTwoBytesFromInt(nsCount)));
+        headerBytes.addAll(Arrays.asList(Utils.getTwoBytesFromInt(arCount)));
         return headerBytes;
     }
 

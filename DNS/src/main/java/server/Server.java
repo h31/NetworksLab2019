@@ -17,16 +17,17 @@ import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 public class Server {
     static final int HEADER_LEN = 12;
     static final int DEF_PORT = 53;
-    static final String ROOT_SERVER = "192.36.148.17";
+    static final String ROOT_SERVER = "199.7.83.42";//"192.36.148.17";
     private DatagramSocket socket;
 
     public Server() {
         try {
-            socket = new DatagramSocket(4445);
+            socket = new DatagramSocket(4444);
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -44,15 +45,24 @@ public class Server {
                     .addQuery(packageReader.getQueries())
                     .build()
                     .getBytes();
+
             String tempAddress = ROOT_SERVER;
             String tempName = "Root server";
+
+            Stack<String> addressServerStack = new Stack<>();
+            addressServerStack.push(tempAddress);
+            Stack<String> nameServerStack = new Stack<>();
+            nameServerStack.push(tempName);
             while (true) {
+                tempAddress = addressServerStack.pop();
+                tempName = nameServerStack.pop();
                 System.out.println("Sending to \"" + tempName + "\", address: \"" + tempAddress + "\".\n");
                 send(InetAddress.getByName(tempAddress), DEF_PORT, clientQuery);
-                packageReader = new PackageReader();
                 PackageBuilder packageBuilder = new PackageBuilder();
+                packageReader = new PackageReader();
                 packageReader.read(receive().getData());
                 System.out.println("Received from \"" + tempName + "\"\n" + packageReader.toString());
+
                 if (packageReader.getHeader().getFlags().getRCode() != RCode.NO_ERR) {
                     packageBuilder.addHeader(packageReader.getHeader())
                             .addQuery(packageReader.getQueries())
@@ -60,26 +70,36 @@ public class Server {
                     send(clientArddess, clientPort, packageBuilder.getBytes());
                     break;
                 }
+
                 if (packageReader.getHeader().getAnCount() > 0) {
-                    packageBuilder.addHeader(packageReader.getHeader())
-                            .addQuery(packageReader.getQueries())
-                            .addAnswer(packageReader.getAnswers())
-                            .addAuthoritative(packageReader.getAuthoritative())
-                            .addAdditional(packageReader.getAdditional())
-                            .build();
-                    send(clientArddess, clientPort, packageBuilder.getBytes());
+                    send(clientArddess, clientPort, buildAnswer(packageReader));
                     break;
                 }
+
                 for (Answer authoritative : packageReader.getAuthoritative()) {
                     tempName = authoritative.getrDataString();
                     for (Answer additional : packageReader.getAdditional()) {
                         if (additional.getRrType() == RRType.A && additional.getNameString().equals(tempName)) {
-                            tempAddress = additional.getATypeData();
+                            nameServerStack.push(additional.getNameString());
+                            addressServerStack.push(additional.getATypeData());
                         }
                     }
                 }
             }
         }
+    }
+
+    private byte[] buildAnswer(PackageReader packageReader) {
+        PackageBuilder packageBuilder = new PackageBuilder()
+                .addHeader(packageReader.getHeader())
+                .addQuery(packageReader.getQueries());
+        for (Query query: packageReader.getQueries()){
+            for (Answer answer: packageReader.getAnswers()) {
+                if (query.getDomainName().equals(answer.getNameString())) packageBuilder.addAnswer(answer);
+            }
+        }
+        packageBuilder.build();
+        return packageBuilder.getBytes();
     }
 
     private void send(InetAddress address, int port, byte[] bytes) {
