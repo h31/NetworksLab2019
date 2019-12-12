@@ -50,6 +50,8 @@ public class Client {
                     System.out.println("Send package: \n" + packageBuilder.toString());
                     System.out.println("Receive package: \n" + packageReader.toString());
                     continue;
+                case "":
+                    continue;
                 default: {
                     packageBuilder = new PackageBuilder()
                             .addHeader(new Header().setDefQueryFlags())
@@ -63,7 +65,7 @@ public class Client {
             packageReader.read(bytes);
             if (packageReader.getHeader().getFlags().getRCode() == RCode.NO_ERR) {
                 System.out.println(packageReader.getAnswerData());
-            }
+            } else System.out.println(packageReader.getHeader().getFlags().getRCode());
         }
     }
 
