@@ -1,25 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 
 
 #define TIME_MSG_LEN 20
 #define BASE_YEAR 1900
 
-
-void get_time(char* time_holder)
-{
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    sprintf(time_holder,
-            "%d-%d-%d %d:%d:%d",
-            tm.tm_year + BASE_YEAR,
-            tm.tm_mon + 1,
-            tm.tm_mday,
-            tm.tm_hour,
-            tm.tm_min,
-            tm.tm_sec);
-}
 
 int read_n(int sockfd, char* buffer, int length)
 {
@@ -47,13 +34,19 @@ int read_msg(int sock, char* buffer)
     check = read_n(sock, &size, sizeof(int));
     if (check < 0)
     {
-        perror("ERROR reading from socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR reading from socket");
+        }
         return check;
     }
     check = read_n(sock, buffer, size);
     if (check < 0)
     {
-        perror("ERROR reading from socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR reading from socket");
+        }
         return check;
     }
     return check;
@@ -66,13 +59,35 @@ int send_msg(int sock, char* buffer)
     check = write(sock, &size, sizeof(int));
     if (check <= 0)
     {
-        printf("ERROR sending to socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR sending to socket");
+        }
+        return check;
     }
     check = write(sock, buffer, size);
     if (check <= 0)
     {
-        printf("ERROR sending to socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR sending to socket");
+        }
+        return check;
     }
+}
+
+void get_time(char* time_holder)
+{
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(time_holder,
+            "%d-%d-%d %d:%d:%d",
+            tm.tm_year + BASE_YEAR,
+            tm.tm_mon + 1,
+            tm.tm_mday,
+            tm.tm_hour,
+            tm.tm_min,
+            tm.tm_sec);
 }
 
 void build_msg(char* full_msg, char* name, char* buffer)

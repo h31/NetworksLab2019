@@ -17,7 +17,7 @@
 #define CACHE_NORMAL 0
 #define CACHE_OVERFLOW 1
 
-#define CMD_EXIT "!exit\n"
+#define CMD_EXIT "!exit"
 #define CMD_MODE_SWAP 'm'
 
 #define MODE_LISTEN 0
@@ -29,7 +29,7 @@
 
 void init_mode();
 void set_mode(int new_mode);
-void login(int sockfd, char* name);
+void login(int sockfd);
 void exit_chat(int sockfd, int exit_code);
 void output_handler(char* buffer);
 void print_cached_msg();
@@ -58,7 +58,6 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in serv_addr;
     struct hostent *server;
 
-    char* name;
     char buffer[MAX_MSG_LEN];
 
     if (argc < 3) {
@@ -101,7 +100,7 @@ int main(int argc, char *argv[]) {
     set_mode(MODE_WRITE);
     cached_msg.flag = CACHE_NORMAL;
 
-    login(sockfd, name);    
+    login(sockfd);    
 
     pthread_t tid_read;
     if (pthread_create(&tid_read, NULL, th_msg_read_handler, NULL) < 0) {
@@ -151,22 +150,24 @@ void set_mode(int new_mode)
     mode = new_mode;
 }
 
-void login(int sockfd, char* name)
+void login(int sockfd)
 {
+    char nickname[MAX_NAME_LEN];
     printf("- Enter your name (%d-%d characters): ", MIN_NAME_LEN, MAX_NAME_LEN);
-    fgets(name, sizeof(name) - 1, stdin);  
-    name[strcspn(name, "\n")] = 0; // del newline ending
-    int name_len = strlen(name);
+    bzero(nickname, sizeof(nickname)); 
+    scanf("%s", nickname);
+    int name_len = strlen(nickname);
     if (name_len < MIN_NAME_LEN || name_len > MAX_NAME_LEN)
     {
         printf("\n- Your name is invalid. Try another one.\n");
-        login(sockfd, name);
+        login(sockfd);
     }
     else
     {
-        send_msg(sockfd, name);
-    }
-    printf("- Now you're able to use chat.\n");
+        send_msg(sockfd, nickname);
+        bzero(nickname, sizeof(nickname)); 
+        printf("- Now you're able to use chat.\n");
+    }    
 }
 
 void exit_chat(int sockfd, int exit_code)
@@ -274,11 +275,14 @@ void* th_msg_send_handler(void* args)
         {
             continue;
         }
-        if (strcmp(buffer, CMD_EXIT) == 0)
+        else if (strcmp(buffer, CMD_EXIT) == 0)
         {
             exit_chat(sockfd, EXIT_OK);
         }
-        send_msg(sockfd, buffer);        
+        else
+        {
+            send_msg(sockfd, buffer); 
+        }      
     }
 }
 

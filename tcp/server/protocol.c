@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 
 
 #define TIME_MSG_LEN 20
@@ -33,13 +34,19 @@ int read_msg(int sock, char* buffer)
     check = read_n(sock, &size, sizeof(int));
     if (check < 0)
     {
-        perror("ERROR reading from socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR reading from socket");
+        }
         return check;
     }
     check = read_n(sock, buffer, size);
     if (check < 0)
     {
-        perror("ERROR reading from socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR reading from socket");
+        }
         return check;
     }
     return check;
@@ -52,12 +59,20 @@ int send_msg(int sock, char* buffer)
     check = write(sock, &size, sizeof(int));
     if (check <= 0)
     {
-        printf("ERROR sending to socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR sending to socket");
+        }
+        return check;
     }
     check = write(sock, buffer, size);
     if (check <= 0)
     {
-        printf("ERROR sending to socket");
+        if (errno != EWOULDBLOCK)
+        {
+            perror("ERROR sending to socket");
+        }
+        return check;
     }
 }
 
