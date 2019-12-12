@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
 
     //нахожу мой сервер и проверяю
     server = gethostbyname(argv[1]);
+    //server = argv[1];
     if (server == NULL) {
         fprintf(stderr, "ERROR, no such host\n");
         exit(0);
@@ -143,7 +144,7 @@ void buyProduct() {
     memcpy(packet + 4, &opcode, 2);
     memcpy(packet + 6, &count, 4);
     memcpy(packet + 10, prodName, strlen(prodName) + 1);
-    if (write(sockfd, packet, strlen(packet) + 1) <= 0) {
+    if (write(sockfd, packet, packet_length) <= 0) {
         closeClient();
     }
     char *buffer;
@@ -173,12 +174,12 @@ void addProduct() {
     memcpy(packet + 6, &count, 4);
     memcpy(packet + 10, &cost, 4);
     memcpy(packet + 14, prodName, strlen(prodName) + 1);
-    if (write(sockfd, packet, strlen(packet) + 1) <= 0) {
+    if (write(sockfd, packet, packet_length) <= 0) {
         closeClient();
     }
     char *buffer;
     buffer = readMessage();
-    if (*(uint16_t *) buffer == ACK_OPCODE && *(uint16_t*) (buffer + 2) == 1) {
+    if (*(uint16_t *) buffer == ACK_OPCODE && *(uint16_t*) (buffer + 2) == 2) {
         printf("Товар добавлен\n");
     } else if (*(uint16_t *) buffer == ERROR_OPCODE) {
         int pointer = 2;
@@ -202,6 +203,7 @@ void enteringDataForRequest(_Bool add) {
     fgets(prodName, PROD_NAME_SIZE - 1, stdin);
     prodName[strlen(prodName) - 1] = '\0';
     if (add) {
+        printf("Введите цену товара\n");
         fgets(costChar, 5, stdin);
         cost = atoi(costChar);
     }
@@ -221,7 +223,6 @@ void printListOfProducts(char const *answer) {
             while (pointer < message_size) {
                 cost = *(int *) (answer + pointer);
                 count = *(int *) (answer + pointer + 4);
-                printf("Цена товара      Количество товара    Название товара\n");
                 printf("     %d             %d              ", cost, count);
                 pointer += 8;
                 while (*(answer + pointer) != '\0') {
@@ -246,7 +247,7 @@ char *readMessage() {
         closeClient();
     }
     message_size -= 4;
-    char *buffer = (char *) malloc(message_size * sizeof(char));
+    char *buffer = (char *) malloc(message_size);
     //считываю остальное сообщение
     if (readN(sockfd, buffer, message_size) <= 0) {
         perror("ERROR reading from socket");
