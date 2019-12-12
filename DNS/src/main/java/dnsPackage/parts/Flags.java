@@ -49,6 +49,17 @@ public class Flags {
         return this;
     }
 
+    public Flags getDefaultAnswerFlags() {
+        this.qr = true;
+        this.opCode = OpCode.QUERY;
+        this.aa = false;
+        this.tc = false;
+        this.rd = true;
+        this.ra = false;
+        this.rCode = RCode.NO_ERR;
+        return this;
+    }
+
     public List<Byte> getBytesList() {
         List<Byte> flagBytesList = new ArrayList<>();
         byte firstByte = 0;

@@ -99,16 +99,16 @@ public class Client {
     }
 
     public static void main(String[] args) {
-        /*Scanner scanner = new Scanner(System.in);
+        Scanner scanner = new Scanner(System.in);
         System.out.print("Input dns server ip: ");
         String address = scanner.nextLine();
         System.out.print("Input port: ");
-        int port = scanner.nextInt();*/
+        int port = scanner.nextInt();
 
         Client client = new Client()
-                //.init(address, port);
+                .init(address, port);
                 //.init("8.8.8.8", 53);
-                .init("127.0.0.1", 4444);
+                //.init("127.0.0.1", 4444);
         client.run();
     }
 }

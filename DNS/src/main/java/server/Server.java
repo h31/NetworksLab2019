@@ -10,6 +10,7 @@ import dnsPackage.parts.Query;
 import dnsPackage.utilits.PackageBuilder;
 import dnsPackage.utilits.PackageReader;
 
+import javax.security.auth.callback.PasswordCallback;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -40,6 +41,18 @@ public class Server {
             int clientPort = packet.getPort();
             PackageReader packageReader = new PackageReader();
             packageReader.read(packet.getData());
+
+            List<Answer> answers = findAnswers(packageReader.getQueries());
+            if (answers.size() != 0) {
+                PackageBuilder packageBuilder = new PackageBuilder()
+                        .addHeader(packageReader.getHeader())
+                        .addQuery(packageReader.getQueries())
+                        .addAnswer(answers)
+                        .build();
+                send(clientArddess, clientPort, packageBuilder.getBytes());
+                continue;
+            }
+
             byte[] clientQuery = new PackageBuilder()
                     .addHeader(packageReader.getHeader())
                     .addQuery(packageReader.getQueries())
@@ -93,8 +106,8 @@ public class Server {
         PackageBuilder packageBuilder = new PackageBuilder()
                 .addHeader(packageReader.getHeader())
                 .addQuery(packageReader.getQueries());
-        for (Query query: packageReader.getQueries()){
-            for (Answer answer: packageReader.getAnswers()) {
+        for (Query query : packageReader.getQueries()) {
+            for (Answer answer : packageReader.getAnswers()) {
                 if (query.getDomainName().equals(answer.getNameString())) packageBuilder.addAnswer(answer);
             }
         }
