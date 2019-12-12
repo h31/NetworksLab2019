@@ -18,6 +18,7 @@ public class Server {
         try {
             while (true) {
                 Socket socket = server.accept();
+                System.out.println("new client connected");
                 try {
                     clientList.add(new ServerSession(socket, this));
                 } catch (IOException e) {
@@ -33,11 +34,15 @@ public class Server {
         return clientList;
     }
 
+    public void setClientList(List<ServerSession> clientList) {
+        this.clientList = clientList;
+    }
+
     public void removeClient(ServerSession session) {
         clientList.remove(session);
     }
 
     public static void main(String[] args) throws IOException {
-
+         new Server().run();
     }
 }

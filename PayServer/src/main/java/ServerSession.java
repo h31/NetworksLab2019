@@ -8,6 +8,7 @@ import java.util.List;
 public class ServerSession extends Thread {
     private static final String PATH_TO_CLIENTS_INFO = "src/main/resources/ClientsInfo";
     private static final String ERR_SIGN = "Wrong login or password";
+    private static final String END_MSG = "end";
     private Socket socket;
     private Server server;
     private BufferedReader in;
@@ -41,6 +42,7 @@ public class ServerSession extends Thread {
 
     private void send(String msg) {
         try {
+            System.out.println("to client: " + msg);
             out.write(msg + "\n");
             out.flush();
         } catch (IOException ignored) {
@@ -48,35 +50,48 @@ public class ServerSession extends Thread {
     }
 
     private void inMessageSwitch(String msg) throws IOException {
+        if (msg == null) {
+            disconnect();
+            return;
+        }
+        System.out.println("from client: " + msg);
         String[] strings = msg.split("\\s+");
         switch (strings[0]) {
             case "signin":
                 signin(strings[1], strings[2]);
+                send(END_MSG);
                 break;
             case "signup":
                 signup(strings[1], strings[2]);
+                send(END_MSG);
                 break;
             case "getinfo":
                 getInfo();
+                send(END_MSG);
                 break;
             case "list":
                 getList();
+                send(END_MSG);
                 break;
             case "transaction":
                 transaction(Integer.parseInt(strings[1]), Integer.parseInt(strings[2]));
+                send(END_MSG);
                 break;
             case "put":
                 user.setSize(user.getSize() + Integer.parseInt(strings[1]));
                 updateUserSizeInfo(user);
                 send("Complete");
+                send(END_MSG);
                 break;
             case "take":
                 if (user.getSize() < Integer.parseInt(strings[1])) {
                     send("Not enough money");
+                    send(END_MSG);
                 } else {
                     user.setSize(user.getSize() + Integer.parseInt(strings[1]));
                     updateUserSizeInfo(user);
                     send("Complete");
+                    send(END_MSG);
                 }
                 break;
             case "/exit":
@@ -84,6 +99,7 @@ public class ServerSession extends Thread {
                 break;
             default:
                 send("Unknown command");
+                send(END_MSG);
         }
     }
 
@@ -98,27 +114,35 @@ public class ServerSession extends Thread {
                         ", " + user.getId() +
                         "for " + size +
                         "\nAccept? (yes/no)");
-                while (true) {
-                    switch (in.readLine()) {
-                        case "yes":
-                            this.user.setSize(this.user.getSize() - size);
-                            updateUserSizeInfo(this.user);
-                            user.setSize(user.getSize() + size);
-                            updateUserSizeInfo(user);
-                            s.setUser(user);
-                            send("Transaction completed");
-                            return;
-                        case "no":
-                            send("Transaction denied");
-                            return;
-                        default:
-                            s.send("Unknown command\nAccept? (yes/no)");
-                    }
-                }
+                s.send(END_MSG);
+                acceptTransaction(in.readLine(), s, size);
+                return;
             }
         }
     }
 
+    private void acceptTransaction(String msg, ServerSession s, int size) throws IOException{
+        while (true) {
+            switch (msg) {
+                case "yes":
+                    this.user.setSize(this.user.getSize() - size);
+                    updateUserSizeInfo(this.user);
+                    user.setSize(user.getSize() + size);
+                    updateUserSizeInfo(user);
+                    s.setUser(user);
+                    send("Transaction completed");
+                    send(END_MSG);
+                    return;
+                case "no":
+                    send("Transaction denied");
+                    send(END_MSG);
+                    return;
+                default:
+                    s.send("Unknown command\nAccept? (yes/no)");
+
+            }
+        }
+    }
     private void getList() throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
         for (String str : Files.readAllLines(Paths.get(PATH_TO_CLIENTS_INFO))) {
@@ -149,8 +173,15 @@ public class ServerSession extends Thread {
         send("u r in!");
     }
 
-    private void signup(String login, String password) {
+    private void signup(String login, String password) throws IOException {
         user = new User(login, password);
+        for (String str : Files.readAllLines(Paths.get(PATH_TO_CLIENTS_INFO))) {
+            String[] line = str.split("\\s+");
+            if (line[0].equals(login)) {
+                send("This login is already used");
+                return;
+            }
+        }
         Utils.addLineInFile(user.getInfo() + "\n", PATH_TO_CLIENTS_INFO);
         send("u r in!");
     }
@@ -193,6 +224,12 @@ public class ServerSession extends Thread {
             }
         }
         Files.write(Paths.get(PATH_TO_CLIENTS_INFO), lines);
+    }
+
+    private void disconnect() throws IOException {
+        socket.close();
+        server.removeClient(this);
+        connect = false;
     }
 
     public User getUser() {
