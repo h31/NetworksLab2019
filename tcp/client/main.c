@@ -51,8 +51,10 @@ void start_client(int argc, char *argv[]) {
         raise_error(NO_SUCH_HOST);
     }
 
-    in_addr_t *in_addr = bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
-    set_clientsockdesc(&serv_addr, portno, in_addr);
+    bzero((char *) &serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    bcopy(server->h_addr, (char *) &serv_addr.sin_addr.s_addr, (size_t) server->h_length);
+    serv_addr.sin_port = htons(portno);
 
     /* Now connect to the server */
     if (connect(sockfd, (address *) &serv_addr, sizeof(serv_addr)) < 0) {
