@@ -86,9 +86,9 @@
     
     **Формат пакета:**
     
-    | length | type | topic | \0 |   header   | \0 | news text |
-    |:------:|:----:|:-----:|:--:|:----------:|:--:|:---------:|
-    |   4b   |  2b  |string | 1b |   string   | 1b |    text   |
+    | length | type | topic | \0 |   header   | \0 | news text | \0 |
+    |:------:|:----:|:-----:|:--:|:----------:|:--:|:---------:|:--:|
+    |   4b   |  2b  |string | 1b |   string   | 1b |    text   | 1b |
     
     * Length - длина пакета 
     * [Type - тип пакета](#a_packet_types)
@@ -133,9 +133,9 @@
      
      **Формат пакета:**
      
-    | length | type | topic | \0 |    header   | \0 | news text |
-    |:------:|:----:|:-----:|:--:|:-----------:|:--:|:---------:|
-    |   4b   |  2b  | string| 1b |    string   | 1b |    text   |
+    | length | type | topic | \0 |    header   | \0 | news text | \0 |
+    |:------:|:----:|:-----:|:--:|:-----------:|:--:|:---------:|:--:|
+    |   4b   |  2b  | string| 1b |    string   | 1b |    text   | 1b |
     
     * Length - длина пакета 
     * [Type - тип пакета](#a_packet_types)
