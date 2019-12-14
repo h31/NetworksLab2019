@@ -1,7 +1,5 @@
-name := "task3"
-
 lazy val baseSettings = Seq(
-    name := "task2"
+    name := "tftp"
   , organization := "ru.polytech.kspt"
   , version := "0.1.0-SNAPSHOT"
   , scalaVersion := "2.12.8"
@@ -22,14 +20,32 @@ lazy val scalaTestVersion  = "3.0.4"
 lazy val logbackVersion    = "1.2.3"
 lazy val catsVersion       = "2.0.0"
 
-lazy val root = (project in file("."))
-  .settings(
-      baseSettings
-    , libraryDependencies ++= Seq(
-        "org.typelevel"         %% "cats-effect"    % catsVersion
-      , "org.typelevel"         %% "cats-core"      % catsVersion
-      , "org.scalatest"         %% "scalatest"      % scalaTestVersion
-      , "ch.qos.logback"        % "logback-classic" % logbackVersion
-      , "com.github.pureconfig" %% "pureconfig"     % pureConfigVersion
-    ).map(_ withSources () withJavadoc ())
-  )
+lazy val deps = Seq(
+    "org.typelevel"         %% "cats-effect"    % catsVersion
+  , "org.typelevel"         %% "cats-core"      % catsVersion
+  , "org.scalatest"         %% "scalatest"      % scalaTestVersion
+  , "ch.qos.logback"        % "logback-classic" % logbackVersion
+  , "com.github.pureconfig" %% "pureconfig"     % pureConfigVersion
+).map(_ withSources () withJavadoc ())
+
+lazy val assemblySettings = Seq(
+    assemblyJarName in assembly := name.value + ".jar"
+  , assemblyMergeStrategy in assembly := {
+    case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+    case _                             => MergeStrategy.first
+  }
+)
+
+lazy val global = (project in file("."))
+  .settings(baseSettings)
+
+lazy val server = project
+  .settings(baseSettings, assemblySettings, libraryDependencies ++= deps)
+  .dependsOn(utils)
+
+lazy val client = project
+  .settings(baseSettings, assemblySettings, libraryDependencies ++= deps)
+  .dependsOn(utils)
+
+lazy val utils = project
+  .settings(baseSettings, libraryDependencies ++= deps)
