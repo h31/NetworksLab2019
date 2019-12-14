@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
 
     //инициализация структуры сокета
     bzero((char *) &serv_addr, sizeof(serv_addr));
-    portno = (uint16_t) 5001;
+    portno = (uint16_t) atoi(argv[1]);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(portno);
@@ -178,12 +178,12 @@ void *newClientFunc(void *clientStruct) {
         //для его длины
         sz = 0;
         buffer = readMessage((clientSocket *) clientStruct, &sz);
-        opcode = *(uint16_t*) buffer;
+               opcode = *(uint16_t*) buffer;
         switch (opcode) {
             case ADD_TOPIC:
                 addTopic(buffer, (clientSocket *) clientStruct);
                 break;
-            case GET_LIST_OF_NEWS:
+            case GET_LIST_OF_TOPICS:
                 getListOfTopics((clientSocket *) clientStruct);
                 break;
             default:
@@ -198,6 +198,7 @@ void *newClientFunc(void *clientStruct) {
 void getListOfTopics(clientSocket *clientStruct){
      int packet_length = 6 + topicsLength;
     char packet[packet_length];
+    bzero(packet,packet_length);
     uint16_t opcode = LIST_OF_TOPICS;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
@@ -208,7 +209,7 @@ void getListOfTopics(clientSocket *clientStruct){
         tmpTopic = firstTopic;
         while (tmpTopic != NULL) {
             memcpy(packet + pointer, tmpTopic->topic_name, strlen(tmpTopic->topic_name) + 1);
-            pointer += strlen(tmpTopic->topic_name)+1;
+            pointer += (int) strlen(tmpTopic->topic_name)+1;
             tmpTopic = tmpTopic->next;
         }
     }
@@ -227,14 +228,16 @@ void addTopic(char *buffer,clientSocket *clientStruct) {
     pthread_mutex_lock(&mutex);
 
     newTopic->next = NULL;
-    if (firstClient == NULL) {
+    if (firstTopic == NULL) {
         newTopic->prev = NULL;
-        newTopic->topic_name = (buffer + 2);
+        newTopic->topic_name = strdup(buffer + 2);
         newTopic->first_news = NULL;
         firstTopic = newTopic;
+        topicsLength += (int) strlen(newTopic->topic_name)+1;
     } else {
         while (tmpTopic->next != NULL) {
-            if (strcmp(tmpTopic->topic_name, (buffer + 2)) != 0 ) {
+            char *name = buffer+2;
+            if (strcmp(tmpTopic->topic_name, name) == 0 ) {
                 //сообщение об ошибке
                 error(clientStruct, 3,"Добавление существующей новостной темы");
                 free(newTopic);
@@ -244,10 +247,10 @@ void addTopic(char *buffer,clientSocket *clientStruct) {
             tmpTopic = tmpTopic->next;
         }
         newTopic->prev = tmpTopic;
-        newTopic->topic_name = buffer + 2;
+        newTopic->topic_name = strdup(buffer + 2);
         newTopic->first_news = NULL;
         tmpTopic->next = newTopic;
-        topicsLength += strlen(buffer)+1;
+        topicsLength += (int) strlen(newTopic->topic_name)+1;
     }
     pthread_mutex_unlock(&mutex);
     ack(clientStruct, 1);
