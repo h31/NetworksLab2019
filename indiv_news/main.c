@@ -26,21 +26,22 @@ typedef struct list {
     struct list *prev; // указатель на предыдущий элемент
 } clientSocket;
 
-typedef struct news{
+typedef struct news {
     char *news_header; // заголовок новости
     char *news_body;   // текст новости
     struct news *next; // указатель на следующий элемент
     struct news *prev; // указатель на предыдущий элемент
 } news;
 
-typedef struct topic{
+typedef struct topic {
     char *topic_name; // название темы
     news *first_news; // ссылка на первую новость
+    int headers_length; //длина всех заголовков новстей этой темы
     struct topic *next; // указатель на следующий элемент
     struct topic *prev; // указатель на предыдущий элемент
 } topic;
 
-int topicsLength=0;
+int topicsLength = 0;
 clientSocket *firstClient = NULL;
 topic *firstTopic = NULL;
 
@@ -54,13 +55,17 @@ void getListOfTopics(clientSocket *clientStruct);
 
 void closeSocket(clientSocket *socket);
 
-void addTopic(char *buffer,clientSocket *clientStruct);
+void addTopic(char *buffer, clientSocket *clientStruct);
+
+void addNews(char *buffer, clientSocket *clientStruct);
 
 void *newClientFunc(void *clientStruct);
 
 char *readMessage(clientSocket *socket, int *sz);
 
 int readN(int socket, void *buf, int length);
+
+void getListOfNews(char *buffer,clientSocket *clientStruct);
 
 int sockfd;
 pthread_mutex_t mutex;
@@ -178,13 +183,19 @@ void *newClientFunc(void *clientStruct) {
         //для его длины
         sz = 0;
         buffer = readMessage((clientSocket *) clientStruct, &sz);
-               opcode = *(uint16_t*) buffer;
+        opcode = *(uint16_t *) buffer;
         switch (opcode) {
             case ADD_TOPIC:
                 addTopic(buffer, (clientSocket *) clientStruct);
                 break;
             case GET_LIST_OF_TOPICS:
                 getListOfTopics((clientSocket *) clientStruct);
+                break;
+            case ADD_NEWS:
+                addNews(buffer, (clientSocket *) clientStruct);
+                break;
+            case GET_LIST_OF_NEWS:
+                getListOfNews(buffer, (clientSocket *) clientStruct);
                 break;
             default:
                 printf("что-то другое пришло");
@@ -195,21 +206,20 @@ void *newClientFunc(void *clientStruct) {
 
 }
 
-void getListOfTopics(clientSocket *clientStruct){
-     int packet_length = 6 + topicsLength;
+void getListOfTopics(clientSocket *clientStruct) {
+    int packet_length = 6 + topicsLength;
     char packet[packet_length];
-    bzero(packet,packet_length);
+    bzero(packet, packet_length);
     uint16_t opcode = LIST_OF_TOPICS;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
 
-    if(topicsLength != 0){
+    if (topicsLength != 0) {
         int pointer = 6;
-        topic *tmpTopic;
-        tmpTopic = firstTopic;
+        topic *tmpTopic = firstTopic;
         while (tmpTopic != NULL) {
             memcpy(packet + pointer, tmpTopic->topic_name, strlen(tmpTopic->topic_name) + 1);
-            pointer += (int) strlen(tmpTopic->topic_name)+1;
+            pointer += (int) strlen(tmpTopic->topic_name) + 1;
             tmpTopic = tmpTopic->next;
         }
     }
@@ -218,10 +228,9 @@ void getListOfTopics(clientSocket *clientStruct){
     }
 }
 
-void addTopic(char *buffer,clientSocket *clientStruct) {
+void addTopic(char *buffer, clientSocket *clientStruct) {
     //"вечно" первая тема
-    topic *tmpTopic;
-    tmpTopic = firstTopic;
+    topic *tmpTopic = firstTopic;
     //структура для новой темы
     topic *newTopic = (topic *) malloc(sizeof(topic));
 
@@ -233,13 +242,12 @@ void addTopic(char *buffer,clientSocket *clientStruct) {
         newTopic->topic_name = strdup(buffer + 2);
         newTopic->first_news = NULL;
         firstTopic = newTopic;
-        topicsLength += (int) strlen(newTopic->topic_name)+1;
+        topicsLength += (int) strlen(newTopic->topic_name) + 1;
     } else {
         while (tmpTopic->next != NULL) {
-            char *name = buffer+2;
-            if (strcmp(tmpTopic->topic_name, name) == 0 ) {
+            if (strcmp(tmpTopic->topic_name, buffer+2) == 0) {
                 //сообщение об ошибке
-                error(clientStruct, 3,"Добавление существующей новостной темы");
+                error(clientStruct, 3, "Добавление существующей новостной темы");
                 free(newTopic);
                 pthread_mutex_unlock(&mutex);
                 return;
@@ -249,14 +257,98 @@ void addTopic(char *buffer,clientSocket *clientStruct) {
         newTopic->prev = tmpTopic;
         newTopic->topic_name = strdup(buffer + 2);
         newTopic->first_news = NULL;
+        newTopic->headers_length = 0;
         tmpTopic->next = newTopic;
-        topicsLength += (int) strlen(newTopic->topic_name)+1;
+        topicsLength += (int) strlen(newTopic->topic_name) + 1;
     }
     pthread_mutex_unlock(&mutex);
     ack(clientStruct, 1);
 }
 
-void error(clientSocket *clientStruct, uint16_t type, char *error){
+void getListOfNews(char *buffer, clientSocket *clientStruct) {
+    char *newsTopic = buffer + 2;
+    //"вечно" первая тема
+    topic *tmpTopic = firstTopic;
+
+    pthread_mutex_lock(&mutex);
+    while (tmpTopic!= NULL && strcmp(tmpTopic->topic_name,newsTopic)!=0) {
+        tmpTopic = tmpTopic->next;
+    }
+    if(tmpTopic == NULL){
+        error(clientStruct, 1, "Отсутствие новостной темы");
+        return;
+    }
+
+    int packet_length = 6 + tmpTopic->headers_length;
+    char packet[packet_length];
+    bzero(packet, packet_length);
+    uint16_t opcode = LIST_OF_NEWS;
+    memcpy(packet, &packet_length, 4);
+    memcpy(packet + 4, &opcode, 2);
+
+    if (tmpTopic->headers_length != 0) {
+        int pointer = 6;
+        news *tmpNews = tmpTopic->first_news;
+        while (tmpNews != NULL) {
+            memcpy(packet + pointer, tmpNews->news_header, strlen(tmpNews->news_header) + 1);
+            pointer += (int) strlen(tmpNews->news_header) + 1;
+            tmpNews = tmpNews->next;
+        }
+    }
+    if (write(clientStruct->socket, packet, packet_length) <= 0) {
+        closeSocket(clientStruct);
+    }
+}
+
+void addNews(char *buffer, clientSocket *clientStruct) {
+    char *newsTopic = buffer + 2;
+    //"вечно" первая тема
+    topic *tmpTopic = firstTopic;
+
+    pthread_mutex_lock(&mutex);
+    while (tmpTopic!= NULL && strcmp(tmpTopic->topic_name,newsTopic)!=0) {
+        tmpTopic = tmpTopic->next;
+    }
+    if(tmpTopic == NULL){
+        error(clientStruct, 1, "Отсутствие новостной темы");
+        return;
+    }
+    //если тема существует, добавляем новость
+
+    //первая новость
+    news *tmpNews = tmpTopic->first_news;
+    //структура для новой темы
+    news *newNews = (news *) malloc(sizeof(news));
+
+    newNews->next = NULL;
+    if (tmpTopic->first_news == NULL) {
+        newNews->prev = NULL;
+        newNews->news_header = strdup(buffer+(2+ strlen(newsTopic)+1));
+        tmpTopic->headers_length += (int) strlen(newNews->news_header)+1;
+        newNews->news_body = strdup(buffer+(2+strlen(newsTopic)+1+strlen(newNews->news_header)+1));
+        tmpTopic->first_news = newNews;
+    } else {
+        while (tmpNews->next != NULL) {
+            if (strcmp(tmpTopic->topic_name, buffer+(2+ strlen(newsTopic)+1)) == 0) {
+                //сообщение об ошибке
+                error(clientStruct, 3, "Добавление существующей новостной темы");
+                free(newNews);
+                pthread_mutex_unlock(&mutex);
+                return;
+            }
+            tmpNews = tmpNews->next;
+        }
+        newNews->prev = tmpNews;
+        newNews->news_header = strdup(buffer+(2+ strlen(newsTopic)+1));
+        tmpTopic->headers_length += (int) strlen(newNews->news_header)+1;
+        newNews->news_body = strdup(buffer+(2+strlen(newsTopic)+1+strlen(newNews->news_header)+1));
+        tmpNews->next = newNews;
+    }
+    pthread_mutex_unlock(&mutex);
+    ack(clientStruct, 2);
+}
+
+void error(clientSocket *clientStruct, uint16_t type, char *error) {
     int packet_length = 9 + strlen(error);
     char packet[packet_length];
     uint16_t opcode = ERROR;
@@ -270,7 +362,7 @@ void error(clientSocket *clientStruct, uint16_t type, char *error){
     }
 }
 
-void ack(clientSocket *clientStruct, uint16_t type){
+void ack(clientSocket *clientStruct, uint16_t type) {
     int packet_length = 8;
     char packet[packet_length];
     uint16_t opcode = ACK;
@@ -281,7 +373,6 @@ void ack(clientSocket *clientStruct, uint16_t type){
         closeSocket(clientStruct);
     }
 }
-
 
 
 //закрытие/удаление клиента
