@@ -57,14 +57,14 @@
     
     **Формат пакета:**
     
-    | length | type |  topic  | \0 | news topic | \0 |
+    | length | type |  topic  | \0 |   header   | \0 |
     |:------:|:----:|:-------:|:--:|:----------:|:--:|
     |   4b   |  2b  | string  | 1b |   string   | 1b |
     
     * Length - длина пакета 
     * [Type - тип пакета](#a_packet_types)
     * Topic - новостная тема
-    * New topic - заголовок новости
+    * Header - заголовок новости
     
   * <a name="a_add_topic">**Add topic**</a>
   
@@ -86,14 +86,14 @@
     
     **Формат пакета:**
     
-    | length | type | topic | \0 | news topic | \0 | news text |
-    |:------:|:----:|:-----:|:--:|:----------:|:--:|:---------:|
-    |   4b   |  2b  |string | 1b |   string   | 1b |    text   |
+    | length | type | topic | \0 |   header   | \0 | news text | \0 |
+    |:------:|:----:|:-----:|:--:|:----------:|:--:|:---------:|:--:|
+    |   4b   |  2b  |string | 1b |   string   | 1b |    text   | 1b |
     
     * Length - длина пакета 
     * [Type - тип пакета](#a_packet_types)
     * Topic - новостная тема
-    * New topic - заголовок новости 
+    * Header - заголовок новости 
     * New text - текст новости
   
   ### Посылаемые сервером
@@ -118,14 +118,14 @@
     
     **Формат пакета:**
     
-    | length | type | topic | \0 | news topic | \0 |...| news topic  | \0 |
+    | length | type | topic | \0 |   header   | \0 |...|   header    | \0 |
     |:------:|:----:|:-----:|:--:|:----------:|:--:|:-:|:-----------:|:--:|
     |   4b   |  2b  |string | 1b |   string   | 1b |...|    string   | 1b |
     
     * Length - длина пакета 
     * [Type - тип пакета](#a_packet_types)
     * Topic - новостная тема
-    * New topic - заголовок новости
+    * Header - заголовок новости
   
   * <a name="a_news">**News**</a>
   
@@ -133,14 +133,14 @@
      
      **Формат пакета:**
      
-    | length | type | topic | \0 |  news topic | \0 | news text |
-    |:------:|:----:|:-----:|:--:|:-----------:|:--:|:---------:|
-    |   4b   |  2b  | string| 1b |    string   | 1b |    text   |
+    | length | type | topic | \0 |    header   | \0 | news text | \0 |
+    |:------:|:----:|:-----:|:--:|:-----------:|:--:|:---------:|:--:|
+    |   4b   |  2b  | string| 1b |    string   | 1b |    text   | 1b |
     
     * Length - длина пакета 
     * [Type - тип пакета](#a_packet_types)
     * Topic - новостная тема
-    * New topic - заголовок новости
+    * Header - заголовок новости
     * New text - текст новости
   
   * <a name="a_error">**Error**</a>
