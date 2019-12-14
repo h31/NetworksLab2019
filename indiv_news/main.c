@@ -276,18 +276,20 @@ void getListOfNews(char *buffer, clientSocket *clientStruct) {
     }
     if(tmpTopic == NULL){
         error(clientStruct, 1, "Отсутствие новостной темы");
+
+        pthread_mutex_unlock(&mutex);
         return;
     }
 
-    int packet_length = 6 + tmpTopic->headers_length;
+    int packet_length = 6 + tmpTopic->headers_length+ strlen(tmpTopic->topic_name) + 1;
     char packet[packet_length];
     bzero(packet, packet_length);
     uint16_t opcode = LIST_OF_NEWS;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
-
+    memcpy(packet + 6, tmpTopic->topic_name, strlen(tmpTopic->topic_name) + 1);
     if (tmpTopic->headers_length != 0) {
-        int pointer = 6;
+        int pointer = 6+strlen(tmpTopic->topic_name) + 1;
         news *tmpNews = tmpTopic->first_news;
         while (tmpNews != NULL) {
             memcpy(packet + pointer, tmpNews->news_header, strlen(tmpNews->news_header) + 1);
@@ -298,6 +300,7 @@ void getListOfNews(char *buffer, clientSocket *clientStruct) {
     if (write(clientStruct->socket, packet, packet_length) <= 0) {
         closeSocket(clientStruct);
     }
+    pthread_mutex_unlock(&mutex);
 }
 
 void addNews(char *buffer, clientSocket *clientStruct) {
@@ -311,6 +314,8 @@ void addNews(char *buffer, clientSocket *clientStruct) {
     }
     if(tmpTopic == NULL){
         error(clientStruct, 1, "Отсутствие новостной темы");
+
+        pthread_mutex_unlock(&mutex);
         return;
     }
     //если тема существует, добавляем новость
