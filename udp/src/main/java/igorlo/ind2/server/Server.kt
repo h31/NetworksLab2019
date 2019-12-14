@@ -40,8 +40,14 @@ class Server {
     }
 
     private fun handleClient(clientSocket: Socket) {
-        if (!authorizeUser(clientSocket))
-            return
+
+        // Процедура авторизации не имеет смысла без шифрования, так как стороннее лицо
+        // может перехватить пакет с паролем и воспользоваться им для подключения к
+        // серверу. Процедура авторизации была временно отключена.
+
+//        if (!authorizeUser(clientSocket))
+//            return
+
         handleCommands(clientSocket)
         while (true) {
             try {
