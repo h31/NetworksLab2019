@@ -5,7 +5,7 @@ import java.util.List;
 
 import static igorlo.dns.message.MessageUtils.shortToBytes;
 
-class Request {
+public class Request {
 
     private final String address;
     private final short type;

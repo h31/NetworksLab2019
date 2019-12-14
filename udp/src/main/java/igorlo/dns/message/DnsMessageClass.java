@@ -18,8 +18,10 @@ public class DnsMessageClass implements DnsMessage {
     private final DnsFlags flags;
     private Collection<Request> requests = null;
     private Collection<Response> responses = null;
+    private Collection<Response> authorityResponses = null;
     private Integer responsePointer = null;
-    private Integer nameServersPointer = null;
+    private Integer authorizedPointer = null;
+    private Integer additionalPointer = null;
 
     public DnsMessageClass(byte[] rawMessage) {
         if (rawMessage == null) {
@@ -52,6 +54,11 @@ public class DnsMessageClass implements DnsMessage {
     @Override
     public int getResponseQuantity() {
         return intFromTwoBytes(fullMessage[6], fullMessage[7]);
+    }
+
+    @Override
+    public int getAuthorizedQuantity() {
+        return intFromTwoBytes(fullMessage[8], fullMessage[9]);
     }
 
     @Override
@@ -96,9 +103,9 @@ public class DnsMessageClass implements DnsMessage {
 
     @Override
     public Collection<Response> getResponses() {
-//        if (responses != null) {
-//            return responses;
-//        }
+        if (responses != null) {
+            return responses;
+        }
         responses = new ArrayList();
         if (responsePointer == null) {
             getRequests();
@@ -117,8 +124,35 @@ public class DnsMessageClass implements DnsMessage {
             pointer += rLength;
             responses.add(new Response(currentName, responseType, responseClass, ttl, rLength, rData));
         }
-        nameServersPointer = pointer;
+        authorizedPointer = pointer;
         return responses;
+    }
+
+    @Override
+    public Collection<Response> getAuthorized() {
+        if (authorityResponses != null) {
+            return authorityResponses;
+        }
+        authorityResponses = new ArrayList();
+        if (authorizedPointer == null) {
+            getResponses();
+        }
+        int pointer = authorizedPointer;
+        for (int i = 0; i < getAuthorizedQuantity(); i++) {
+            String currentName = getDomainNameFromPointer(
+                    intFromTwoBytes((byte) (fullMessage[pointer++] - ADDERSS_OFFSET), fullMessage[pointer++])
+            );
+            int responseType = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
+            int responseClass = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
+            int ttl = ByteBuffer.wrap(Arrays.copyOfRange(fullMessage, pointer, pointer + 4)).getInt(0);
+            pointer += 4;
+            int rLength = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
+            byte[] rData = Arrays.copyOfRange(fullMessage, pointer, pointer + rLength);
+            pointer += rLength;
+            authorityResponses.add(new Response(currentName, responseType, responseClass, ttl, rLength, rData));
+        }
+        additionalPointer = pointer;
+        return authorityResponses;
     }
 
     @Override
@@ -130,16 +164,17 @@ public class DnsMessageClass implements DnsMessage {
     public String toString() {
         return "DnsMessageClass {\n" +
                 "FullRaw = " + Arrays.toString(fullMessage) +
-                "ID = " + getId() +
+                "\nID = " + getId() +
                 "\nflags = " + flags.toString() +
                 "\nRequests = " + getRequestsAsString() +
-                "\nResponses = " + getResponsesAsString() +
+                "\nResponses = " + getResponsesAsString(getResponses()) +
+                "\nAuthResponses = " + getResponsesAsString(getAuthorized()) +
                 "\n}";
     }
 
-    private String getResponsesAsString() {
+    private String getResponsesAsString(Collection<Response> responses) {
         StringBuilder stringBuilder = new StringBuilder();
-        for (Response r : getResponses()) {
+        for (Response r : responses) {
             stringBuilder.append("[Response: Name = ");
             stringBuilder.append(r.getAddress());
             stringBuilder.append(", rType = ");
@@ -149,8 +184,8 @@ public class DnsMessageClass implements DnsMessage {
             stringBuilder.append(", rLength = ");
             stringBuilder.append(r.getRLength());
             stringBuilder.append(", rData = ");
-            if (r.getType() == 1) {
-                byte[] ipAddress = Arrays.copyOfRange(r.getRData(), 0, 5);
+            if (r.getType() == DnsType.A.getType() || r.getType() == DnsType.NS.getType()) {
+                byte[] ipAddress = Arrays.copyOfRange(r.getRData(), 0, 4);
                 stringBuilder
                         .append("IP[")
                         .append(ipAddress[0] & 0xff)

@@ -14,11 +14,15 @@ public interface DnsMessage {
 
     int getResponseQuantity();
 
+    int getAuthorizedQuantity();
+
     int getAdditionalInfoQuantity();
 
     Collection<Request> getRequests();
 
     Collection<Response> getResponses();
+
+    Collection<Response> getAuthorized();
 
     DnsAdditionalInfo getAdditionalInfo();
 

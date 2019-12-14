@@ -7,9 +7,9 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-object Exchange {
+object TcpExchange {
 
-    private val logger = Logger.getLogger(Exchange::class.java)
+    private val logger = Logger.getLogger(TcpExchange::class.java)
 
     fun setLoggingLevel(level: Level) {
         logger.level = level

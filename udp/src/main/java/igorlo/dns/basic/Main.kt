@@ -1,4 +1,6 @@
-package igorlo.dns
+package igorlo.dns.basic
+
+import igorlo.dns.basic.DnsClient
 
 object Main {
 

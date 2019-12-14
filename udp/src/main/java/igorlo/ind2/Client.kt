@@ -3,8 +3,8 @@ package igorlo.ind2
 import igorlo.TextColors
 import igorlo.ind2.Constants.DEFAULT_LOGGING_LEVEL
 import igorlo.ind2.Constants.PORT
-import igorlo.util.Exchange.readMessage
-import igorlo.util.Exchange.sendMessage
+import igorlo.util.TcpExchange.readMessage
+import igorlo.util.TcpExchange.sendMessage
 import igorlo.util.Utilities.colorPrint
 import org.apache.log4j.BasicConfigurator
 import java.net.*

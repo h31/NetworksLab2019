@@ -5,14 +5,13 @@ import igorlo.ind2.Constants
 import igorlo.ind2.Constants.CHUNK_SIZE
 import igorlo.ind2.Constants.PORT
 import igorlo.ind2.server.data.UserBase
-import igorlo.util.Exchange.readMessage
-import igorlo.util.Exchange.sendMessage
+import igorlo.util.TcpExchange.readMessage
+import igorlo.util.TcpExchange.sendMessage
 import igorlo.util.Utilities
 import igorlo.util.Utilities.evalExpression
 import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 class Server {

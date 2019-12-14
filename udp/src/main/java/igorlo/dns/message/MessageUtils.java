@@ -75,4 +75,12 @@ public final class MessageUtils {
         }
         return convertListToByteArray(unwrapped);
     }
+
+    public static byte unsignedByte(int number) {
+        return (byte) (number & 0xFF);
+    }
+
+    public static int intFromSignedByte(byte origin) {
+        return origin & 0xFF;
+    }
 }

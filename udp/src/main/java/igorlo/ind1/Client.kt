@@ -1,15 +1,14 @@
 package igorlo.ind1
 
 import igorlo.TextColors
-import igorlo.util.Exchange.readMessage
-import igorlo.util.Exchange.sendMessage
+import igorlo.util.TcpExchange.readMessage
+import igorlo.util.TcpExchange.sendMessage
 import igorlo.util.Utilities.colorPrint
 import org.apache.log4j.BasicConfigurator
 import java.net.*
 import java.util.*
 import org.apache.log4j.Logger
 import igorlo.util.Utilities.Command
-import org.w3c.dom.Text
 import java.io.IOException
 import java.lang.NumberFormatException
 import kotlin.system.exitProcess
