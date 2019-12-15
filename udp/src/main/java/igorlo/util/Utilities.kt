@@ -51,7 +51,7 @@ object Utilities {
             val value = sqrt.toDouble()
             return kotlin.math.sqrt(value).toString()
         } catch (e: NumberFormatException) {
-            return "Некорректное число"
+            return "0"
         }
     }
 
