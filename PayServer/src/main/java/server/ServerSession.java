@@ -10,6 +10,7 @@ import java.util.List;
 public class ServerSession {
     private static final String PATH_TO_CLIENTS_INFO = "src/main/resources/ClientsInfo";
     private static final String ERR_SIGN = "Wrong login";
+    private static final String WRONG_FORMAT = "Wrong format";
     private Socket socket;
     private Server server;
     private BufferedReader in;
@@ -43,7 +44,11 @@ public class ServerSession {
                     if (user != null) System.out.println("from " + user.getLogin() + ": " + msg);
                     switch (condition) {
                         case NORMAL:
-                            normalHandler(msg);
+                            try {
+                                normalHandler(msg);
+                            } catch (NumberFormatException e) {
+                                send(WRONG_FORMAT);
+                            }
                             break;
                         case ACCEPTING:
                             acceptingHandler(msg);
@@ -68,7 +73,7 @@ public class ServerSession {
         }
     }
 
-    private void normalHandler(String msg) throws IOException {
+    private void normalHandler(String msg) throws IOException, NumberFormatException {
         String[] strings = msg.split("\\s+");
         switch (strings[0]) {
             case "signin":
@@ -78,30 +83,38 @@ public class ServerSession {
                 signup(strings[1]);
                 break;
             case "getinfo":
-                getInfo();
+                if (strings.length == 1) getInfo();
+                else send(WRONG_FORMAT);
                 break;
             case "list":
-                getList();
+                if (strings.length == 1) getList();
+                else send(WRONG_FORMAT);
                 break;
             case "transaction":
-                try {
-                    transaction(Integer.parseInt(strings[1]), Integer.parseInt(strings[2]));
-                } catch (Exception e) {
-                    send("Wrong format");
-                }
+                if (strings.length != 3) {
+                    send(WRONG_FORMAT);
+                } else transaction(Integer.parseInt(strings[1]), Integer.parseInt(strings[2]));
                 break;
             case "put":
-                user.setSize(user.getSize() + Integer.parseInt(strings[1]));
-                Utils.updateUserSizeInfo(user, PATH_TO_CLIENTS_INFO);
-                send("Complete");
-                break;
-            case "take":
-                if (user.getSize() < Integer.parseInt(strings[1])) {
-                    send("Not enough money");
+                if (strings.length != 2) {
+                    send(WRONG_FORMAT);
                 } else {
-                    user.setSize(user.getSize() - Integer.parseInt(strings[1]));
+                    user.setSize(user.getSize() + Integer.parseInt(strings[1]));
                     Utils.updateUserSizeInfo(user, PATH_TO_CLIENTS_INFO);
                     send("Complete");
+                }
+                break;
+            case "take":
+                if (strings.length != 2) {
+                    send(WRONG_FORMAT);
+                } else {
+                    if (user.getSize() < Integer.parseInt(strings[1])) {
+                        send("Not enough money");
+                    } else {
+                        user.setSize(user.getSize() - Integer.parseInt(strings[1]));
+                        Utils.updateUserSizeInfo(user, PATH_TO_CLIENTS_INFO);
+                        send("Complete");
+                    }
                 }
                 break;
             case "help":
@@ -110,6 +123,7 @@ public class ServerSession {
                         "put <n> - put n money\n" +
                         "take <n> - take n money\n" +
                         "transaction <r> <n> - make a transaction to r(purse number of recipient) at n(money)");
+                break;
             case "/exit":
                 send("exit");
                 disconnect();
