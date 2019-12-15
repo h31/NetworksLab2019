@@ -93,13 +93,6 @@ public class Client {
         socket.close();
     }
 
-    private String packageToString(byte[] bytes) {
-        StringBuilder bytesString = new StringBuilder();
-        bytesString.append("Bytes: ");
-        bytesString.append(Arrays.toString(bytes));
-        return bytesString.toString();
-    }
-
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Input dns server ip: ");
@@ -109,8 +102,6 @@ public class Client {
 
         Client client = new Client()
                 .init(address, port);
-                //.init("8.8.8.8", 53);
-                //.init("127.0.0.1", 4444);
         client.run();
     }
 }
