@@ -11,16 +11,17 @@ import java.util.*
 class Seeker(var socket: DatagramSocket, val rootAddress: InetAddress) {
 
     private var currentAddress = rootAddress
-    private val toVisit: Stack<InetAddress> = Stack()
+    private val toVisit: Stack<Pair<String, InetAddress>> = Stack()
 
     fun seek(domainName: String): Optional<Response> {
-        toVisit.push(rootAddress)
+        toVisit.push(Pair("root", rootAddress))
 
         while (toVisit.isNotEmpty()) {
             socket = DatagramSocket()
             socket.soTimeout = 2000
-            currentAddress = toVisit.pop()
-            println(currentAddress.toString())
+            val nextPair = toVisit.pop()
+            currentAddress = nextPair.second
+            println("$currentAddress - ${nextPair.first}")
             val optionalResult = askServer(currentAddress, domainName)
             if (optionalResult.isEmpty){
                 println("Сервер не ответил")
@@ -31,10 +32,10 @@ class Seeker(var socket: DatagramSocket, val rootAddress: InetAddress) {
                 return Optional.of(response.responses.first())
             } else if (response.additionalInfoQuantity > 0) {
                 for (additional in response.additionalResponses) {
-                    println(additional.toString())
                     if (additional.type == DnsType.A.type || additional.type == DnsType.NS.type) {
-                        println("Добавил новый сервер")
-                        toVisit.push(Inet4Address.getByAddress(additional.rData))
+                        toVisit.push(
+                                Pair(additional.address, Inet4Address.getByAddress(additional.rData))
+                        )
                     }
                 }
             } else {

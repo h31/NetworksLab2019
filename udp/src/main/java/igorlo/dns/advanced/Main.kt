@@ -9,12 +9,14 @@ object Main {
     @JvmStatic
     fun main(args: Array<String>) {
         val datagramSocket = DatagramSocket()
-        val seeker = Seeker(datagramSocket, UdpExchange.MIRROR_ROOT_SERVER_ADDRESS)
+        val seeker = Seeker(datagramSocket, UdpExchange.A_ROOT_SERVER_ADDRESS)
         val optionalAnswer = seeker.seek("google.com")
         if (optionalAnswer.isPresent) {
             println("Вау, мы нашли его:\n")
             val ipAddress: ByteArray = optionalAnswer.get().rData
             println(Utilities.ipAddressToString(ipAddress))
+        } else {
+            println("Домен не найден!")
         }
     }
 
