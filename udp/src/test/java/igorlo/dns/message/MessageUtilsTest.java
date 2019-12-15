@@ -88,4 +88,9 @@ class MessageUtilsTest {
         assert MessageUtils.getBitsFromTo(fourth, 0, 8) == fourth;
     }
 
+    @Test
+    void intFromSignedByte() {
+        final byte first = (byte) 0b11000000;
+        assert 192 == MessageUtils.intFromSignedByte(first);
+    }
 }

@@ -1,24 +1,27 @@
 package igorlo.dns.message;
 
+import kotlin.Pair;
 import kotlin.text.Charsets;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Optional;
 
 import static igorlo.dns.message.MessageUtils.intFromTwoBytes;
 import static igorlo.dns.message.MessageUtils.shortFromTwoBytes;
 
 public class DnsMessageClass implements DnsMessage {
 
-    private static int ADDERSS_OFFSET = 192;
+    private static int ADDRESS_OFFSET = 192;
 
     private final byte[] fullMessage;
     private final DnsFlags flags;
     private Collection<Request> requests = null;
     private Collection<Response> responses = null;
     private Collection<Response> authorityResponses = null;
+    private Collection<Response> additionalResponses = null;
     private Integer responsePointer = null;
     private Integer authorizedPointer = null;
     private Integer additionalPointer = null;
@@ -74,8 +77,9 @@ public class DnsMessageClass implements DnsMessage {
         int pointer = 12;
         requests = new ArrayList();
         for (int i = 0; i < getRequestQuantity(); i++) {
-            String currentName = getDomainNameFromPointer(pointer);
-            pointer += currentName.length() + 1;
+            Pair<String, Integer> namePair = getDomainNameFromPointer(pointer);
+            pointer += namePair.component2();
+            String currentName = namePair.component1();
             short requestType = shortFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             short requestClass = shortFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             requests.add(new Request(currentName, requestType, requestClass));
@@ -84,21 +88,49 @@ public class DnsMessageClass implements DnsMessage {
         return requests;
     }
 
-    private String getDomainNameFromPointer(int fromPointer) {
-        int pointer = fromPointer;
+    private Pair<String, Integer> getDomainNameFromPointer(int fromPointer) {
+        int bytesRead = 0;
         StringBuilder currentName = new StringBuilder();
-        int numberOfSymbols = fullMessage[pointer++];
-        while (numberOfSymbols != 0) {
-            byte[] byteChunk = new byte[numberOfSymbols];
-            for (int i = 0; i < numberOfSymbols; i++) {
-//                currentName.append((char) fullMessage[pointer++]);
-                byteChunk[i] = fullMessage[pointer++];
+        while (true) {
+            if (
+                    MessageUtils.isBitSet(fullMessage[fromPointer + bytesRead], 0)
+                            && MessageUtils.isBitSet(fullMessage[fromPointer + bytesRead], 1)
+            ) {
+//                currentName.append(getDomainNameFromPointer(
+//                        intFromTwoBytes((byte) (fullMessage[fromPointer] - ADDRESS_OFFSET), fullMessage[fromPointer + 1])
+//                ).component1());
+                currentName.append(getDomainNameFromPointer(
+                        MessageUtils.intFromSignedByte(fullMessage[fromPointer + bytesRead + 1])
+                ).component1());
+                bytesRead += 2;
+                return new Pair<>(currentName.toString(), bytesRead);
+            } else {
+                Optional<Pair<String, Integer>> pair = readSegment(fromPointer + bytesRead);
+                if (!pair.isPresent()) {
+                    bytesRead += 1;
+                    break;
+                } else {
+                    currentName.append(pair.get().component1());
+                    bytesRead += pair.get().component2();
+                }
             }
-            currentName.append(new String(byteChunk, Charsets.US_ASCII));
-            currentName.append('.');
-            numberOfSymbols = fullMessage[pointer++];
         }
-        return currentName.toString();
+        return new Pair<>(currentName.toString(), bytesRead);
+    }
+
+    private Optional<Pair<String, Integer>> readSegment(int fromPointer) {
+        if (fullMessage[fromPointer] == 0) {
+            return Optional.empty();
+        }
+        StringBuilder segmentBuilder = new StringBuilder();
+        int numberOfSymbols = fullMessage[fromPointer];
+        byte[] byteChunk = new byte[numberOfSymbols];
+        for (int i = 0; i < numberOfSymbols; i++) {
+            byteChunk[i] = fullMessage[fromPointer + i + 1];
+        }
+        segmentBuilder.append(new String(byteChunk, Charsets.US_ASCII));
+        segmentBuilder.append('.');
+        return Optional.of(new Pair<>(segmentBuilder.toString(), numberOfSymbols + 1));
     }
 
     @Override
@@ -112,9 +144,9 @@ public class DnsMessageClass implements DnsMessage {
         }
         int pointer = responsePointer;
         for (int i = 0; i < getResponseQuantity(); i++) {
-            String currentName = getDomainNameFromPointer(
-                    intFromTwoBytes((byte) (fullMessage[pointer++] - ADDERSS_OFFSET), fullMessage[pointer++])
-            );
+            Pair<String, Integer> namePair = getDomainNameFromPointer(pointer);
+            pointer += namePair.component2();
+            String currentName = namePair.component1();
             int responseType = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             int responseClass = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             int ttl = ByteBuffer.wrap(Arrays.copyOfRange(fullMessage, pointer, pointer + 4)).getInt(0);
@@ -139,9 +171,9 @@ public class DnsMessageClass implements DnsMessage {
         }
         int pointer = authorizedPointer;
         for (int i = 0; i < getAuthorizedQuantity(); i++) {
-            String currentName = getDomainNameFromPointer(
-                    intFromTwoBytes((byte) (fullMessage[pointer++] - ADDERSS_OFFSET), fullMessage[pointer++])
-            );
+            Pair<String, Integer> namePair = getDomainNameFromPointer(pointer);
+            pointer += namePair.component2();
+            String currentName = namePair.component1();
             int responseType = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             int responseClass = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
             int ttl = ByteBuffer.wrap(Arrays.copyOfRange(fullMessage, pointer, pointer + 4)).getInt(0);
@@ -156,8 +188,29 @@ public class DnsMessageClass implements DnsMessage {
     }
 
     @Override
-    public DnsAdditionalInfo getAdditionalInfo() {
-        return null;
+    public Collection<Response> getAdditionalResponses() {
+        if (additionalResponses != null) {
+            return additionalResponses;
+        }
+        additionalResponses = new ArrayList();
+        if (additionalPointer == null) {
+            getAuthorized();
+        }
+        int pointer = additionalPointer;
+        for (int i = 0; i < getAdditionalInfoQuantity(); i++) {
+            Pair<String, Integer> namePair = getDomainNameFromPointer(pointer);
+            pointer += namePair.component2();
+            String currentName = namePair.component1();
+            int responseType = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
+            int responseClass = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
+            int ttl = ByteBuffer.wrap(Arrays.copyOfRange(fullMessage, pointer, pointer + 4)).getInt(0);
+            pointer += 4;
+            int rLength = intFromTwoBytes(fullMessage[pointer++], fullMessage[pointer++]);
+            byte[] rData = Arrays.copyOfRange(fullMessage, pointer, pointer + rLength);
+            pointer += rLength;
+            additionalResponses.add(new Response(currentName, responseType, responseClass, ttl, rLength, rData));
+        }
+        return additionalResponses;
     }
 
     @Override
@@ -169,36 +222,14 @@ public class DnsMessageClass implements DnsMessage {
                 "\nRequests = " + getRequestsAsString() +
                 "\nResponses = " + getResponsesAsString(getResponses()) +
                 "\nAuthResponses = " + getResponsesAsString(getAuthorized()) +
+                "\nAdditionalResponses = " + getResponsesAsString(getAdditionalResponses()) +
                 "\n}";
     }
 
     private String getResponsesAsString(Collection<Response> responses) {
         StringBuilder stringBuilder = new StringBuilder();
         for (Response r : responses) {
-            stringBuilder.append("[Response: Name = ");
-            stringBuilder.append(r.getAddress());
-            stringBuilder.append(", rType = ");
-            stringBuilder.append(r.getType());
-            stringBuilder.append(", rClass = ");
-            stringBuilder.append(r.getQClass());
-            stringBuilder.append(", rLength = ");
-            stringBuilder.append(r.getRLength());
-            stringBuilder.append(", rData = ");
-            if (r.getType() == DnsType.A.getType() || r.getType() == DnsType.NS.getType()) {
-                byte[] ipAddress = Arrays.copyOfRange(r.getRData(), 0, 4);
-                stringBuilder
-                        .append("IP[")
-                        .append(ipAddress[0] & 0xff)
-                        .append(".")
-                        .append(ipAddress[1] & 0xff)
-                        .append(".")
-                        .append(ipAddress[2] & 0xff)
-                        .append(".")
-                        .append(ipAddress[3] & 0xff)
-                        .append("]");
-            } else {
-                stringBuilder.append(Arrays.toString(r.getRData()));
-            }
+            stringBuilder.append(r.toString());
             stringBuilder.append("]\n");
         }
         return stringBuilder.toString();

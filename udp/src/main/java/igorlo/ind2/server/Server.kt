@@ -43,10 +43,10 @@ class Server {
 
         // Процедура авторизации не имеет смысла без шифрования, так как стороннее лицо
         // может перехватить пакет с паролем и воспользоваться им для подключения к
-        // серверу. Процедура авторизации была временно отключена.
+        // серверу, однако мы с коллегой решили её оставить.
 
-//        if (!authorizeUser(clientSocket))
-//            return
+        if (!authorizeUser(clientSocket))
+            return
 
         handleCommands(clientSocket)
         while (true) {
@@ -60,10 +60,11 @@ class Server {
                             clientSocket,
                             getName(clientSocket),
                             message.toLowerCase().removePrefix("say "))
-                    UserAction.UNKNOWN -> handleUnknown(clientSocket)
                     UserAction.HELP -> handleCommands(clientSocket)
                     UserAction.HISTORY -> handleHistory(clientSocket)
                     UserAction.FUNCTIONS -> handleOperators(clientSocket)
+                    UserAction.UNKNOWN -> handleUnknown(clientSocket)
+                    else -> handleUnknown(clientSocket)
                 }
             } catch (e: IOException) {
                 if (!clientSocket.isClosed)

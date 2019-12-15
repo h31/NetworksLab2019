@@ -9,8 +9,10 @@ import java.net.InetAddress
 object UdpExchange {
 
     const val DNS_PORT = 53
+    const val BYTES_TO_READ = 1024
     val A_ROOT_SERVER_ADDRESS: InetAddress = Inet4Address.getByAddress(byteArrayOf(MessageUtils.unsignedByte(198), 41, 0, 4))
     val С_ROOT_SERVER_ADDRESS: InetAddress = Inet4Address.getByAddress(byteArrayOf(MessageUtils.unsignedByte(192), 33, 4, 12))
+    val MIRROR_ROOT_SERVER_ADDRESS: InetAddress = Inet4Address.getByAddress(byteArrayOf(MessageUtils.unsignedByte(199), 7, 83, 42))
     val GOOGLE_DNS_ADDRESS: InetAddress = Inet4Address.getByAddress(byteArrayOf(8, 8, 8, 8))
 
 
@@ -20,7 +22,7 @@ object UdpExchange {
     }
 
     fun recieveUdp(socket: DatagramSocket): ByteArray {
-        val readBuffer = ByteArray(512)
+        val readBuffer = ByteArray(BYTES_TO_READ)
         val packet = DatagramPacket(readBuffer, readBuffer.size)
         socket.receive(packet)
         return packet.data

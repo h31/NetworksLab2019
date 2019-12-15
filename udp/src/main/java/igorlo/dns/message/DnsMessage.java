@@ -24,6 +24,6 @@ public interface DnsMessage {
 
     Collection<Response> getAuthorized();
 
-    DnsAdditionalInfo getAdditionalInfo();
+    Collection<Response> getAdditionalResponses();
 
 }

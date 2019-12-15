@@ -8,16 +8,17 @@ import java.net.InetAddress
 import java.net.SocketTimeoutException
 import java.util.*
 
-class Seeker(val socket: DatagramSocket, val rootAddress: InetAddress) {
+class Seeker(var socket: DatagramSocket, val rootAddress: InetAddress) {
 
     private var currentAddress = rootAddress
     private val toVisit: Stack<InetAddress> = Stack()
 
     fun seek(domainName: String): Optional<Response> {
-        socket.soTimeout = 2000
         toVisit.push(rootAddress)
 
         while (toVisit.isNotEmpty()) {
+            socket = DatagramSocket()
+            socket.soTimeout = 2000
             currentAddress = toVisit.pop()
             println(currentAddress.toString())
             val optionalResult = askServer(currentAddress, domainName)
@@ -28,15 +29,14 @@ class Seeker(val socket: DatagramSocket, val rootAddress: InetAddress) {
             val response = optionalResult.get()
             if (response.responseQuantity > 0) {
                 return Optional.of(response.responses.first())
-            } else if (response.authorizedQuantity > 0) {
-                for (authResponse in response.authorized) {
-                    if (authResponse.type == DnsType.NS.type) {
-                        val ip = Arrays.copyOfRange(authResponse.rData, 0, 4)
-                        toVisit.push(Inet4Address.getByAddress(ip))
+            } else if (response.additionalInfoQuantity > 0) {
+                for (additional in response.additionalResponses) {
+                    println(additional.toString())
+                    if (additional.type == DnsType.A.type || additional.type == DnsType.NS.type) {
+                        println("Добавил новый сервер")
+                        toVisit.push(Inet4Address.getByAddress(additional.rData))
                     }
                 }
-            } else if (response.additionalInfoQuantity > 0){
-                println("Тут есть дополнительная инфа")
             } else {
                 continue
             }

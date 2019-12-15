@@ -9,8 +9,8 @@ object Main {
     @JvmStatic
     fun main(args: Array<String>) {
         val datagramSocket = DatagramSocket()
-        val seeker = Seeker(datagramSocket, UdpExchange.С_ROOT_SERVER_ADDRESS)
-        val optionalAnswer = seeker.seek("microsoft.com")
+        val seeker = Seeker(datagramSocket, UdpExchange.MIRROR_ROOT_SERVER_ADDRESS)
+        val optionalAnswer = seeker.seek("google.com")
         if (optionalAnswer.isPresent) {
             println("Вау, мы нашли его:\n")
             val ipAddress: ByteArray = optionalAnswer.get().rData

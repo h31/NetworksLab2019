@@ -1,5 +1,7 @@
 package igorlo.dns.message;
 
+import java.util.Arrays;
+
 public class Response {
 
     private final String address;
@@ -44,5 +46,35 @@ public class Response {
 
     public byte[] buildBytes() {
         throw new UnsupportedOperationException("lol kek"); //TODO
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("[Response: Name = ");
+        stringBuilder.append(getAddress());
+        stringBuilder.append(", rType = ");
+        stringBuilder.append(getType());
+        stringBuilder.append(", rClass = ");
+        stringBuilder.append(getQClass());
+        stringBuilder.append(", rLength = ");
+        stringBuilder.append(getRLength());
+        stringBuilder.append(", rData = ");
+        if (getType() == DnsType.A.getType()) {
+            byte[] ipAddress = Arrays.copyOfRange(getRData(), 0, 4);
+            stringBuilder
+                    .append("IP[")
+                    .append(ipAddress[0] & 0xff)
+                    .append(".")
+                    .append(ipAddress[1] & 0xff)
+                    .append(".")
+                    .append(ipAddress[2] & 0xff)
+                    .append(".")
+                    .append(ipAddress[3] & 0xff)
+                    .append("]");
+        } else {
+            stringBuilder.append(Arrays.toString(getRData()));
+        }
+        return stringBuilder.toString();
     }
 }
