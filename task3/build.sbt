@@ -19,6 +19,7 @@ lazy val pureConfigVersion = "0.12.0"
 lazy val scalaTestVersion  = "3.0.4"
 lazy val logbackVersion    = "1.2.3"
 lazy val catsVersion       = "2.0.0"
+lazy val fs2Version        = "2.1.0"
 
 lazy val deps = Seq(
     "org.typelevel"         %% "cats-effect"    % catsVersion
@@ -26,6 +27,8 @@ lazy val deps = Seq(
   , "org.scalatest"         %% "scalatest"      % scalaTestVersion
   , "ch.qos.logback"        % "logback-classic" % logbackVersion
   , "com.github.pureconfig" %% "pureconfig"     % pureConfigVersion
+  , "co.fs2"                %% "fs2-core"       % fs2Version
+  , "co.fs2"                %% "fs2-io"         % fs2Version
 ).map(_ withSources () withJavadoc ())
 
 lazy val assemblySettings = Seq(

@@ -1,18 +1,25 @@
 import java.io.File
-import java.net.InetAddress
-import cats.implicits._
-import cats.effect.{ExitCode, IO, IOApp}
+
+import cats.effect.{Blocker, ExitCode, IO, IOApp, Resource}
+import org.slf4j.{Logger, LoggerFactory}
+import cats.syntax.functor._
 
 object Application extends IOApp {
+  implicit val logger: Logger = LoggerFactory.getLogger(getClass)
+  val blocker                 = Blocker[IO]
+
   override def run(args: List[String]): IO[ExitCode] =
-    SafeUdpChannel(1666)
-      .use { channel =>
-        test
-          .map(x => Packet(x, Metadata(InetAddress.getLocalHost)))
-          .traverse { element =>
-            check(element, channel)
+    SafeUdpChannel(1234)
+      .flatMap(
+          channel =>
+          blocker
+            .flatMap(bl => Resource.pure((channel, bl)))
+      )
+      .use {
+        case (channel, bl) =>
+          FileSystem(bl).flatMap { fs =>
+            Rpc.upload(new File("test2.txt"), new File("test1.txt"))(channel, fs)
           }
-          .void
       }
       .as(ExitCode.Success)
 
