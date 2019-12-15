@@ -1,3 +1,5 @@
+package server;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -18,7 +20,6 @@ public class Server {
         try {
             while (true) {
                 Socket socket = server.accept();
-                System.out.println("new client connected");
                 try {
                     clientList.add(new ServerSession(socket, this));
                 } catch (IOException e) {
@@ -32,10 +33,6 @@ public class Server {
 
     public List<ServerSession> getClientList() {
         return clientList;
-    }
-
-    public void setClientList(List<ServerSession> clientList) {
-        this.clientList = clientList;
     }
 
     public void removeClient(ServerSession session) {
