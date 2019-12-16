@@ -69,7 +69,7 @@ class Client {
         logger.info("Инициализация клиента")
         try {
             socket = Socket("localhost", PORT)
-        } catch (e: IOException){
+        } catch (e: IOException) {
             logger.error("Не удалось подключиться к серверу")
             exitProcess(1)
         }
@@ -83,7 +83,7 @@ class Client {
 
     private fun handleReading() {
         val message = readMessage(socket)
-        if (message == "/goodbye"){
+        if (message == "/goodbye") {
             close()
         }
         logger.info("Текст сообщения: $message")
@@ -105,9 +105,9 @@ class Client {
         colorPrint("Course".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
         colorPrint("absCourse".take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_BLUE)
         colorPrint("conCourse\n", TextColors.ANSI_BLUE)
-        for (line in lines){
+        for (line in lines) {
             val parts = line.split(",")
-            for (part in parts){
+            for (part in parts) {
                 colorPrint(part.take(TABLE_WIDTH).padEnd(TABLE_WIDTH), TextColors.ANSI_YELLOW)
             }
             println()

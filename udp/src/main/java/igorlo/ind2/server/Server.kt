@@ -73,12 +73,12 @@ class Server {
                             getName(clientSocket),
                             message.toLowerCase().removePrefix("say "))
                     UserAction.HISTORY -> handleHistory(clientSocket)
+                    UserAction.FUNCTIONS -> handleOperators(clientSocket)
 
                     // Данные функции отключены, так как вывод списка команд реализован
                     // локально на клиенте.
 
 //                    UserAction.HELP -> handleCommands(clientSocket)
-//                    UserAction.FUNCTIONS -> handleOperators(clientSocket)
 
                     UserAction.UNKNOWN -> handleUnknown(clientSocket)
                     else -> handleUnknown(clientSocket)
@@ -196,10 +196,10 @@ class Server {
             return UserAction.FACT
         if (lookForCommand(message, "sqrt"))
             return UserAction.SQRT
+        if (message.toLowerCase() == "functions")
+            return UserAction.FUNCTIONS
 //        if (message.toLowerCase() == "help")
 //            return UserAction.HELP
-//        if (message.toLowerCase() == "functions")
-//            return UserAction.FUNCTIONS
         if (message.toLowerCase() == "history")
             return UserAction.HISTORY
         return UserAction.UNKNOWN
@@ -275,7 +275,6 @@ class Server {
         Thread(Runnable {
             val response = Utilities.calculateFactorial(factorial)
             addHistory(getName(clientSocket), "FACT($factorial): $response")
-
             sendMessage(clientSocket, "f $response")
 
             //Отправка факториала по кускам была отключена, так как TCP обеспечивает
