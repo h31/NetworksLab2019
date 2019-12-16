@@ -2,8 +2,8 @@ import argparse
 import os
 from tftp_server import Server
 
-if __name__ == '__main__':
 
+def main():
     # ---------------------------- parsing arguments ----------------------------
     parser = argparse.ArgumentParser(description="Some description")
 
@@ -32,3 +32,7 @@ if __name__ == '__main__':
     # ---------------------------- running server ----------------------------
     tftpServer = Server(os.path.abspath(localDir), localPort, verbose)
     tftpServer.run()
+
+
+if __name__ == '__main__':
+    main()

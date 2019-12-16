@@ -3,7 +3,7 @@ from tftp_client import Client
 import os
 
 
-def get_req_from_cmd():
+def get_req_from_cmd(tftpClient):
     while True:
         command = input("\nINPUT FORMAT 'GET/PUT FILE_NAME' or 'EXIT'\n")
         command_list = command.split(" ")
@@ -28,8 +28,7 @@ def get_req_from_cmd():
             print("Unexpected command '%s'" % command_list[0])
 
 
-if __name__ == '__main__':
-
+def main():
     # ---------------------------- parsing arguments ----------------------------
     parser = argparse.ArgumentParser(description="Some description")
 
@@ -60,6 +59,10 @@ if __name__ == '__main__':
     # ---------------------------- running client ----------------------------
     tftpClient = Client(serverIp, serverPort, os.path.abspath(clientDir))
     while True:
-        request, fileName, targetFileName = get_req_from_cmd()
+        request, fileName, targetFileName = get_req_from_cmd(tftpClient)
 
         request(fileName, targetFileName)
+
+
+if __name__ == '__main__':
+    main()
