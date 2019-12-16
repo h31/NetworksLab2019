@@ -3,6 +3,9 @@ import java.io.File
 import cats.effect.{Blocker, ExitCode, IO, IOApp, Resource}
 import org.slf4j.{Logger, LoggerFactory}
 import cats.syntax.functor._
+import cats.syntax.flatMap._
+
+import scala.io.StdIn
 
 object Application extends IOApp {
   implicit val logger: Logger = LoggerFactory.getLogger(getClass)
@@ -18,26 +21,29 @@ object Application extends IOApp {
       .use {
         case (channel, bl) =>
           FileSystem(bl).flatMap { fs =>
-            Rpc.upload(new File("test2.txt"), new File("test1.txt"))(channel, fs)
+            def readLoop: IO[ExitCode] =
+              getStr().flatMap {
+                case "upload" =>
+                  sourceAndPath.flatMap {
+                    case (name, path) =>
+                      Rpc.upload(new File(path), new File(name))(channel, fs)
+                  } >> readLoop
+                case "download" =>
+                  getStr().flatMap(str => Rpc.download(new File(str))(channel, fs)) >> readLoop
+                case _ => readLoop
+              }
+
+            readLoop
           }
       }
       .as(ExitCode.Success)
 
-  val test = List(
-      WRQ(new File("myFileName"))
-    , RRQ(new File("secondFile"), Octet)
-    , Acknowledgment(Block(123))
-    , ErrorType(NoSuchUser, "There is an error")
-    , Data(Block(7), "There is data incomming")
-  )
+  def sourceAndPath: IO[(String, String)] =
+    for {
+      name <- getStr()
+      path <- getStr()
+    } yield (name, path)
 
-  def check(p: Packet[Type], channel: SafeUdpChannel): IO[Unit] =
-    p match {
-      case Packet(ack: Acknowledgment, met) => channel.send[Acknowledgment](Packet(ack, met))
-      case Packet(wrq: WRQ, met)            => channel.send[WRQ](Packet(wrq, met))
-      case Packet(rrq: RRQ, met)            => channel.send[RRQ](Packet(rrq, met))
-      case Packet(err: ErrorType, met)      => channel.send[ErrorType](Packet(err, met))
-      case Packet(data: Data, met)          => channel.send[Data](Packet(data, met))
-    }
-
+  def putStr(line: String): IO[Unit] = IO(println(line))
+  def getStr(): IO[String]           = IO(StdIn.readLine())
 }

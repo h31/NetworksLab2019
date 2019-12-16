@@ -24,7 +24,7 @@ trait Channel[T, F[A <: T]] {
 }
 
 class SafeUdpChannel private (socket: DatagramSocket)(implicit logger: Logger) extends Channel[Type, Packet] {
-  private val buffer = IO(Buffer(65535))
+  private val buffer = IO(Buffer(capacity = 65535))
 
   def receive: IO[Packet[Type]] =
     buffer

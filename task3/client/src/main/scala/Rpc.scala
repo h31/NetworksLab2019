@@ -3,6 +3,7 @@ import java.nio.charset.StandardCharsets
 
 import cats.effect.IO
 import fs2._
+import cats.syntax.flatMap._
 
 object Rpc {
 
@@ -11,24 +12,21 @@ object Rpc {
   def upload(path: File, fileName: File)(channel: SafeUdpChannel, fs: FileSystem): IO[Unit] = {
     def validate(p: Packet[Type]): IO[Unit] =
       p match {
-        case Packet(ErrorType(err, msg), _) =>
-          IO.raiseError(new RuntimeException(s"error from server: ${err.info}, $msg"))
-        case Packet(Data(_, data), _) =>
+        case Packet(Data(Block(number), data), metadata) =>
           (fs.writeChunk(path, data) ++ Stream.eval {
             if (haltCriteria(data.getBytes(StandardCharsets.UTF_8).length)) IO.unit
-            else loop
+            else channel.send(Packet(Acknowledgment(Block((number + 1).toShort)), metadata)) >> loop
           }).compile.drain
         case _ => IO.raiseError(new RuntimeException("Wrong type of package"))
       }
 
     def loop: IO[Unit] =
       for {
-        _      <- channel.send(Packet(RRQ(fileName), Metadata()))
         packet <- channel.receive
         res    <- validate(packet)
       } yield res
 
-    loop
+    channel.send(Packet(RRQ(fileName), Metadata())) >> loop
   }
 
   def download(file: File)(channel: SafeUdpChannel, fs: FileSystem): IO[Unit] = {
