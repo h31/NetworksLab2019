@@ -67,8 +67,11 @@ int readN(int socket, void *buf, int length);
 
 void getListOfNews(char *buffer,clientSocket *clientStruct);
 
-int sockfd;
+void getNews(char *buffer, clientSocket *clientStruct);
+
+int sockfd, packet_length;
 pthread_mutex_t mutex;
+uint16_t opcode;
 
 int main(int argc, char *argv[]) {
     //инициализация
@@ -177,7 +180,6 @@ void sigHandler(int sig) {
 //поток каждого нового клиента, слушаем
 void *newClientFunc(void *clientStruct) {
     char *buffer;
-    uint16_t opcode;
     int sz;
     while (1) {
         //для его длины
@@ -197,8 +199,11 @@ void *newClientFunc(void *clientStruct) {
             case GET_LIST_OF_NEWS:
                 getListOfNews(buffer, (clientSocket *) clientStruct);
                 break;
+            case GET_NEWS:
+                getNews(buffer,(clientSocket *) clientStruct);
+                break;
             default:
-                printf("что-то другое пришло");
+                printf("Error\n");
                 break;
         }
         free(buffer);
@@ -207,10 +212,10 @@ void *newClientFunc(void *clientStruct) {
 }
 
 void getListOfTopics(clientSocket *clientStruct) {
-    int packet_length = 6 + topicsLength;
+    packet_length = 6 + topicsLength;
     char packet[packet_length];
     bzero(packet, packet_length);
-    uint16_t opcode = LIST_OF_TOPICS;
+    opcode = LIST_OF_TOPICS;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
 
@@ -265,6 +270,12 @@ void addTopic(char *buffer, clientSocket *clientStruct) {
     ack(clientStruct, 1);
 }
 
+void findTopic(){
+    //перенести сюда
+    //динамические массивы
+    //чтение и запись в файлы?
+}
+
 void getListOfNews(char *buffer, clientSocket *clientStruct) {
     char *newsTopic = buffer + 2;
     //"вечно" первая тема
@@ -276,15 +287,14 @@ void getListOfNews(char *buffer, clientSocket *clientStruct) {
     }
     if(tmpTopic == NULL){
         error(clientStruct, 1, "Отсутствие новостной темы");
-
         pthread_mutex_unlock(&mutex);
         return;
     }
 
-    int packet_length = 6 + tmpTopic->headers_length+ strlen(tmpTopic->topic_name) + 1;
+    packet_length = 6 + tmpTopic->headers_length+ strlen(tmpTopic->topic_name) + 1;
     char packet[packet_length];
     bzero(packet, packet_length);
-    uint16_t opcode = LIST_OF_NEWS;
+    opcode = LIST_OF_NEWS;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
     memcpy(packet + 6, tmpTopic->topic_name, strlen(tmpTopic->topic_name) + 1);
@@ -303,6 +313,46 @@ void getListOfNews(char *buffer, clientSocket *clientStruct) {
     pthread_mutex_unlock(&mutex);
 }
 
+void getNews(char *buffer, clientSocket *clientStruct) {
+    char *newsTopic = buffer + 2;
+    //"вечно" первая тема
+    topic *tmpTopic = firstTopic;
+    pthread_mutex_lock(&mutex);
+    while (tmpTopic != NULL && strcmp(tmpTopic->topic_name, newsTopic) != 0) {
+        tmpTopic = tmpTopic->next;
+    }
+    if (tmpTopic == NULL) {
+        error(clientStruct, 1, "Отсутствие новостной темы");
+        pthread_mutex_unlock(&mutex);
+        return;
+    }
+
+    char *newsHeader = buffer + 2 + strlen(newsTopic) + 1;
+    news *tmpNews = tmpTopic->first_news;
+    while (tmpNews != NULL && strcmp(tmpNews->news_header, newsHeader) != 0) {
+        tmpNews = tmpNews->next;
+    }
+    if (tmpNews == NULL) {
+        error(clientStruct, 2, "Отсутствие новости с данным заголовком");
+        pthread_mutex_unlock(&mutex);
+        return;
+    }
+    packet_length =
+            6 + strlen(tmpTopic->topic_name) + 1 + strlen(tmpNews->news_header) + 1 + strlen(tmpNews->news_body) + 1;
+    char packet[packet_length];
+    bzero(packet, packet_length);
+    opcode = NEWS;
+    memcpy(packet, &packet_length, 4);
+    memcpy(packet + 4, &opcode, 2);
+    memcpy(packet + 6, tmpTopic->topic_name, strlen(tmpTopic->topic_name) + 1);
+    memcpy(packet + strlen(tmpTopic->topic_name) + 1, tmpNews->news_header, strlen(tmpNews->news_header) + 1);
+    memcpy(packet + strlen(tmpTopic->topic_name) + 1 + strlen(tmpNews->news_header)+1, tmpNews->news_body, strlen(tmpNews->news_body) + 1);
+    pthread_mutex_unlock(&mutex);
+    if (write(clientStruct->socket, packet, packet_length) <= 0) {
+        closeSocket(clientStruct);
+    }
+}
+
 void addNews(char *buffer, clientSocket *clientStruct) {
     char *newsTopic = buffer + 2;
     //"вечно" первая тема
@@ -314,7 +364,6 @@ void addNews(char *buffer, clientSocket *clientStruct) {
     }
     if(tmpTopic == NULL){
         error(clientStruct, 1, "Отсутствие новостной темы");
-
         pthread_mutex_unlock(&mutex);
         return;
     }
@@ -334,9 +383,9 @@ void addNews(char *buffer, clientSocket *clientStruct) {
         tmpTopic->first_news = newNews;
     } else {
         while (tmpNews->next != NULL) {
-            if (strcmp(tmpTopic->topic_name, buffer+(2+ strlen(newsTopic)+1)) == 0) {
+            if (strcmp(tmpNews->news_header, buffer+(2+ strlen(newsTopic)+1)) == 0) {
                 //сообщение об ошибке
-                error(clientStruct, 3, "Добавление существующей новостной темы");
+                error(clientStruct, 4, "Добавление новости с существующим заголовком");
                 free(newNews);
                 pthread_mutex_unlock(&mutex);
                 return;
@@ -354,9 +403,9 @@ void addNews(char *buffer, clientSocket *clientStruct) {
 }
 
 void error(clientSocket *clientStruct, uint16_t type, char *error) {
-    int packet_length = 9 + strlen(error);
+    packet_length = 9 + strlen(error);
     char packet[packet_length];
-    uint16_t opcode = ERROR;
+    opcode = ERROR;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
     memcpy(packet + 6, &type, 2);
@@ -368,9 +417,9 @@ void error(clientSocket *clientStruct, uint16_t type, char *error) {
 }
 
 void ack(clientSocket *clientStruct, uint16_t type) {
-    int packet_length = 8;
+    packet_length = 8;
     char packet[packet_length];
-    uint16_t opcode = ACK;
+    opcode = ACK;
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
     memcpy(packet + 6, &type, 2);
