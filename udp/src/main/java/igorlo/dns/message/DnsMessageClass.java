@@ -96,9 +96,6 @@ public class DnsMessageClass implements DnsMessage {
                     MessageUtils.isBitSet(fullMessage[fromPointer + bytesRead], 0)
                             && MessageUtils.isBitSet(fullMessage[fromPointer + bytesRead], 1)
             ) {
-//                currentName.append(getDomainNameFromPointer(
-//                        intFromTwoBytes((byte) (fullMessage[fromPointer] - ADDRESS_OFFSET), fullMessage[fromPointer + 1])
-//                ).component1());
                 currentName.append(getDomainNameFromPointer(
                         MessageUtils.intFromSignedByte(fullMessage[fromPointer + bytesRead + 1])
                 ).component1());
