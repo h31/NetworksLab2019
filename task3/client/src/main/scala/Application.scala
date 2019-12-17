@@ -26,13 +26,15 @@ object Application extends IOApp {
                 case "upload" =>
                   sourceAndPath.flatMap {
                     case (name, path) =>
-                      Rpc.upload(new File(path), new File(name))(channel, fs)
+                      Rpc.upload(new File(path), new File(name))(channel, fs) >>
+                        IO(logger.info("Uploaded succesfully"))
                   } >> readLoop
                 case "download" =>
-                  getStr().flatMap(str => Rpc.download(new File(str))(channel, fs)) >> readLoop
+                  getStr().flatMap(str => Rpc.download(new File(str))(channel, fs)) >> IO(
+                      logger.info("Downloaded succesfully")
+                  ) >> readLoop
                 case _ => readLoop
               }
-
             readLoop
           }
       }

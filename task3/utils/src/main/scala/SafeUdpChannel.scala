@@ -3,6 +3,7 @@ import java.net.{DatagramPacket, DatagramSocket}
 import Codec.{Decoder, Encoder}
 import cats.effect.{IO, Resource}
 import cats.syntax.functor._
+import cats.syntax.flatMap._
 import org.slf4j.Logger
 
 /**
@@ -33,6 +34,7 @@ class SafeUdpChannel private (socket: DatagramSocket)(implicit logger: Logger) e
         IO(socket.receive(datagram)).as(datagram)
       }
       .map(PacketHandler.handle)
+      .flatTap(x => IO(logger.info(x.toString)))
 
   def send[S <: Type](tftpPacket: Packet[S])(implicit e: Encoder[S]): IO[Unit] =
     IO {

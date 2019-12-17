@@ -17,6 +17,8 @@ object Rpc {
             if (haltCriteria(data.getBytes(StandardCharsets.UTF_8).length)) IO.unit
             else channel.send(Packet(Acknowledgment(Block((number + 1).toShort)), metadata)) >> loop
           }).compile.drain
+        case Packet(ErrorType(err, msg), _) =>
+          IO.raiseError(new RuntimeException(s"error from server: ${err.info}, $msg"))
         case _ => IO.raiseError(new RuntimeException("Wrong type of package"))
       }
 
@@ -52,12 +54,11 @@ object Rpc {
 
     def loop: IO[Unit] =
       for {
-        _      <- channel.send(Packet(WRQ(file), Metadata()))
         packet <- channel.receive
         res    <- validate(packet)
       } yield res
 
-    loop
+    channel.send(Packet(WRQ(file), Metadata())) >> loop
   }
 
 }
