@@ -272,8 +272,7 @@ void addTopic(char *buffer, clientSocket *clientStruct) {
 
 void findTopic(){
     //перенести сюда
-    //динамические массивы
-    //чтение и запись в файлы?
+    //разделить разбор пакта и поиск по структуре
 }
 
 void getListOfNews(char *buffer, clientSocket *clientStruct) {
@@ -326,8 +325,7 @@ void getNews(char *buffer, clientSocket *clientStruct) {
         pthread_mutex_unlock(&mutex);
         return;
     }
-
-    char *newsHeader = buffer + 2 + strlen(newsTopic) + 1;
+    char *newsHeader = buffer + (2 + strlen(newsTopic) + 1);
     news *tmpNews = tmpTopic->first_news;
     while (tmpNews != NULL && strcmp(tmpNews->news_header, newsHeader) != 0) {
         tmpNews = tmpNews->next;
@@ -345,8 +343,8 @@ void getNews(char *buffer, clientSocket *clientStruct) {
     memcpy(packet, &packet_length, 4);
     memcpy(packet + 4, &opcode, 2);
     memcpy(packet + 6, tmpTopic->topic_name, strlen(tmpTopic->topic_name) + 1);
-    memcpy(packet + strlen(tmpTopic->topic_name) + 1, tmpNews->news_header, strlen(tmpNews->news_header) + 1);
-    memcpy(packet + strlen(tmpTopic->topic_name) + 1 + strlen(tmpNews->news_header)+1, tmpNews->news_body, strlen(tmpNews->news_body) + 1);
+    memcpy(packet + 6 + strlen(tmpTopic->topic_name) + 1, tmpNews->news_header, strlen(tmpNews->news_header) + 1);
+    memcpy(packet + 6 + strlen(tmpTopic->topic_name) + 1 + strlen(tmpNews->news_header)+1, tmpNews->news_body, strlen(tmpNews->news_body) + 1);
     pthread_mutex_unlock(&mutex);
     if (write(clientStruct->socket, packet, packet_length) <= 0) {
         closeSocket(clientStruct);
