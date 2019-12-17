@@ -29,14 +29,12 @@ class DnsClient {
             commandFirst = scanner.nextLine()
             val dnsQuerry = DnsMessageBuilder()
                     .setRandomId()
-                    .addRequest(Request(commandFirst, 2, 1))
+                    .addRequestTo(commandFirst)
                     .build()
             colorPrint("--------SENT--------\n", TextColors.ANSI_CYAN)
             colorPrint(dnsQuerry.toString(), TextColors.ANSI_CYAN)
             colorPrint("--------------------\n", TextColors.ANSI_CYAN)
             UdpExchange.sendUdp(dnsQuerry.rawMessage, UdpExchange.GOOGLE_DNS_ADDRESS, socket, UdpExchange.DNS_PORT)
-//            UdpExchange.sendUdp(dnsQuerry.rawMessage, UdpExchange.A_ROOT_SERVER_ADDRESS, socket, UdpExchange.DNS_PORT)
-//            UdpExchange.sendUdp(dnsQuerry.rawMessage, Inet4Address.getByAddress(byteArrayOf(1, 97, MessageUtils.unsignedByte(192), 42)), socket, UdpExchange.DNS_PORT)
         }
     }
 
