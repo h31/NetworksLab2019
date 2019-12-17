@@ -1,294 +1,273 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-
 #include <netdb.h>
 #include <netinet/in.h>
 #include <unistd.h>
-#include <pthread.h>
-
 #include <string.h>
+#include <pthread.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <asm/errno.h>
 #include <errno.h>
+#include <signal.h>
 
-#define MAX_MESSAGE_SIZE 5000
+void handleWriting(void *arg);
+void handleReading(void *arg);
+void initConnection();
+void handleConnection(uint16_t portNumber, struct hostent *server);
+void shutdownClient();
 
-int sendContent(int destination, char *content);
+int mainSocket;
 
-void *readingMessages(void *args);
-
-void *sendingMessages(void *arg);
-
-int readN(int socket, char *buf, int length);
-
-void removeNewLines(char *str);
-
-//Сокет для соединения с сервером
-int sockfd;
-
-/*
- * Основная функция для старта клиента
- * */
 int main(int argc, char *argv[]) {
-
-    printf("Client started with PID = %d\n", getpid());
-    //Номер порта
+    //Порт, на который мы будем подключаться
     uint16_t portNumber;
-    //Адрес сервера
-    struct sockaddr_in serverAddress;
-    //Информация о сервере
+    //Сущность сервера
     struct hostent *server;
     //Имя пользователя
-    char *nickname;
+    char *userName;
+    size_t temp;
+    //Размер буфера
+    uint32_t bufferSize;
+    //Структура POLL, с помощью которого мы будем общаться с сервером
+    struct pollfd fdreed;
 
-    struct pollfd fdRead;
-
-    //Проверка на количество аргументов
-    if (argc != 4) {
-        fprintf(stderr, "usage %s hostname port nickname\n", argv[0]);
-        getchar(); exit(EXIT_FAILURE); 
+    if (argc != 3) {
+        fprintf(stderr, "Неправильные аргументы: %s [хост] [порт]\n", argv[0]);
+        exit(0);
     }
 
-    //Преобразуем порт из строки в int
+    //Получаем сервер по аргументу из консоли (адресу)
+    server = gethostbyname(argv[1]);
+    if (server == NULL) {
+        fprintf(stderr, "Ошибка подключения к хосту\n");
+        exit(0);
+    }
+
+    if (signal(SIGINT, shutdownClient) == SIG_ERR) {
+        perror("Ошибка в sigint_handler");
+        exit(1);
+    }
+
     portNumber = (uint16_t) atoi(argv[2]);
 
-    //Открываем сокет
-    printf("Открываю сокет\n");
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    //Инициализируем всё что нужно для подключения
+    initConnection();
 
-    //Проверяем корректно ли открылся сокет
-    if (sockfd < 0) {
-        perror("ERROR opening socket");
-        getchar(); exit(EXIT_FAILURE); 
+    //Устанавливаем подключение
+    handleConnection(portNumber, server);
+
+    //get name from console
+    while (1) {
+        userName = NULL;
+        temp = 0;
+        printf("Введите ваше имя:");
+        bufferSize = getline(&userName, &temp, stdin);
+        if (bufferSize <= 21) break;
+        else printf("Сликом длинное имя! Максимум 20 символов.\n");
+    }
+    buildCorrectString(userName);
+    printf("Имя: %s\n", userName);
+
+    //send name size
+    if (write(mainSocket, &bufferSize, sizeof(int)) < 0) {
+        perror("Ошибка работы с сокетом");
+        exit(1);
     }
 
-    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) < 0) {
-        perror("ERROR making socket nonblock");
-        getchar(); exit(EXIT_FAILURE); 
+    //send name
+    if (write(mainSocket, userName, bufferSize) < 0) {
+        perror("Ошибка работы с сокетом");
+        exit(1);
+    }
+    printf("Напишите /exit чтобы выйти из чата\n\n");
+
+    fdreed.fd = mainSocket;
+    fdreed.events = POLLIN;
+
+    pthread_t sendThread;
+    if (pthread_create(&sendThread, NULL, (void *) handleWriting, &mainSocket) != 0) {
+        printf("Ошибка создания потока\n");
+        exit(1);
     }
 
-    //Получаем информацию о хосте с помощью адреса
-    printf("Получаю информацию о хосте\n");
-    server = gethostbyname(argv[1]);
-
-    //Проверяем удалось ли получить информацию о хосте
-    if (server == NULL) {
-        fprintf(stderr, "ERROR, no such host\n");
-        getchar(); exit(EXIT_FAILURE); 
+    pthread_t readingThread;
+    if (pthread_create(&readingThread, NULL, (void *) handleReading, &fdreed) != 0) {
+        printf("Ошибка создания потока\n");
     }
 
-    //Читаем имя пользователя из аргумента
-    printf("Считываю никнейм\n");
-    nickname = argv[3];
+    pthread_join(sendThread, NULL);
+    pthread_join(readingThread, NULL);
+    return 0;
+}
 
-    //Проверяем не пустое ли имя пользователя
-    if (strcmp(nickname, "") == 0) {
-        fprintf(stderr, "ERROR, nickname is empty\n");
-        getchar(); exit(EXIT_FAILURE); 
+//initializing client nonblock socket
+void initConnection() {
+    mainSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (mainSocket < 0) {
+        perror("Ошибка открытия сокета");
+        exit(1);
     }
 
-    //На всякий случай обнуляем адрес сервера
+    if (fcntl(mainSocket, F_SETFL, O_NONBLOCK) < 0) {
+        perror("Ошибка создания неблокирующего сокета");
+        exit(1);
+    }
+}
+
+//initializing connection
+void handleConnection(uint16_t portNumber, struct hostent *server) {
+    struct sockaddr_in serverAddress;
     bzero((char *) &serverAddress, sizeof(serverAddress));
-    //Задаём семейство адресов сервера
     serverAddress.sin_family = AF_INET;
-    //Копируем адрес в переменную сокета
-    printf("Копирую адрес\n");
     bcopy(server->h_addr, (char *) &serverAddress.sin_addr.s_addr, (size_t) server->h_length);
-    //Определяем сетевой порядок байт для порта
     serverAddress.sin_port = htons(portNumber);
 
-    printf("Подключаюсь к серверу\n");
-    //Подключаемся к серверу
-
-    while (connect(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
-        //Не представляю как это работает
-        //То, что ниже - не работает
-    }
-
-//    int errcode;
-//    for (;;) {
-//        errcode = connect(sockfd, (struct sockaddr *) &serverAddress, sizeof(serverAddress));
-//        if (errcode > 0){
-//            break;
-//        }
-//        if (errcode == EINPROGRESS) {
-//            continue;
-//        } else {
-//            perror("ERROR connecting");
-//            getchar();
-//            exit(EXIT_FAILURE);
-//        }
-//    }
-
-    fdRead.fd = sockfd;
-    fdRead.events = POLLIN;
-
-    //Первым делом посылаем имя пользователя
-    sendContent(sockfd, nickname);
-
-    //Создаём поток на чтение сообщений
-    pthread_t tid_read;
-    if (pthread_create(&tid_read, NULL, (void *) readingMessages, &fdRead) != 0) {
-        printf("Read thread has not created");
-    }
-
-    //создаём поток на отправку сообщений
-    pthread_t tid_send;
-    if (pthread_create(&tid_send, NULL, (void *) sendingMessages, &sockfd) != 0) {
-        printf("Send thread has not created");
-    }
-
-    //джойним потоки и заканчиваем работу
-    pthread_join(tid_read, NULL);
-    pthread_join(tid_send, NULL);
-    return EXIT_SUCCESS;
-}
-
-//Удаляет переносы строк из строки - это фиксит некоторые проблемы, возникшие в ходе работы
-void removeNewLines(char *str) {
-    for (int i = 0; i < (int) strlen(str); i++) {
-        if (str[i] == '\n') {
-            str[i] = '\0';
-            break;
+    while (connect(mainSocket, (struct sockaddr *) &serverAddress, sizeof(serverAddress)) < 0) {
+        if (errno != EINPROGRESS) {
+            perror("Ошибка при подключении");
+            exit(1);
         }
     }
 }
 
-//Функция для запуска в отдельном потоке, берёт пользовательский ввод и отправляет сообщения на сервер
-void *sendingMessages(void *arg) {
-    //Достаём сокет из аргументов
-    int writeSocket = *(int *) arg;
-    //Создаём буфер под наши сообщения
-    char *writeBuffer;
-    //Заводим переменную под длину буфера
-    size_t bufferLength;
-
-    while (1) {
-        //Сначала буфер пустой
-        writeBuffer = NULL;
-        bufferLength = 0;
-        //Читаем из консоли ввод пользователя, длина может быть любой
-        getline(&writeBuffer, &bufferLength, stdin);
-        //Отправляем контент на сервер
-        sendContent(writeSocket, writeBuffer);
-        //Удаляем из введённой строки лишние переносы
-        removeNewLines(writeBuffer);
-        //Сравниваем с командой выхода. Если совпадает - собственно вырубаем клиент
-        if (strcmp(writeBuffer, "/exit") == 0) {
-            printf("Goodbye\n");
-            close(writeSocket);
-            exit(EXIT_SUCCESS);
-        }
-    }
-}
-
-//Функция для запуска в потоке на чтение сообщений с сервера.
-void *readingMessages(void *arg) {
-    struct pollfd fdRead = *(struct pollfd *) arg;
-    int operationCode;
+//thread function for sending
+void handleWriting(void *arg) {
+    int socket = *(int *) arg;
     char *buffer;
-    size_t bufferSize;
+    uint32_t bufferSize;
+    size_t temp;
 
-    //Цикл в котором мы читаем входящие сообщения
     while (1) {
-        printf("Checking for messages");
-        operationCode = poll(&fdRead, 1, -1);
-        if (operationCode < 0) {
-            printf("Error using POLL!\n");
-            getchar(); exit(EXIT_FAILURE);
+        while (1) {
+            buffer = NULL;
+            temp = 0;
+            printf("Ввод: ");
+            bufferSize = getline(&buffer, &temp, stdin);
+            if (bufferSize > 1) break;
         }
-        if (fdRead.revents == 0) {
+        buildCorrectString(buffer);
+
+        //send message size
+        if (write(socket, &bufferSize, sizeof(int)) < 0) {
+            if (errno != EWOULDBLOCK) {
+                perror("Ошибка работы с сокетом");
+                break;
+            }
+        }
+
+        //send message
+        if (write(socket, buffer, bufferSize) < 0) {
+            if (errno != EWOULDBLOCK) {
+                perror("Ошибка работы с сокетом");
+                break;
+            }
+        }
+
+        buildCorrectString(buffer);
+        if (strcmp(buffer, "/exit") == 0) {
+            printf("Отключаюсь.\n");
+            shutdownClient();
+        }
+    }
+
+    shutdownClient();
+}
+
+//thread function for reading
+void handleReading(void *arg) {
+    struct pollfd fdreed = *(struct pollfd *) arg;
+    int opperationCode;
+    char *buffer;
+    uint32_t bufferSize;
+    while (1) {
+        opperationCode = poll(&fdreed, 1, -1);
+        if (opperationCode < 0) {
+            perror("Ошибка при использовании poll");
+            exit(1);
+        }
+
+        if (fdreed.revents == 0) {
             continue;
         }
-        if (fdRead.revents != POLLIN) {
-            printf("Unexpected number in revents");
-            getchar(); exit(EXIT_FAILURE); 
+
+        if (fdreed.revents != POLLIN) {
+            printf("Некорректное состояние revents");
+            exit(1);
         }
 
-        //Размер сообщения
+        //get size of message
         bufferSize = 0;
-        //Читаем сначала длину сообщения в переменную size
-        operationCode = read(fdRead.fd, &bufferSize, sizeof(int));
-        if (operationCode < 0) {
-            if (errno != EWOULDBLOCK){
-                printf("Error reading from socket!\n");
-                getchar(); exit(EXIT_FAILURE);
-            }
-        }
-        if (operationCode == 0) {
-            printf("Server is now offline.");
-            exit(EXIT_SUCCESS);
-        }
-
-        operationCode = poll(&fdRead, 1, -1);
-        if (operationCode < 0) {
-            printf("Error using POLL!\n");
-            getchar(); exit(EXIT_FAILURE); 
-        }
-        if (fdRead.revents != POLLIN) {
-            printf("Unexpected number in revents");
-            getchar(); exit(EXIT_FAILURE); 
-        }
-
-        //Выделяем память под полученную длину
-        buffer = (char *) malloc(bufferSize);
-        //Читаем в этот буфер заранее известное кол-во данных
-        operationCode = readN(fdRead.fd, buffer, bufferSize);
-        if (operationCode < 0) {
+        opperationCode = read(fdreed.fd, &bufferSize, sizeof(int));
+        if (opperationCode < 0) {
             if (errno != EWOULDBLOCK) {
-                printf("Error reading from socket!\n");
-                getchar(); exit(EXIT_FAILURE);
+                perror("Ошибка чтения длины сообщения");
+                shutdownClient();
             }
         }
-        if (operationCode == 0) {
-            printf("Server is now offline.");
-            exit(EXIT_SUCCESS);
+        if (opperationCode == 0) {
+            printf("\rСервер отключился\n");
+            shutdownClient();
         }
 
-        printf("\n%s\n", buffer);
+        //waiting for message income
+        opperationCode = poll(&fdreed, 1, -1);
+        if (opperationCode < 0) {
+            perror("Ошибка при использовании poll");
+            exit(1);
+        }
+        if (fdreed.revents != POLLIN) {
+            printf("Некорректное состояние revents");
+            exit(1);
+        }
+
+        //get message
+        buffer = (char *) malloc(bufferSize);
+        if (readNBytes(fdreed.fd, buffer, bufferSize) < 0) {
+            if (errno != EWOULDBLOCK) {
+                perror("Ошибка чтения сообщения");
+                shutdownClient();
+            }
+        }
+        printf("\r");
+        printf("%s", buffer);
+
+        printf("Ввод: ");
         fflush(stdout);
         free(buffer);
     }
 }
 
-//Читаем читаем читаем... пока не прочитаем нужное кол-во данных
-int readN(int socket, char *buf, int length) {
-    int result = 0;
-    int readedBytes = 0;
-    int sizeMsg = length;
-    while (sizeMsg > 0) {
-        readedBytes = read(socket, buf + result, sizeMsg);
-        if (readedBytes <= 0) {
-            return -1;
-        }
-        result += readedBytes;
-        sizeMsg -= readedBytes;
-    }
-    return result;
+void shutdownClient() {
+    close(mainSocket);
+    printf("\n");
+    exit(EXIT_SUCCESS);
 }
 
-//Аналогично readMessage, только операция отправки текста
-int sendContent(int destination, char *content) {
-    //Код операций
-    int operationCode;
-    printf("Отправляю длину сообщения\n");
-    //Записываем в size длинну сообщения, которую хотим отправить
-    int size = strlen(content);
-    //Отправляем и сохраняем код операции в operationCode
-    operationCode = write(destination, &size, sizeof(int));
-    //Проверяем всё ли в порядке с нашей записью
-    if (operationCode <= 0) {
-        printf("Ошибка передачи\n");
+void buildCorrectString(char *originString) {
+    for (int i = 0; i < (int) strlen(originString); i++) {
+        if (originString[i] == '\n') {
+            originString[i] = '\0';
+            break;
+        }
     }
-    printf("Отправляю сообщение\n");
-    //Теперь вслед передаём само сообщение
-    operationCode = write(destination, content, size);
-    //Проверяем всё ли нормально прошло
-    if (operationCode <= 0) {
-        printf("Ошибка передачи\n");
+}
+
+int readNBytes(int fd, char *buffer, int length) {
+    int readSize = 0;
+    int res;
+    while (readSize < length) {
+        res = read(fd, buffer + readSize, length);
+        if (res == 0) {
+            readSize = res;
+            break;
+        }
+        if (res < 0) {
+            perror("Ошибка чтения из сокета");
+            exit(1);
+        }
+        length -= res;
+        readSize += res;
     }
-    //Возвращаем код операции
-    return operationCode;
+    return readSize;
 }
