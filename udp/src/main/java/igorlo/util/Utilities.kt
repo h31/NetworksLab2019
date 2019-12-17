@@ -1,13 +1,11 @@
 package igorlo.util
 
 import igorlo.TextColors
-import igorlo.dns.message.MessageUtils
 import java.lang.NumberFormatException
 import java.math.BigDecimal
 import java.util.*
 import javax.script.ScriptEngineManager
 import javax.script.ScriptException
-import kotlin.experimental.and
 
 object Utilities {
 
@@ -96,19 +94,19 @@ object Utilities {
         return convertedExpression
     }
 
-    fun ipAddressToString(ipAddress: ByteArray): String {
-        val builder = StringBuilder()
-                .append("IP[")
-                .append(MessageUtils.intFromSignedByte(ipAddress[0]))
-                .append(".")
-                .append(MessageUtils.intFromSignedByte(ipAddress[1]))
-                .append(".")
-                .append(MessageUtils.intFromSignedByte(ipAddress[2]))
-                .append(".")
-                .append(MessageUtils.intFromSignedByte(ipAddress[3]))
-                .append("]")
-        return builder.toString()
-    }
+//    fun ipAddressToString(ipAddress: ByteArray): String {
+//        val builder = StringBuilder()
+//                .append("IP[")
+//                .append(MessageUtils.intFromSignedByte(ipAddress[0]))
+//                .append(".")
+//                .append(MessageUtils.intFromSignedByte(ipAddress[1]))
+//                .append(".")
+//                .append(MessageUtils.intFromSignedByte(ipAddress[2]))
+//                .append(".")
+//                .append(MessageUtils.intFromSignedByte(ipAddress[3]))
+//                .append("]")
+//        return builder.toString()
+//    }
 
     data class Command(val mnemonic: String, val description: String)
 }
