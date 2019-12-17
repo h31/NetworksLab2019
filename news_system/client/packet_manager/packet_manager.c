@@ -74,7 +74,7 @@ void* create_get_news_request_packet_(uint32_t *packet_length, char *topic, char
     memcpy(packet + SIZE_OF_PACKET_LENGTH + SIZE_OF_PACKET_TYPE, topic, strlen(topic));
     memcpy(packet + SIZE_OF_PACKET_LENGTH + SIZE_OF_PACKET_TYPE + strlen(topic), &zero_byte, SIZE_OF_PACKET_ZERO_BYTE);
     memcpy(packet + SIZE_OF_PACKET_LENGTH + SIZE_OF_PACKET_TYPE + strlen(topic) + SIZE_OF_PACKET_ZERO_BYTE,
-           &news_topic,
+           news_topic,
            strlen(news_topic)
     );
     memcpy(packet + SIZE_OF_PACKET_LENGTH + SIZE_OF_PACKET_TYPE + strlen(topic) + SIZE_OF_PACKET_ZERO_BYTE +
