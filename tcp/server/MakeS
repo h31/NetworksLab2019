@@ -1,0 +1,2 @@
+all: 
+	cc -Wall -Wextra sA.c clList.c -pthread -o sA.o 
