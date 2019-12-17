@@ -1,4 +1,4 @@
-package igorlo.dns.message;
+package igorlo.util;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

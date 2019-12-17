@@ -1,8 +1,7 @@
 package igorlo.dns.message;
 
+import igorlo.util.MessageUtils;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class MessageUtilsTest {
 

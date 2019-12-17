@@ -1,6 +1,5 @@
 package igorlo.util
 
-import igorlo.dns.message.MessageUtils
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.Inet4Address

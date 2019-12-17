@@ -1,13 +1,11 @@
 package igorlo.util
 
 import igorlo.TextColors
-import igorlo.dns.message.MessageUtils
 import java.lang.NumberFormatException
 import java.math.BigDecimal
 import java.util.*
 import javax.script.ScriptEngineManager
 import javax.script.ScriptException
-import kotlin.experimental.and
 
 object Utilities {
 
