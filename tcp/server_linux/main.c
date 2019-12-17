@@ -103,7 +103,7 @@ void shutdownServer();
 
 //Указатели на конец и начало связного списка, в котором будут хранится наши клиенты
 ClientLinkedList *first, *last;
-//Сокет для приёма новых клиентов
+//Сокет сервера
 int mainSocket;
 //Количество дескрипторов в нашем poll
 int pollSize;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[]) {
     fds = (struct pollfd *) malloc(sizeof(struct pollfd));
     initServerPoll();
 
-    //Цикл, в котором мы принимаем новых клиентов
+    //Цикл, в котором мы принимаем новых клиентов и обрабатываем сообщения
     while (1) {
         operationCode = poll(fds, pollSize, -1);
         if (operationCode < 0) {
