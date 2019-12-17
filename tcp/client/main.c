@@ -41,9 +41,19 @@ void *terminal(void *args) {
 }
 
 void start_client(int argc, char *argv[]) {
-    socket_descriptor serv_addr;
 
+    socket_descriptor serv_addr;
     uint16_t portno = exclude_cliport(argc, argv);
+
+    printf("Please enter your name: \n");
+
+    char name[CLIENT_NAME_SIZE];
+    bzero(name, CLIENT_NAME_SIZE);
+    fgets(name, (int) CLIENT_NAME_SIZE, stdin);
+    replace(name, CLIENT_NAME_SIZE);
+
+    printf("Thank you. If you want to send a message type `message` \n");
+
     int sockfd = create_tcpsocket();
     host_description *server = gethostbyname(argv[1]);
 
@@ -61,12 +71,7 @@ void start_client(int argc, char *argv[]) {
         raise_error(CONNECT_ERROR);
     }
 
-    printf("Please enter your name: \n");
-
-    /* firstly send client name */
-    sendm(sockfd, CLIENT_NAME_SIZE);
-
-    printf("Thank you. If you want to send a message type `message` \n");
+    send_message(sockfd, name);
 
     Client *this = empty_client(&sockfd);
 
