@@ -27,8 +27,6 @@ object StateMachine {
           cache.add(met.port -> rrq.file) >> fs
             .readChunk(rrq.file, Block(1))
             .map(data => Packet(Data(Block(1), data), met))
-            .compile
-            .lastOrError
             .flatMap(channel.send[Data])
         }
 
@@ -45,12 +43,11 @@ object StateMachine {
         check(met.port)(channel.send(Packet(ErrorType(NoSuchUser, "no such user is session cache"), met))) { file =>
           fs.readChunk(file, ack.block)
             .map(data => Packet(Data(ack.block, data), met))
-            .compile
-            .lastOrError
             .flatMap(channel.send[Data])
         }
       case Packet(err: ErrorType, met) => channel.send(Packet(err, met))
-      case _                           => IO.raiseError(new RuntimeException("Internal error. Should not be!"))
+      case _ =>
+        IO.raiseError(new RuntimeException("Internal error. Should not be!"))
     }
   }
 }

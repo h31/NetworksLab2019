@@ -40,8 +40,8 @@ object IOType {
 
   def decode[P <: IOType](bytes: Array[Byte])(fn: ((File, Mode)) => P): Decoded[P] = {
     val bf       = Buffer.wrapUnsafe(bytes)
-    val fileName = defaultDir / bf.takeString
-    val mode     = bf.takeString
+    val fileName = defaultDir / bf.takeUtnilZero
+    val mode     = bf.takeUtnilZero
 
     Mode.modes
       .find(_.value == mode)
@@ -79,20 +79,20 @@ object WRQ {
 }
 
 case class Block(number: Short)
-case class Data(block: Block, data: String) extends Type { val opcode = 3 }
+case class Data(block: Block, data: Array[Byte]) extends Type { val opcode = 3 }
 object Data {
   implicit val encoder: Encoder[Data] = (msg: Data) => {
     val bf = Buffer(2 + 2 + msg.data.length)
     bf.putNumber(msg.opcode)
     bf.putNumber(msg.block.number)
-    bf.putString(msg.data)
+    bf.putData(msg.data)
 
     bf.array
   }
   implicit val decoder: Decoder[Data] = new Decoder[Data] {
     override def decode[U >: Data](bytes: Array[Byte]): Decoded[U] = {
       val bf = Buffer.wrapUnsafe(bytes)
-      Data(Block(bf.takeNumber), bf.takeString).asRight
+      Data(Block(bf.takeNumber), bf.takeData).asRight
     }
   }
 }
@@ -169,7 +169,7 @@ object ErrorType {
       errors
         .find(_.value == number)
         .map { errorCode =>
-          ErrorType(errorCode, bf.takeString)
+          ErrorType(errorCode, bf.takeUtnilZero)
         } match {
         case Some(v) => v.asRight
         case None    => new RuntimeException("There is no such value").asLeft

@@ -16,8 +16,16 @@ class Buffer private (bf: ByteBuffer) {
 
   def takeString: String = {
     val pos = bf.position()
+    val res = bf
+      .array()
+      .slice(pos, bf.capacity() + 1)
+    new String(res, UTF_8)
+  }
+
+  def takeUtnilZero: String = {
+    val pos = bf.position()
     val res = bf.array
-      .slice(pos, bf.capacity)
+      .slice(pos, bf.capacity + 1)
       .takeWhile(_ != 0)
     bf.position(pos + res.length + 1)
     new String(res, UTF_8)
@@ -27,13 +35,23 @@ class Buffer private (bf: ByteBuffer) {
 
   def takeNumber: Short = bf.getShort()
 
-  def putNumber(opcode: Short): Unit = bf.putShort(opcode)
+  def putNumber(opcode: Short): Unit    = bf.putShort(opcode)
+  def putData(array: Array[Byte]): Unit = bf.put(array)
+  def takeData: Array[Byte] =
+    bf.array().slice(bf.position(), bf.capacity() + 1)
 
   def putString(message: String): Unit = bf.put(message.getBytes(UTF_8))
   def putZero: Unit                    = bf.put(0: Byte)
 
+  def trim(): Array[Byte] = {
+    val array = bf.array().slice(bf.position(), bf.capacity() + 1)
+    val zeros = array.reverse.takeWhile(_ == 0).length
+    array.slice(0, array.length - zeros)
+  }
+
   def array = bf.array
   def size  = bf.capacity()
+  def pos   = bf.position()
 }
 
 object Buffer {

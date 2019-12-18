@@ -1,20 +1,21 @@
 import java.io.File
-import java.nio.charset.StandardCharsets
 
 import cats.effect.IO
 import fs2._
 import cats.syntax.flatMap._
+import org.slf4j.Logger
 
 object Rpc {
 
   private[this] val haltCriteria: Int => Boolean = size => size < Range.chunkSize
 
-  def upload(path: File, fileName: File)(channel: SafeUdpChannel, fs: FileSystem): IO[Unit] = {
+  def upload(path: File, fileName: File)(channel: SafeUdpChannel, fs: FileSystem)(implicit logger: Logger): IO[Unit] = {
     def validate(p: Packet[Type]): IO[Unit] =
       p match {
         case Packet(Data(Block(number), data), metadata) =>
           (fs.writeChunk(path, data) ++ Stream.eval {
-            if (haltCriteria(data.getBytes(StandardCharsets.UTF_8).length)) IO.unit
+            logger.info(s"data length: ${data.length}")
+            if (haltCriteria(data.length)) IO.unit
             else channel.send(Packet(Acknowledgment(Block((number + 1).toShort)), metadata)) >> loop
           }).compile.drain
         case Packet(ErrorType(err, msg), _) =>
@@ -40,15 +41,13 @@ object Rpc {
           val nextBlock = Block((block.number + 1).toShort)
           fs.readChunk(file, nextBlock)
             .flatMap { str =>
-              val send = Stream.eval(channel.send(Packet(Data(nextBlock, str), Metadata())))
+              val send = channel.send(Packet(Data(nextBlock, str), Metadata()))
               val next =
-                if (haltCriteria(str.getBytes(StandardCharsets.UTF_8).length)) IO.unit
+                if (haltCriteria(str.length)) IO.unit
                 else loop
 
-              send ++ Stream.eval(next)
+              send >> next
             }
-            .compile
-            .drain
         case _ => IO.raiseError(new RuntimeException("Wrong type of package"))
       }
 

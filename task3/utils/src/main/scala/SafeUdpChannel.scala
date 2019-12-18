@@ -25,7 +25,7 @@ trait Channel[T, F[A <: T]] {
 }
 
 class SafeUdpChannel private (socket: DatagramSocket)(implicit logger: Logger) extends Channel[Type, Packet] {
-  private val buffer = IO(Buffer(capacity = 65535))
+  private val buffer = IO(Buffer(capacity = 516))
 
   def receive: IO[Packet[Type]] =
     buffer
@@ -50,9 +50,12 @@ class SafeUdpChannel private (socket: DatagramSocket)(implicit logger: Logger) e
       * Bad code, but i don't want use reflection
       */
     def handle(datagram: DatagramPacket): Packet[Type] = {
-      val data     = Buffer.wrap(datagram.getData)
+      val dtgrm = datagram.getData.take(datagram.getLength)
+      val data  = Buffer.wrap(dtgrm)
+
       val metadata = Metadata(datagram.getAddress, datagram.getPort)
-      (data.takeNumber match {
+      val number   = data.takeNumber
+      (number match {
         case 1 => Decoder.decode[RRQ](data.array)
         case 2 => Decoder.decode[WRQ](data.array)
         case 3 => Decoder.decode[Data](data.array)

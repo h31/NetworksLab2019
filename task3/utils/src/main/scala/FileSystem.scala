@@ -1,5 +1,4 @@
 import java.io.File
-import java.nio.charset.StandardCharsets
 import java.nio.file.{Path, StandardOpenOption}
 
 import cats.effect.{Blocker, ContextShift, IO}
@@ -34,17 +33,20 @@ case class FileSystem private (private val blocker: Blocker)(implicit val ctx: C
       case false => None
     }
 
-  def readChunk(path: File, block: Block): Stream[IO, String] = {
+  def readChunk(path: File, block: Block): IO[Array[Byte]] = {
     val range = Range.other(block)
 
     file
       .readRange[IO](FileSystem.otherPath(path).toPath, blocker, chunkSize, range.from, range.to)
-      .through(text.utf8Decode[IO])
+      .compile
+      .toVector
+      .map(_.toArray)
+
   }
 
-  def writeChunk(path: File, data: String): Stream[IO, Unit] =
+  def writeChunk(path: File, data: Array[Byte]): Stream[IO, Unit] =
     Stream
-      .emits(data.getBytes(StandardCharsets.UTF_8).toSeq)
+      .emits(data)
       .through(
           file.writeAll[IO](
             FileSystem.otherPath(path).toPath
