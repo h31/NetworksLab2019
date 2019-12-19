@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="NetworksLab2019"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="my_server_linux">
+				<Option output="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/my_server_linux" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Users/pashnik/CLionProjects/NetworksLab2019/."/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.1/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 my_server_linux"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="my_server_linux/fast">
+				<Option output="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/my_server_linux" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Users/pashnik/CLionProjects/NetworksLab2019/."/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.1/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 my_server_linux/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="my_client_linux">
+				<Option output="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/my_client_linux" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Users/pashnik/CLionProjects/NetworksLab2019/."/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.1/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 my_client_linux"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="my_client_linux/fast">
+				<Option output="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/my_client_linux" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="1"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/Users/pashnik/CLionProjects/NetworksLab2019/."/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/lib/clang/10.0.1/include"/>
+					<Add directory="/Library/Developer/CommandLineTools/usr/include"/>
+					<Add directory="/System/Library/Frameworks"/>
+					<Add directory="/Library/Frameworks"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 my_client_linux/fast"/>
+					<CompileFile command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j4 -f &quot;/Users/pashnik/CLionProjects/NetworksLab2019/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/Users/pashnik/CLionProjects/NetworksLab2019/tcp/client/main.c">
+			<Option target="my_client_linux"/>
+		</Unit>
+		<Unit filename="/Users/pashnik/CLionProjects/NetworksLab2019/tcp/server/main.c">
+			<Option target="my_server_linux"/>
+		</Unit>
+		<Unit filename="/Users/pashnik/CLionProjects/NetworksLab2019/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>
