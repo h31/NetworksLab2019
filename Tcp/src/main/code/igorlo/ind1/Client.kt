@@ -10,6 +10,7 @@ import java.util.*
 import org.apache.log4j.Logger
 import igorlo.util.Utilities.Command
 import java.io.IOException
+import java.lang.IllegalArgumentException
 import java.lang.NumberFormatException
 import kotlin.system.exitProcess
 
@@ -132,88 +133,59 @@ class Client {
             return false
         }
         val sliced: List<String> = command.split(' ')
-        when (sliced[0]) {
-            "a" -> {
-                if (sliced.size != 5) {
-                    validationError("Неверное число аргументов")
-                    return false
+        try {
+            when (sliced[0]) {
+                "a" -> {
+                    validateArgumentQuantity(sliced.size, 5)
+                    validateInt(sliced, 1)
+                    validateDouble(sliced, 4)
                 }
-                if (!validateInt(sliced[1])) {
-                    validationError("Второй аргумент не является целым числом")
-                    return false
+                "d" -> {
+                    validateArgumentQuantity(sliced.size, 2)
+                    validateInt(sliced, 1)
                 }
-                if (!validateDouble(sliced[4])) {
-                    validationError("Четвёртый аргумент не является числом")
-                    return false
+                "r" -> {
+                    validateArgumentQuantity(sliced.size, 1)
                 }
-                return true
+                "c" -> {
+                    validateArgumentQuantity(sliced.size, 3)
+                    validateInt(sliced, 1)
+                    validateDouble(sliced, 2)
+                }
+                "h" -> {
+                    validateArgumentQuantity(sliced.size, 2)
+                    validateInt(sliced, 1)
+                }
+                else -> {
+                    validationError("Не удалось распознать комманду")
+                }
             }
-            "d" -> {
-                if (sliced.size != 2) {
-                    validationError("Неверное число аргументов")
-                    return false
-                }
-                if (!validateInt(sliced[1])) {
-                    validationError("Второй аргумент не является целым числом")
-                    return false
-                }
-                return true
-            }
-            "r" -> {
-                if (sliced.size != 1) {
-                    validationError("Неверное число аргументов")
-                    return false
-                }
-                return true
-            }
-            "c" -> {
-                if (sliced.size != 3) {
-                    validationError("Неверное число аргументов")
-                    return false
-                }
-                if (!validateInt(sliced[1])) {
-                    validationError("Второй аргумент не является целым числом")
-                    return false
-                }
-                if (!validateDouble(sliced[2])) {
-                    validationError("Четвёртый аргумент не является числом")
-                    return false
-                }
-                return true
-            }
-            "h" -> {
-                if (sliced.size != 2) {
-                    validationError("Неверное число аргументов")
-                    return false
-                }
-                if (!validateInt(sliced[1])) {
-                    validationError("Второй аргумент не является целым числом")
-                    return false
-                }
-                return true
-            }
-            else -> {
-                validationError("Не удалось распознать комманду")
-                return false
-            }
+        } catch (e: IllegalArgumentException) {
+            return false
         }
+        return true
     }
 
-    private fun validateDouble(possibleDouble: String): Boolean {
+    private fun validateArgumentQuantity(actual: Int, expected: Int) {
+        if (actual != expected)
+            validationError("Данная команда должна содержать $expected аргументов")
+    }
+
+    private fun validateDouble(arguments: List<String>, index: Int) {
         try {
+            val possibleDouble = arguments[index]
             possibleDouble.toDouble()
-            return true
         } catch (e: NumberFormatException) {
-            return false
+            validationError("${index + 1} аргумент не является числом")
         }
     }
 
-    private fun validateInt(possibleInt: String): Boolean {
+    private fun validateInt(arguments: List<String>, index: Int) {
         try {
+            val possibleInt = arguments[index]
             possibleInt.toInt()
-            return true
         } catch (e: NumberFormatException) {
-            return false
+            validationError("$index аргумент не является целочисленным")
         }
     }
 
@@ -250,9 +222,9 @@ class Client {
         close()
     }
 
-
     private fun validationError(error: String) {
-        colorPrint("Ошибка валидации\n$error", TextColors.ANSI_RED)
+//        colorPrint("Ошибка валидации\n$error", TextColors.ANSI_RED)
+        throw IllegalArgumentException("Ошибка валидации\n$error")
     }
 
     private fun printInfo() {
