@@ -28,12 +28,24 @@ public class Client {
 
         while ((s = sock_br.readLine()) != null) {
             if (s.equals("exit")) return;
-            System.out.println("\r" + s);
-            System.out.print("> ");
+            if (s.equals("list")) {
+                printHeader(Integer.parseInt(sock_br.readLine()));
+            } else {
+                System.out.println("\r" + s);
+                System.out.print("> ");
+            }
         }
         sock.close();
         System.out.println("Server is shutdown");
         System.exit(0);
+    }
+
+    private void printHeader(int maxLen) {
+        System.out.print("\rname\t\t");
+        for (int i = 1; i < maxLen; i++) {
+            System.out.print(i + "\t\t");
+        }
+        System.out.println();
     }
 
     private void enter() throws IOException {
@@ -48,29 +60,27 @@ public class Client {
                     sock_pw.println("signin " + s);
                     s = sock_br.readLine();
                     System.out.println(s);
-                    if(s.equals("Enter complete")) {
+                    if (s.equals("Enter complete")) {
                         System.out.println("Write \"help\" for help");
                         return;
-                    }
-                    else break;
+                    } else break;
                 case "2":
                     System.out.print("Create login: ");
                     s = scanner.nextLine();
                     sock_pw.println("signup " + s);
                     s = sock_br.readLine();
                     System.out.println(s);
-                    if(s.equals("Enter complete")) {
+                    if (s.equals("Enter complete")) {
                         System.out.println("Write \"help\" for help");
                         return;
-                    }
-                    else break;
+                    } else break;
                 default:
                     break;
             }
         }
     }
 
-    public static void main(String[] args) throws IOException{
+    public static void main(String[] args) throws IOException {
         new Client().run();
     }
 }
