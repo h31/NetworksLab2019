@@ -84,24 +84,11 @@ void accept_connection() {
         perror("ERROR opening socket");
         return;
     }
-    int nick_length;
-    int tempi = read(nsd, &nick_length, sizeof(int));
-    if (tempi < 0) {
-        perror("ERROR reading from socket");
-        return;
-    }
-    auto nick = new char[nick_length]();
-    tempi = read(nsd, nick, nick_length);
-    if (tempi < 0) {
-        perror("ERROR reading from socket");
-        return;
-    }
-    clients[nsd] = string(nick);
+    clients[nsd] = "";
     struct pollfd temp;
     temp.fd = nsd;
     temp.events = POLLRDNORM;
     clients_pollfd.push_back(temp);
-    free(nick);
 }
 
 /**********************************************************************************************************************
@@ -111,6 +98,23 @@ int temp_nsd;
 
 bool is_check(const struct pollfd &fd) {
     return fd.fd == new_socket_descriptor;
+}
+
+void set_nick(){
+    int nick_length;
+    int tempi = read(new_socket_descriptor, &nick_length, sizeof(int));
+    if (tempi < 0) {
+        perror("ERROR reading from socket");
+        return;
+    }
+    auto nick = new char[nick_length]();
+    tempi = read(new_socket_descriptor, nick, nick_length);
+    if (tempi < 0) {
+        perror("ERROR reading from socket");
+        return;
+    }
+    clients[new_socket_descriptor] = string(nick);
+    free(nick);
 }
 
 void communicating() {
@@ -180,7 +184,7 @@ int main(int argc, char *argv[]) {
     clients_pollfd.back().fd = socket_descriptor;
     clients_pollfd.back().events = POLLRDNORM;
 
-    listen(socket_descriptor, 1);
+    listen(socket_descriptor, 5);
 
     while (true) {
         struct pollfd *arr = new struct pollfd[clients_pollfd.size()];
@@ -188,12 +192,12 @@ int main(int argc, char *argv[]) {
         int nready = poll(arr, clients_pollfd.size(), -1);
         if (arr[0].revents && POLLRDNORM) { /* новое соединение с клиентом */
             accept_connection();
-            listen(socket_descriptor, 1);
         }
         for (int i = 1; i < clients_pollfd.size(); i++) { /* проверяем все клиенты на наличие данных */
             if (arr[i].revents && (POLLRDNORM | POLLERR)) {
                 new_socket_descriptor = arr[i].fd;
-                communicating();
+                if (clients[new_socket_descriptor] == "") set_nick();
+                else communicating();
             }
         }
         free(arr);
