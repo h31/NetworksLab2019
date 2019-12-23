@@ -67,6 +67,12 @@ void check_argc(int argc, char *argv[]) {
     check_condition(strlen(argv[3]) > NICKNAME_LENGTH,
                     "Please change the nickname. The nickname is limited to 15 characters.", 0);
     nickname = argv[3];
+    check_condition(strchr(nickname, '[') != NULL, "Please change the nickname. Unacceptable symbols: [] ->.", 0);
+    check_condition(strchr(nickname, ']') != NULL, "Please change the nickname. Unacceptable symbols: [] ->.", 0);
+    check_condition(strchr(nickname, ' ') != NULL, "Please change the nickname. Unacceptable symbols: [] ->.", 0);
+    check_condition(strchr(nickname, '-') != NULL, "Please change the nickname. Unacceptable symbols: [] ->.", 0);
+    check_condition(strchr(nickname, '>') != NULL, "Please change the nickname. Unacceptable symbols: [] ->.", 0);
+
 }
 
 /**********************************************************************************************************************
@@ -74,7 +80,8 @@ void check_argc(int argc, char *argv[]) {
  **********************************************************************************************************************/
 
 void delete_last_char(){
-    if (output_buffer.length() > 0) output_buffer.erase(output_buffer.length() - 1, 1);
+//    if (output_buffer.length() > 0) output_buffer.erase(output_buffer.length() - 1, 1);
+    if (output_buffer.length() > 0) output_buffer.pop_back();
 }
 
 void ncurses_init(){
@@ -134,7 +141,7 @@ void server_connect(){
         exit(1);
     }
     int temp = strlen(nickname);
-    if (write(socket_descriptor, &temp, sizeof(int)) < 0) {
+    if (write(socket_descriptor, &temp, 4) < 0) {
         exit(1);
     }
     if (write(socket_descriptor, nickname, strlen(nickname)) < 0) {
@@ -148,7 +155,7 @@ void send_message(){
         exit(0);
     }
     int message_length = output_buffer.length();
-    int temp = write(socket_descriptor, &message_length, sizeof(int));
+    int temp = write(socket_descriptor, &message_length, 4);
     if (temp <= 0) {
         ncurses_close();
         perror("ERROR writing to socket");
@@ -164,15 +171,20 @@ void send_message(){
 
 void read_server_response(){
     int message_size;
-    int temp = read(socket_descriptor, &message_size, sizeof(int));
+    int temp = read(socket_descriptor, &message_size, 4);
     if (temp <= 0) {
         ncurses_close();
         perror("ERROR reading from socket");
         exit(1);
     }
     auto input_buffer = new char[message_size];
+    bzero(input_buffer, sizeof(input_buffer));
     temp = read(socket_descriptor, input_buffer, message_size);
     seconds = time(0);
+    if (strlen(input_buffer) != message_size){
+        free(input_buffer);
+        return;
+    }
     if (temp <= 0) {
         ncurses_close();
         perror("ERROR reading from socket");
@@ -210,7 +222,7 @@ void * output_thread_fun(){
             case '\n': {
                 if (output_buffer.length() == 0) break;
                 send_message();
-                output_buffer = "";
+                output_buffer.clear();
                 break;
             }
             default: {

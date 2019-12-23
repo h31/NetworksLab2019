@@ -22,7 +22,6 @@ using namespace std;
 
 #define true  1
 #define false 0
-#define NUMBER_OF_CLIENTS 1000
 
 /**********************************************************************************************************************
  *                                                  Global variables.                                                 *
@@ -78,7 +77,7 @@ void bind_host_address() {
     }
 }
 
-void communicating(int new_socket_descriptor, string nickname);
+void communicating(int new_socket_descriptor);
 
 void accept_connection() {
     struct sockaddr_in client_address;
@@ -88,23 +87,7 @@ void accept_connection() {
         perror("ERROR opening socket");
         return;
     }
-    int nick_length;
-    int temp = read(nsd, &nick_length, sizeof(int));
-    if (temp < 0) {
-        perror("ERROR reading from socket");
-        return;
-    }
-    auto nick = new char[nick_length]();
-    temp = read(nsd, nick, nick_length);
-    if (temp < 0) {
-        perror("ERROR reading from socket");
-        return;
-    }
-    pthread_mutex_lock( &cs_mutex );
-    clients[nsd] = string(nick);
-    pthread_mutex_unlock( &cs_mutex );
-    threads_list.emplace_back([&] { communicating(nsd, clients[nsd]); });
-    free(nick);
+    threads_list.emplace_back([&] { communicating(nsd); });
 }
 
 /**********************************************************************************************************************
@@ -112,55 +95,75 @@ void accept_connection() {
  **********************************************************************************************************************/
 
 
-void communicating(int new_socket_descriptor, string nickname) {
+void communicating(int new_socket_descriptor) {
+    int nick_length;
+    int temp = read(new_socket_descriptor, &nick_length, 4);
+    if (temp < 0) {
+        perror("ERROR reading from socket");
+        return;
+    }
+    auto nick = new char[nick_length]();
+    temp = read(new_socket_descriptor, nick, nick_length);
+    if (temp < 0) {
+        perror("ERROR reading from socket");
+        return;
+    }
+    pthread_mutex_lock( &cs_mutex );
+    clients[new_socket_descriptor] = string(nick);
+    pthread_mutex_unlock( &cs_mutex );
+    string nickname = string(nick);
+    free(nick);
+
     while (true) {
-            int message_size;
-            int temp = read(new_socket_descriptor, &message_size, sizeof(int));
-            if (temp <= 0) {
-                perror("ERROR reading from socket");
-                pthread_mutex_lock( &cs_mutex );
-                clients.erase(clients.find(new_socket_descriptor));
-                pthread_mutex_unlock( &cs_mutex );
-                close(new_socket_descriptor);
-                break;
-            }
-            auto buffer = new char[message_size];
-            temp = read(new_socket_descriptor, buffer, message_size);
-            if (temp <= 0) {
-                perror("ERROR reading from socket");
-                pthread_mutex_lock( &cs_mutex );
-                clients.erase(clients.find(new_socket_descriptor));
-                pthread_mutex_unlock( &cs_mutex );
-                close(new_socket_descriptor);
-                break;
-            }
-            message_size = message_size + nickname.length() + 6;
-            auto full_buffer = new char[message_size];
+        int message_size;
+        int temp = read(new_socket_descriptor, &message_size, 4);
+        if (temp <= 0) {
+            perror("ERROR reading from socket");
+            pthread_mutex_lock(&cs_mutex);
+            clients.erase(clients.find(new_socket_descriptor));
+            pthread_mutex_unlock(&cs_mutex);
+            close(new_socket_descriptor);
+            break;
+        }
+        printf("pp-%i-p\n", message_size);
+        printf("kk-%i-kk", sizeof(int));
+        auto buffer = new char[message_size];
+        bzero(buffer, sizeof(buffer));
+        temp = read(new_socket_descriptor, buffer, message_size);
+        if (temp <= 0) {
+            perror("ERROR reading from socket");
+            pthread_mutex_lock(&cs_mutex);
+            clients.erase(clients.find(new_socket_descriptor));
+            pthread_mutex_unlock(&cs_mutex);
+            close(new_socket_descriptor);
+            break;
+        }
+        message_size = message_size + nickname.length() + 6;
+        auto full_buffer = new char[message_size];
+        bzero(full_buffer, sizeof(full_buffer));
 
-            if (strcmp(buffer, "") != 0) {
-                strcpy(full_buffer, "[");
-                strcat(full_buffer, nickname.c_str());
-                strcat(full_buffer, "] -> ");
-                strcat(full_buffer, buffer);
-                printf("%s\n", full_buffer);
+        strcpy(full_buffer, "[");
+        strcat(full_buffer, nickname.c_str());
+        strcat(full_buffer, "] -> ");
+        strcat(full_buffer, buffer);
+        printf("%s\n", full_buffer);
 
-                for (map<int, string>::iterator it = clients.begin(); it != clients.end(); it++) {
-                    if (it->first > 0) {
-                        temp = write(it->first, &message_size, sizeof(int));
-                        if (temp <= 0) {
-                            perror("ERROR writing in socket");
-                            continue;
-                        }
-                        temp = write(it->first, full_buffer, message_size);
-                        if (temp <= 0) {
-                            perror("ERROR writing in socket");
-                            continue;
-                        }
-                    }
+        for (map<int, string>::iterator it = clients.begin(); it != clients.end(); it++) {
+            if (it->first > 0) {
+                temp = write(it->first, &message_size, 4);
+                if (temp <= 0) {
+                    perror("ERROR writing in socket");
+                    continue;
+                }
+                temp = write(it->first, full_buffer, message_size);
+                if (temp <= 0) {
+                    perror("ERROR writing in socket");
+                    continue;
                 }
             }
-            free(buffer);
-            free(full_buffer);
+        }
+        free(buffer);
+        free(full_buffer);
     }
     pthread_exit(0);
 }
@@ -175,9 +178,8 @@ int main(int argc, char *argv[]) {
     initialization_socket_descriptor();
     initialization_socket_structure();
     bind_host_address();
-//    listen(socket_descriptor, NUMBER_OF_CLIENTS);
+    listen(socket_descriptor, 5);
     while (true) {
-        listen(socket_descriptor, 1);
         accept_connection();
     }
     for (thread &t: threads_list) {
