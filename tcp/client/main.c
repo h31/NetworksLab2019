@@ -41,8 +41,11 @@ char *recieveMessage(int socket){
     int length = 0;
     //Получаем размер сообщения
     n = read(socket, &length, sizeof(int));
-    if (n <= 0) {
+    if (n < 0) {
         perror("ERROR reading from socket\n");
+        stopClient(socket);
+    }
+    if ( n == 0){
         stopClient(socket);
     }
 
@@ -51,11 +54,13 @@ char *recieveMessage(int socket){
     if(length > 0){
         //Получаем само сообщение
         n = read(socket, result, length); 
-        if (n <= 0) {
+        if (n < 0) {
             perror("ERROR reading from socket\n");
-            stopClient(socket);
-        
+            stopClient(socket);      
         }
+        if ( n == 0){
+        stopClient(socket);
+    }
     }  
 
     return result;
@@ -92,12 +97,17 @@ void sendMessage(int sizeMess, char* message, int socket){
          perror("ERROR writing to socket");
          stopClient(socket);
     }
-
+    if ( n == 0){
+        stopClient(socket);
+    }
     //Отправляем само сообщение
     n = write(socket, message, sizeMess);
     //printf("Записано сообщение длиной %d\n",n);
     if (n < 0) {
         perror("ERROR writing to socket");
+        stopClient(socket);
+    }
+    if ( n == 0){
         stopClient(socket);
     }
 }
