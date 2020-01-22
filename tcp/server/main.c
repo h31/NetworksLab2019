@@ -26,9 +26,9 @@ typedef struct {
     char *name;
 } client;
 
-struct pollfd pool_clients[MAX_CLIENTS];
+struct pollfd pool_clients[MAX_CLIENTS + 1];
 
-client *clients[MAX_CLIENTS + 1];
+client *clients[MAX_CLIENTS];
 int clients_count = 1;
 
 void init_clients() {
@@ -51,7 +51,7 @@ void send_message_to_clients(int socket, char *message, char *name) {
     strcat(msg, message);
     int n;
     int len = strlen(msg);
-    for (int i = 1; i <= MAX_CLIENTS; i++) {
+    for (int i = 1; i < MAX_CLIENTS; i++) {
         if (clients[i] != NULL) {
             if (clients[i]->socket != socket) {
                 n = write(clients[i]->socket, &len, sizeof(int));
@@ -72,15 +72,18 @@ void send_message_to_clients(int socket, char *message, char *name) {
 void close_client(int socket) {
     shutdown(socket, SHUT_RDWR);
     close(socket);
-    for (int i = 1; i <= MAX_CLIENTS; i++) {
+
+    for (int i = 1; i < MAX_CLIENTS; i++) {
         if ((clients[i] != NULL) && (clients[i]->socket == socket)) {
             printf(ANSI_COLOR_GREEN"<%02d:%02d> "ANSI_COLOR_BLUE"[%s]"ANSI_COLOR_RESET" disconnected\n",
                    time_struct.tm_hour,
                    time_struct.tm_min, clients[i]->name);
-            clients[i] = NULL;
-            break;
+            for (int j = i; j < clients_count; j++) {
+                clients[j] = clients[j + 1];
+            }
         }
     }
+
     for (int i = 1; i <= clients_count; i++) {
         if (pool_clients[i].fd == socket) {
             for (int j = i; j < clients_count; j++) {
@@ -110,24 +113,26 @@ void *client_func(int socket, char *name) {
     if (status < 0) {
         perror("ERROR reading length from socket");
         exit(1);
-    }
-    if (msg_size != 0) {
-        status = read(socket, buffer, msg_size);
-        if (status < 0) {
-            perror("ERROR reading from socket");
-            exit(1);
-        }
-        time(&now);
-        time_struct = *localtime(&now);
-        printf(ANSI_COLOR_GREEN"<%02d:%02d> "ANSI_COLOR_BLUE"[%s]"ANSI_COLOR_RESET": %s", time_struct.tm_hour,
-               time_struct.tm_min, name, buffer);
-
-        /* Write a responses to clients */
-        send_message_to_clients(socket, buffer, name);
-    } else {
+    } else if (status == 0) {
         close_client(socket);
-        clients_count--;
+    } else {
+        if (msg_size != 0) {
+            status = read(socket, buffer, msg_size);
+            if (status < 0) {
+                perror("ERROR reading from socket");
+                exit(1);
+            }
+            time(&now);
+            time_struct = *localtime(&now);
+            printf(ANSI_COLOR_GREEN"<%02d:%02d> "ANSI_COLOR_BLUE"[%s]"ANSI_COLOR_RESET": %s", time_struct.tm_hour,
+                   time_struct.tm_min, name, buffer);
+            /* Write a responses to clients */
+            send_message_to_clients(socket, buffer, name);
+        } else {
+            close_client(socket);
+        }
     }
+
     return 0;
 }
 
